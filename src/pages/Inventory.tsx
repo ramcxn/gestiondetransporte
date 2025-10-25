@@ -1,10 +1,23 @@
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "sonner";
 import { Package, Truck, Search, AlertCircle, CheckCircle, MapPin } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function Inventory() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Unidad agregada exitosamente");
+    setIsDialogOpen(false);
+  };
+
   const units = [
     {
       id: "TRC-001",
@@ -91,10 +104,82 @@ export default function Inventory() {
             <p className="text-muted-foreground">Control de unidades, tractos y remolques</p>
           </div>
         </div>
-        <Button className="bg-primary hover:bg-primary/90">
-          <Truck className="h-4 w-4 mr-2" />
-          Agregar Unidad
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary hover:bg-primary/90">
+              <Truck className="h-4 w-4 mr-2" />
+              Agregar Unidad
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Agregar Nueva Unidad</DialogTitle>
+              <DialogDescription>Registre una nueva unidad en el inventario</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="unit-id">ID de Unidad</Label>
+                  <Input id="unit-id" placeholder="TRC-XXX o REM-XXX" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit-type">Tipo de Unidad</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tracto">Tracto</SelectItem>
+                      <SelectItem value="remolque">Remolque</SelectItem>
+                      <SelectItem value="dolly">Dolly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="brand">Marca</Label>
+                  <Input id="brand" placeholder="Freightliner, Kenworth, etc." required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model">Modelo</Label>
+                  <Input id="model" placeholder="2020" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plates">Placas</Label>
+                  <Input id="plates" placeholder="ABC-123-D" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="initial-odometer">Odómetro Inicial (km)</Label>
+                  <Input id="initial-odometer" type="number" placeholder="0" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="location">Ubicación</Label>
+                  <Input id="location" placeholder="Patio Principal" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Estado</Label>
+                  <Select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="operational">Operativo</SelectItem>
+                      <SelectItem value="maintenance">Mantenimiento</SelectItem>
+                      <SelectItem value="in-transit">En Ruta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="bg-primary hover:bg-primary/90">
+                  Agregar Unidad
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

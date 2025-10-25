@@ -9,7 +9,16 @@ import UnitEntry from "./pages/UnitEntry";
 import SecurityRounds from "./pages/SecurityRounds";
 import Visits from "./pages/Visits";
 import Inventory from "./pages/Inventory";
-import ComingSoon from "./pages/ComingSoon";
+import Operators from "./pages/Operators";
+import Antidoping from "./pages/Antidoping";
+import Breathalyzer from "./pages/Breathalyzer";
+import Maintenance from "./pages/Maintenance";
+import Trips from "./pages/Trips";
+import Settlements from "./pages/Settlements";
+import RouteAnalysis from "./pages/RouteAnalysis";
+import RiskAnalysis from "./pages/RiskAnalysis";
+import SecuritySeals from "./pages/SecuritySeals";
+import Cybersecurity from "./pages/Cybersecurity";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,16 +36,16 @@ const App = () => (
             <Route path="/rondines" element={<SecurityRounds />} />
             <Route path="/unidades" element={<UnitEntry />} />
             <Route path="/inventario" element={<Inventory />} />
-            <Route path="/operadores" element={<ComingSoon moduleName="Gestión del Operador" />} />
-            <Route path="/antidoping" element={<ComingSoon moduleName="Antidoping" />} />
-            <Route path="/alcoholimetro" element={<ComingSoon moduleName="Pruebas de Alcoholímetro" />} />
-            <Route path="/mantenimiento" element={<ComingSoon moduleName="Mantenimiento a Unidades" />} />
-            <Route path="/viajes" element={<ComingSoon moduleName="Registro de Viajes" />} />
-            <Route path="/liquidaciones" element={<ComingSoon moduleName="Liquidaciones" />} />
-            <Route path="/analisis-ruta" element={<ComingSoon moduleName="Análisis de Factibilidad de Ruta" />} />
-            <Route path="/analisis-riesgos" element={<ComingSoon moduleName="Análisis de Riesgos" />} />
-            <Route path="/sellos" element={<ComingSoon moduleName="Inventario de Sellos de Seguridad" />} />
-            <Route path="/ciberseguridad" element={<ComingSoon moduleName="Ciberseguridad" />} />
+            <Route path="/operadores" element={<Operators />} />
+            <Route path="/antidoping" element={<Antidoping />} />
+            <Route path="/alcoholimetro" element={<Breathalyzer />} />
+            <Route path="/mantenimiento" element={<Maintenance />} />
+            <Route path="/viajes" element={<Trips />} />
+            <Route path="/liquidaciones" element={<Settlements />} />
+            <Route path="/analisis-ruta" element={<RouteAnalysis />} />
+            <Route path="/analisis-riesgos" element={<RiskAnalysis />} />
+            <Route path="/sellos" element={<SecuritySeals />} />
+            <Route path="/ciberseguridad" element={<Cybersecurity />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>

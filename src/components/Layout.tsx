@@ -17,35 +17,46 @@ import {
   ShieldCheck,
   Menu,
   X,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const navigationItems = [
-  { name: "Dashboard", path: "/", icon: Package },
-  { name: "Visitas/Proveedores", path: "/visitas", icon: Users },
-  { name: "Rondines de Seguridad", path: "/rondines", icon: Shield },
-  { name: "Ingreso de Unidades", path: "/unidades", icon: Truck },
-  { name: "Inventario de Equipo", path: "/inventario", icon: Package },
-  { name: "Gestión del Operador", path: "/operadores", icon: UserCheck },
-  { name: "Antidoping", path: "/antidoping", icon: FlaskConical },
-  { name: "Alcoholímetro", path: "/alcoholimetro", icon: Wine },
-  { name: "Mantenimiento", path: "/mantenimiento", icon: Wrench },
-  { name: "Viajes", path: "/viajes", icon: MapPin },
-  { name: "Liquidaciones", path: "/liquidaciones", icon: DollarSign },
-  { name: "Análisis de Ruta", path: "/analisis-ruta", icon: Route },
-  { name: "Análisis de Riesgos", path: "/analisis-riesgos", icon: AlertTriangle },
-  { name: "Sellos de Seguridad", path: "/sellos", icon: Tag },
-  { name: "Ciberseguridad", path: "/ciberseguridad", icon: ShieldCheck },
+const allNavigationItems = [
+  { name: "Dashboard", path: "/", icon: Package, roles: ["admin", "usuario"] },
+  { name: "Visitas/Proveedores", path: "/visitas", icon: Users, roles: ["admin", "usuario"] },
+  { name: "Rondines de Seguridad", path: "/rondines", icon: Shield, roles: ["admin", "usuario"] },
+  { name: "Ingreso de Unidades", path: "/unidades", icon: Truck, roles: ["admin", "usuario"] },
+  { name: "Inventario de Equipo", path: "/inventario", icon: Package, roles: ["admin"] },
+  { name: "Gestión del Operador", path: "/operadores", icon: UserCheck, roles: ["admin"] },
+  { name: "Antidoping", path: "/antidoping", icon: FlaskConical, roles: ["admin"] },
+  { name: "Alcoholímetro", path: "/alcoholimetro", icon: Wine, roles: ["admin", "usuario"] },
+  { name: "Mantenimiento", path: "/mantenimiento", icon: Wrench, roles: ["admin"] },
+  { name: "Viajes", path: "/viajes", icon: MapPin, roles: ["admin"] },
+  { name: "Liquidaciones", path: "/liquidaciones", icon: DollarSign, roles: ["admin"] },
+  { name: "Análisis de Ruta", path: "/analisis-ruta", icon: Route, roles: ["admin"] },
+  { name: "Análisis de Riesgos", path: "/analisis-riesgos", icon: AlertTriangle, roles: ["admin"] },
+  { name: "Sellos de Seguridad", path: "/sellos", icon: Tag, roles: ["admin"] },
+  { name: "Ciberseguridad", path: "/ciberseguridad", icon: ShieldCheck, roles: ["admin"] },
+  { name: "Gestión de Usuarios", path: "/usuarios", icon: Settings, roles: ["admin"] },
 ];
 
 export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+  const { userRole, signOut, user } = useAuth();
+
+  // Filter navigation items based on user role
+  const navigationItems = allNavigationItems.filter((item) =>
+    item.roles.includes(userRole || "usuario")
+  );
 
   return (
     <div className="flex h-screen bg-background">
@@ -57,7 +68,7 @@ export function Layout({ children }: LayoutProps) {
         )}
       >
         <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-border">
+          <div className="p-6 border-b border-border space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-accent">
                 <Truck className="h-6 w-6 text-primary-foreground" />
@@ -65,6 +76,17 @@ export function Layout({ children }: LayoutProps) {
               <div>
                 <h1 className="text-lg font-bold text-foreground">Gestión de Transporte</h1>
                 <p className="text-xs text-muted-foreground">CTPAT Compliance</p>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {user?.email}
+                </span>
+                <Badge variant={userRole === "admin" ? "default" : "secondary"} className="text-xs">
+                  {userRole === "admin" ? "Admin" : "Usuario"}
+                </Badge>
               </div>
             </div>
           </div>
@@ -91,6 +113,17 @@ export function Layout({ children }: LayoutProps) {
               );
             })}
           </nav>
+
+          <div className="p-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3"
+              onClick={signOut}
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
       </aside>
 

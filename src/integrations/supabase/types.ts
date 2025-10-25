@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ingreso_unidades: {
+        Row: {
+          created_at: string
+          created_by: string
+          descripcion_incidente: string | null
+          foto_1_url: string | null
+          foto_2_url: string | null
+          id: string
+          incidente: boolean | null
+          numero_economico: string
+          numero_unidad: string
+          odometro: number
+          operador: string
+          puntos_seguridad: Json | null
+          requiere_mantenimiento: boolean | null
+          tipo_movimiento: string
+          tipo_unidad: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          descripcion_incidente?: string | null
+          foto_1_url?: string | null
+          foto_2_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          numero_economico: string
+          numero_unidad: string
+          odometro: number
+          operador: string
+          puntos_seguridad?: Json | null
+          requiere_mantenimiento?: boolean | null
+          tipo_movimiento: string
+          tipo_unidad: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          descripcion_incidente?: string | null
+          foto_1_url?: string | null
+          foto_2_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          numero_economico?: string
+          numero_unidad?: string
+          odometro?: number
+          operador?: string
+          puntos_seguridad?: Json | null
+          requiere_mantenimiento?: boolean | null
+          tipo_movimiento?: string
+          tipo_unidad?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -38,6 +92,72 @@ export type Database = {
         }
         Relationships: []
       }
+      pruebas_alcoholimetro: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          nivel: number | null
+          nombre: string
+          observaciones: string | null
+          resultado: string
+          tipo_persona: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          nivel?: number | null
+          nombre: string
+          observaciones?: string | null
+          resultado: string
+          tipo_persona: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          nivel?: number | null
+          nombre?: string
+          observaciones?: string | null
+          resultado?: string
+          tipo_persona?: string
+        }
+        Relationships: []
+      }
+      rondines: {
+        Row: {
+          codigo_qr: string
+          created_at: string
+          created_by: string
+          descripcion_incidente: string | null
+          foto_url: string | null
+          id: string
+          incidente: boolean | null
+          ubicacion: string
+        }
+        Insert: {
+          codigo_qr: string
+          created_at?: string
+          created_by: string
+          descripcion_incidente?: string | null
+          foto_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          ubicacion: string
+        }
+        Update: {
+          codigo_qr?: string
+          created_at?: string
+          created_by?: string
+          descripcion_incidente?: string | null
+          foto_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          ubicacion?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -56,6 +176,42 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      visitas: {
+        Row: {
+          area_visita: string
+          created_at: string
+          created_by: string
+          credencial_url: string | null
+          empresa: string
+          id: string
+          motivo: string
+          nombre: string
+          tipo: string
+        }
+        Insert: {
+          area_visita: string
+          created_at?: string
+          created_by: string
+          credencial_url?: string | null
+          empresa: string
+          id?: string
+          motivo: string
+          nombre: string
+          tipo: string
+        }
+        Update: {
+          area_visita?: string
+          created_at?: string
+          created_by?: string
+          credencial_url?: string | null
+          empresa?: string
+          id?: string
+          motivo?: string
+          nombre?: string
+          tipo?: string
         }
         Relationships: []
       }

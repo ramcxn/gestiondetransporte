@@ -1,47 +1,151 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Users, Camera, UserPlus, Building2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { Users, Camera, Building2, Clock, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface Visit {
+  id: string;
+  nombre: string;
+  empresa: string;
+  tipo: string;
+  motivo: string;
+  area_visita: string;
+  credencial_url: string | null;
+  created_at: string;
+  created_by: string;
+  creator_name?: string;
+}
 
 export default function Visits() {
   const [visitorType, setVisitorType] = useState<"visitante" | "proveedor">("visitante");
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const recentVisits = [
-    {
-      id: "V001",
-      name: "Carlos Hernández",
-      type: "visitante",
-      company: "ABC Logistics",
-      time: "09:30",
-      status: "active",
-    },
-    {
-      id: "V002",
-      name: "María González",
-      type: "proveedor",
-      company: "Proveedora del Norte",
-      time: "08:15",
-      status: "completed",
-    },
-    {
-      id: "V003",
-      name: "Roberto Sánchez",
-      type: "visitante",
-      company: "Tech Solutions",
-      time: "10:45",
-      status: "active",
-    },
-  ];
+  const [formData, setFormData] = useState({
+    nombre: "",
+    empresa: "",
+    motivo: "",
+    area_visita: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success(`${visitorType === "visitante" ? "Visitante" : "Proveedor"} registrado exitosamente`);
+  useEffect(() => {
+    fetchVisits();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('visits-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'visitas'
+        },
+        () => {
+          fetchVisits();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchVisits = async () => {
+    try {
+      const { data: visitsData, error: visitsError } = await supabase
+        .from("visitas")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (visitsError) throw visitsError;
+
+      // Fetch creator names
+      const userIds = [...new Set(visitsData?.map(v => v.created_by) || [])];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p.full_name]) || []);
+      
+      const enrichedVisits = visitsData?.map(visit => ({
+        ...visit,
+        creator_name: profilesMap.get(visit.created_by) || "Usuario"
+      })) || [];
+
+      setVisits(enrichedVisits);
+    } catch (error) {
+      console.error("Error fetching visits:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las visitas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("visitas")
+        .insert({
+          nombre: formData.nombre,
+          empresa: formData.empresa,
+          tipo: visitorType,
+          motivo: formData.motivo,
+          area_visita: formData.area_visita,
+          created_by: user.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: `${visitorType === "visitante" ? "Visitante" : "Proveedor"} registrado exitosamente`,
+      });
+
+      setFormData({
+        nombre: "",
+        empresa: "",
+        motivo: "",
+        area_visita: "",
+      });
+    } catch (error) {
+      console.error("Error submitting visit:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo registrar la visita",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const todayVisits = visits.filter(
+    (v) => new Date(v.created_at).toDateString() === new Date().toDateString()
+  );
+  const activeVisits = todayVisits.filter((v) => v.tipo === "visitante");
+  const activeProviders = todayVisits.filter((v) => v.tipo === "proveedor");
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -61,8 +165,8 @@ export default function Visits() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Visitas Hoy</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">12</div>
-            <p className="text-xs text-muted-foreground mt-1">5 activas</p>
+            <div className="text-3xl font-bold text-foreground">{activeVisits.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Activas</p>
           </CardContent>
         </Card>
 
@@ -71,18 +175,18 @@ export default function Visits() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Proveedores</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">8</div>
-            <p className="text-xs text-muted-foreground mt-1">2 en instalaciones</p>
+            <div className="text-3xl font-bold text-foreground">{activeProviders.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">En instalaciones</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Promedio Diario</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Registros</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">18</div>
-            <p className="text-xs text-muted-foreground mt-1">Esta semana</p>
+            <div className="text-3xl font-bold text-foreground">{visits.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Todos los registros</p>
           </CardContent>
         </Card>
       </div>
@@ -110,52 +214,62 @@ export default function Visits() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nombre Completo</Label>
-                <Input id="name" placeholder="Ingrese el nombre" required />
+                <Input
+                  id="name"
+                  placeholder="Ej: Juan Pérez García"
+                  value={formData.nombre}
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  required
+                />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="company">Empresa</Label>
-                <Input id="company" placeholder="Nombre de la empresa" required />
+                <Input
+                  id="company"
+                  placeholder="Ej: ABC Logistics"
+                  value={formData.empresa}
+                  onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
+                  required
+                />
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="id-type">Tipo de Identificación</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ine">INE</SelectItem>
-                      <SelectItem value="pasaporte">Pasaporte</SelectItem>
-                      <SelectItem value="licencia">Licencia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="id-number">Número de Identificación</Label>
-                  <Input id="id-number" placeholder="Número" required />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label>Fotografía de Identificación</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                  <Camera className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Click para capturar o subir fotografía de la credencial
-                  </p>
-                </div>
+                <Label htmlFor="reason">Motivo de Visita</Label>
+                <Textarea
+                  id="reason"
+                  placeholder="Describa el motivo de la visita"
+                  value={formData.motivo}
+                  onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+                  required
+                />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="purpose">Motivo de Visita</Label>
-                <Input id="purpose" placeholder="Descripción breve" required />
+                <Label htmlFor="area">Área a Visitar</Label>
+                <Input
+                  id="area"
+                  placeholder="Ej: Almacén, Oficinas, Patio"
+                  value={formData.area_visita}
+                  onChange={(e) => setFormData({ ...formData, area_visita: e.target.value })}
+                  required
+                />
               </div>
-
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Registrar {visitorType === "visitante" ? "Visitante" : "Proveedor"}
+              <div className="space-y-2">
+                <Label htmlFor="credential">Fotografía de Credencial</Label>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" className="w-full">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Capturar Imagen
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Capture una foto de la identificación oficial
+                </p>
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={submitting}
+              >
+                {submitting ? "Registrando..." : "Registrar Entrada"}
               </Button>
             </form>
           </CardContent>
@@ -163,43 +277,63 @@ export default function Visits() {
 
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Visitas Recientes</CardTitle>
-            <CardDescription>Últimos registros de hoy</CardDescription>
+            <CardTitle>Historial Reciente</CardTitle>
+            <CardDescription>Últimas visitas y proveedores registrados</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentVisits.map((visit) => (
-                <div
-                  key={visit.id}
-                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-muted rounded-full">
-                        {visit.type === "proveedor" ? (
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : visits.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay visitas registradas
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {visits.slice(0, 10).map((visit) => (
+                  <div
+                    key={visit.id}
+                    className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-semibold text-foreground">{visit.name}</h4>
-                        <p className="text-sm text-muted-foreground">{visit.company}</p>
+                        <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {visit.empresa}
+                        </p>
                       </div>
+                      <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
+                        {visit.tipo}
+                      </Badge>
                     </div>
-                    <Badge variant={visit.status === "active" ? "default" : "outline"}>
-                      {visit.status === "active" ? "Activo" : "Salió"}
-                    </Badge>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
+                          {new Date(visit.created_at).toLocaleTimeString("es-MX", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3" />
+                        <span>Registrado por: {visit.creator_name}</span>
+                      </div>
+                      <p className="mt-1">
+                        <strong>Motivo:</strong> {visit.motivo}
+                      </p>
+                      <p>
+                        <strong>Área:</strong> {visit.area_visita}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm pt-2 border-t border-border">
-                    <span className="text-muted-foreground">Ingreso: {visit.time}</span>
-                    <span className="text-xs bg-muted px-2 py-1 rounded">
-                      {visit.id}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

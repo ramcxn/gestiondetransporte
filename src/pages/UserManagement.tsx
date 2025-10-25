@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, User, RefreshCw } from "lucide-react";
+import { Shield, User, RefreshCw, Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -13,18 +15,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface UserWithRole {
   id: string;
   email: string;
   full_name: string;
+  puesto: string;
   role: "admin" | "usuario";
   created_at: string;
+}
+
+interface NewUserForm {
+  email: string;
+  password: string;
+  full_name: string;
+  puesto: string;
+  role: "admin" | "usuario";
 }
 
 const UserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUser, setNewUser] = useState<NewUserForm>({
+    email: "",
+    password: "",
+    full_name: "",
+    puesto: "",
+    role: "usuario",
+  });
   const { toast } = useToast();
 
   const fetchUsers = async () => {
@@ -34,7 +62,7 @@ const UserManagement = () => {
       // Fetch profiles with their roles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, email, full_name, created_at");
+        .select("id, email, full_name, puesto, created_at");
 
       if (profilesError) throw profilesError;
 
@@ -96,6 +124,73 @@ const UserManagement = () => {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.full_name || !newUser.puesto) {
+      toast({
+        title: "Error",
+        description: "Todos los campos son obligatorios",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newUser.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 6 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const { error } = await supabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: newUser.full_name,
+            puesto: newUser.puesto,
+            role: newUser.role,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Usuario creado",
+        description: "El usuario ha sido creado exitosamente",
+      });
+
+      setNewUser({
+        email: "",
+        password: "",
+        full_name: "",
+        puesto: "",
+        role: "usuario",
+      });
+      setIsDialogOpen(false);
+      
+      // Wait a bit for the trigger to execute
+      setTimeout(() => {
+        fetchUsers();
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error creating user:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el usuario",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -108,10 +203,94 @@ const UserManagement = () => {
             Administra roles y permisos de usuarios
           </p>
         </div>
-        <Button onClick={fetchUsers} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Usuario
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+                <DialogDescription>
+                  Completa todos los campos para crear un nuevo usuario en el sistema
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">Correo Electrónico</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    placeholder="usuario@ejemplo.com"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Contraseña</Label>
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-name">Nombre Completo</Label>
+                  <Input
+                    id="new-name"
+                    type="text"
+                    placeholder="Juan Pérez"
+                    value={newUser.full_name}
+                    onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-puesto">Puesto</Label>
+                  <Input
+                    id="new-puesto"
+                    type="text"
+                    placeholder="Supervisor, Operador, etc."
+                    value={newUser.puesto}
+                    onChange={(e) => setNewUser({ ...newUser, puesto: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-role">Rol</Label>
+                  <Select
+                    value={newUser.role}
+                    onValueChange={(value: "admin" | "usuario") =>
+                      setNewUser({ ...newUser, role: value })
+                    }
+                  >
+                    <SelectTrigger id="new-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="usuario">Usuario</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={handleCreateUser}
+                  disabled={creatingUser}
+                >
+                  {creatingUser ? "Creando..." : "Crear Usuario"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Button onClick={fetchUsers} disabled={loading} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -132,6 +311,7 @@ const UserManagement = () => {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Correo</TableHead>
+                  <TableHead>Puesto</TableHead>
                   <TableHead>Rol Actual</TableHead>
                   <TableHead>Cambiar Rol</TableHead>
                   <TableHead>Fecha de Registro</TableHead>
@@ -147,6 +327,7 @@ const UserManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.puesto || "No especificado"}</TableCell>
                     <TableCell>
                       <Badge
                         variant={user.role === "admin" ? "default" : "secondary"}

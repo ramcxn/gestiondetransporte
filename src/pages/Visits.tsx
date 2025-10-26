@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Camera, Building2, Clock, User } from "lucide-react";
+import { Users, Building2, Clock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -38,6 +38,10 @@ export default function Visits() {
     motivo: "",
     area_visita: "",
   });
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchVisits();
@@ -99,12 +103,67 @@ export default function Visits() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!selectedImage || !user) return null;
+
+    setUploadingImage(true);
+    try {
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('credenciales-visitas')
+        .upload(filePath, selectedImage);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('credenciales-visitas')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir la imagen",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setSubmitting(true);
     try {
+      let credencialUrl = null;
+      
+      if (selectedImage) {
+        credencialUrl = await uploadImage();
+        if (!credencialUrl) {
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("visitas")
         .insert({
@@ -113,6 +172,7 @@ export default function Visits() {
           tipo: visitorType,
           motivo: formData.motivo,
           area_visita: formData.area_visita,
+          credencial_url: credencialUrl,
           created_by: user.id,
         });
 
@@ -129,6 +189,8 @@ export default function Visits() {
         motivo: "",
         area_visita: "",
       });
+      setSelectedImage(null);
+      setImagePreview(null);
     } catch (error) {
       console.error("Error submitting visit:", error);
       toast({
@@ -254,22 +316,36 @@ export default function Visits() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="credential">Fotografía de Credencial</Label>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" className="w-full">
-                    <Camera className="h-4 w-4 mr-2" />
-                    Capturar Imagen
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="credential"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  {imagePreview && (
+                    <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Seleccione una foto de la identificación oficial
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Capture una foto de la identificación oficial
-                </p>
               </div>
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
-                disabled={submitting}
+                disabled={submitting || uploadingImage}
               >
-                {submitting ? "Registrando..." : "Registrar Entrada"}
+                {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Entrada"}
               </Button>
             </form>
           </CardContent>

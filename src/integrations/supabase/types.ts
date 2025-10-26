@@ -139,6 +139,7 @@ export type Database = {
       }
       pruebas_alcoholimetro: {
         Row: {
+          archivo_url: string | null
           created_at: string
           created_by: string
           id: string
@@ -149,6 +150,7 @@ export type Database = {
           tipo_persona: string
         }
         Insert: {
+          archivo_url?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -159,6 +161,7 @@ export type Database = {
           tipo_persona: string
         }
         Update: {
+          archivo_url?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -203,6 +206,54 @@ export type Database = {
         }
         Relationships: []
       }
+      rutas: {
+        Row: {
+          activa: boolean
+          costo_casetas: number | null
+          costo_combustible: number | null
+          costo_estimado: number
+          created_at: string
+          created_by: string
+          destino: string
+          distancia_km: number
+          id: string
+          nombre: string
+          origen: string
+          rentabilidad: string | null
+          tiempo_estimado_horas: number
+        }
+        Insert: {
+          activa?: boolean
+          costo_casetas?: number | null
+          costo_combustible?: number | null
+          costo_estimado: number
+          created_at?: string
+          created_by: string
+          destino: string
+          distancia_km: number
+          id?: string
+          nombre: string
+          origen: string
+          rentabilidad?: string | null
+          tiempo_estimado_horas: number
+        }
+        Update: {
+          activa?: boolean
+          costo_casetas?: number | null
+          costo_combustible?: number | null
+          costo_estimado?: number
+          created_at?: string
+          created_by?: string
+          destino?: string
+          distancia_km?: number
+          id?: string
+          nombre?: string
+          origen?: string
+          rentabilidad?: string | null
+          tiempo_estimado_horas?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -224,6 +275,69 @@ export type Database = {
         }
         Relationships: []
       }
+      viajes: {
+        Row: {
+          cliente: string
+          created_at: string
+          created_by: string
+          destino: string
+          distancia_km: number
+          estado: string
+          fecha_llegada_estimada: string | null
+          fecha_llegada_real: string | null
+          fecha_salida: string
+          flete: number
+          id: string
+          operador: string
+          origen: string
+          ruta_id: string | null
+          sucursal: string
+          ubicacion_actual: string | null
+          ultima_actualizacion_ubicacion: string | null
+          unidad: string
+        }
+        Insert: {
+          cliente: string
+          created_at?: string
+          created_by: string
+          destino: string
+          distancia_km: number
+          estado?: string
+          fecha_llegada_estimada?: string | null
+          fecha_llegada_real?: string | null
+          fecha_salida: string
+          flete: number
+          id?: string
+          operador: string
+          origen: string
+          ruta_id?: string | null
+          sucursal: string
+          ubicacion_actual?: string | null
+          ultima_actualizacion_ubicacion?: string | null
+          unidad: string
+        }
+        Update: {
+          cliente?: string
+          created_at?: string
+          created_by?: string
+          destino?: string
+          distancia_km?: number
+          estado?: string
+          fecha_llegada_estimada?: string | null
+          fecha_llegada_real?: string | null
+          fecha_salida?: string
+          flete?: number
+          id?: string
+          operador?: string
+          origen?: string
+          ruta_id?: string | null
+          sucursal?: string
+          ubicacion_actual?: string | null
+          ultima_actualizacion_ubicacion?: string | null
+          unidad?: string
+        }
+        Relationships: []
+      }
       visitas: {
         Row: {
           area_visita: string
@@ -231,6 +345,8 @@ export type Database = {
           created_by: string
           credencial_url: string | null
           empresa: string
+          estado: string
+          fecha_salida: string | null
           id: string
           motivo: string
           nombre: string
@@ -242,6 +358,8 @@ export type Database = {
           created_by: string
           credencial_url?: string | null
           empresa: string
+          estado?: string
+          fecha_salida?: string | null
           id?: string
           motivo: string
           nombre: string
@@ -253,10 +371,42 @@ export type Database = {
           created_by?: string
           credencial_url?: string | null
           empresa?: string
+          estado?: string
+          fecha_salida?: string | null
           id?: string
           motivo?: string
           nombre?: string
           tipo?: string
+        }
+        Relationships: []
+      }
+      zonas_seguridad: {
+        Row: {
+          activa: boolean
+          codigo_qr: string
+          created_at: string
+          created_by: string
+          id: string
+          nombre: string
+          ubicacion: string
+        }
+        Insert: {
+          activa?: boolean
+          codigo_qr: string
+          created_at?: string
+          created_by: string
+          id?: string
+          nombre: string
+          ubicacion: string
+        }
+        Update: {
+          activa?: boolean
+          codigo_qr?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          nombre?: string
+          ubicacion?: string
         }
         Relationships: []
       }

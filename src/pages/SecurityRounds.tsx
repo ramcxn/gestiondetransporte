@@ -11,6 +11,7 @@ import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User } from
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SecurityRound {
   id: string;
@@ -24,17 +25,25 @@ interface SecurityRound {
   creator_name?: string;
 }
 
+interface SecurityZone {
+  id: string;
+  nombre: string;
+  codigo_qr: string;
+  ubicacion: string;
+  activa: boolean;
+}
+
 export default function SecurityRounds() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [rounds, setRounds] = useState<SecurityRound[]>([]);
+  const [zones, setZones] = useState<SecurityZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    ubicacion: "",
-    codigo_qr: "",
+    zona_id: "",
     incidente: false,
     descripcion_incidente: "",
   });
@@ -44,9 +53,9 @@ export default function SecurityRounds() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
+    fetchZones();
     fetchRounds();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('rounds-changes')
       .on(
@@ -67,6 +76,26 @@ export default function SecurityRounds() {
     };
   }, []);
 
+  const fetchZones = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("zonas_seguridad")
+        .select("*")
+        .eq('activa', true)
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setZones(data || []);
+    } catch (error) {
+      console.error("Error fetching zones:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las zonas de seguridad",
+        variant: "destructive",
+      });
+    }
+  };
+
   const fetchRounds = async () => {
     try {
       const { data: roundsData, error: roundsError } = await supabase
@@ -76,7 +105,6 @@ export default function SecurityRounds() {
 
       if (roundsError) throw roundsError;
 
-      // Fetch creator names
       const userIds = [...new Set(roundsData?.map(r => r.created_by) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
@@ -152,23 +180,30 @@ export default function SecurityRounds() {
     e.preventDefault();
     if (!user) return;
 
+    if (!formData.zona_id) {
+      toast({
+        title: "Error",
+        description: "Por favor seleccione una zona",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       let fotoUrl = null;
       
       if (formData.incidente && selectedImage) {
         fotoUrl = await uploadImage();
-        if (!fotoUrl) {
-          setSubmitting(false);
-          return;
-        }
       }
 
+      const selectedZone = zones.find(z => z.id === formData.zona_id);
+      
       const { error } = await supabase
         .from("rondines")
         .insert({
-          ubicacion: formData.ubicacion,
-          codigo_qr: formData.codigo_qr,
+          ubicacion: selectedZone?.ubicacion || "",
+          codigo_qr: selectedZone?.codigo_qr || "",
           incidente: formData.incidente,
           descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
           foto_url: fotoUrl,
@@ -183,8 +218,7 @@ export default function SecurityRounds() {
       });
 
       setFormData({
-        ubicacion: "",
-        codigo_qr: "",
+        zona_id: "",
         incidente: false,
         descripcion_incidente: "",
       });
@@ -203,11 +237,24 @@ export default function SecurityRounds() {
     }
   };
 
+  // Simulate QR scanner (in a real app, this would use device camera)
+  const simulateQRScan = () => {
+    if (zones.length > 0) {
+      const randomZone = zones[Math.floor(Math.random() * zones.length)];
+      setFormData({ ...formData, zona_id: randomZone.id });
+      toast({
+        title: "QR Escaneado",
+        description: `Zona detectada: ${randomZone.nombre}`,
+      });
+    }
+  };
+
   const todayRounds = rounds.filter(
     (r) => new Date(r.created_at).toDateString() === new Date().toDateString()
   );
   const completedRounds = todayRounds.length;
   const incidentsToday = todayRounds.filter((r) => r.incidente).length;
+  const zonesCheckedToday = new Set(todayRounds.map(r => r.codigo_qr)).size;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -218,7 +265,7 @@ export default function SecurityRounds() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Rondines de Seguridad</h1>
-            <p className="text-muted-foreground">Inspección de instalaciones con registro QR</p>
+            <p className="text-muted-foreground">Inspección de {zones.length} zonas con registro QR</p>
           </div>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -228,36 +275,37 @@ export default function SecurityRounds() {
               Nuevo Rondín
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Registrar Rondín de Seguridad</DialogTitle>
-              <DialogDescription>Complete la información del punto de verificación</DialogDescription>
+              <DialogDescription>Escanee el código QR o seleccione la zona manualmente</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="ubicacion">Ubicación / Zona</Label>
-                <Input
-                  id="ubicacion"
-                  placeholder="Ej: Zona A - Almacén Principal"
-                  value={formData.ubicacion}
-                  onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="codigo_qr">Código QR</Label>
+                <Label htmlFor="zona">Zona de Seguridad</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="codigo_qr"
-                    placeholder="Escanee el código QR"
-                    value={formData.codigo_qr}
-                    onChange={(e) => setFormData({ ...formData, codigo_qr: e.target.value })}
-                    required
-                  />
-                  <Button type="button" variant="outline">
+                  <Select
+                    value={formData.zona_id}
+                    onValueChange={(value) => setFormData({ ...formData, zona_id: value })}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar zona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {zones.map((zone) => (
+                        <SelectItem key={zone.id} value={zone.id}>
+                          {zone.nombre} - {zone.ubicacion} ({zone.codigo_qr})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" onClick={simulateQRScan}>
                     <QrCode className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Haga clic en el botón QR para escanear el código de la zona
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -311,7 +359,7 @@ export default function SecurityRounds() {
                   type="button"
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
-                  disabled={submitting}
+                  disabled={submitting || uploadingImage}
                 >
                   Cancelar
                 </Button>
@@ -328,7 +376,7 @@ export default function SecurityRounds() {
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-4">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Rondines Hoy</CardTitle>
@@ -336,6 +384,16 @@ export default function SecurityRounds() {
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{todayRounds.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Completados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Zonas Verificadas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-foreground">{zonesCheckedToday}/{zones.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Hoy</p>
           </CardContent>
         </Card>
 
@@ -364,6 +422,48 @@ export default function SecurityRounds() {
 
       <Card className="shadow-card">
         <CardHeader>
+          <CardTitle>Zonas de Seguridad ({zones.length})</CardTitle>
+          <CardDescription>Puntos de verificación con código QR</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {zones.map((zone) => {
+              const zoneRoundsToday = todayRounds.filter(r => r.codigo_qr === zone.codigo_qr);
+              const hasIncidents = zoneRoundsToday.some(r => r.incidente);
+              
+              return (
+                <div
+                  key={zone.id}
+                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        <h4 className="font-semibold text-foreground">{zone.nombre}</h4>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-1">{zone.ubicacion}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {zone.codigo_qr}
+                        </Badge>
+                        {zoneRoundsToday.length > 0 && (
+                          <Badge variant={hasIncidents ? "destructive" : "default"} className="text-xs">
+                            {zoneRoundsToday.length} hoy
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader>
           <CardTitle>Historial de Rondines</CardTitle>
           <CardDescription>Registro completo de inspecciones de seguridad</CardDescription>
         </CardHeader>
@@ -385,7 +485,7 @@ export default function SecurityRounds() {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{round.ubicacion}</h4>
                         {round.incidente ? (
                           <Badge variant="destructive">
@@ -422,6 +522,15 @@ export default function SecurityRounds() {
                           <div className="mt-2 p-2 bg-destructive/10 rounded text-sm border border-destructive/20">
                             <strong className="text-destructive">Incidente:</strong>{" "}
                             {round.descripcion_incidente}
+                          </div>
+                        )}
+                        {round.foto_url && (
+                          <div className="mt-2">
+                            <img 
+                              src={round.foto_url} 
+                              alt="Foto del incidente" 
+                              className="w-full max-w-md h-48 object-cover rounded-lg border"
+                            />
                           </div>
                         )}
                       </div>

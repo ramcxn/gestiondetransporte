@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User } from "lucide-react";
+import { Users, Building2, Clock, User, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -19,7 +19,9 @@ interface Visit {
   motivo: string;
   area_visita: string;
   credencial_url: string | null;
+  estado: string;
   created_at: string;
+  fecha_salida: string | null;
   created_by: string;
   creator_name?: string;
 }
@@ -46,13 +48,12 @@ export default function Visits() {
   useEffect(() => {
     fetchVisits();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('visits-changes')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'visitas'
         },
@@ -76,7 +77,6 @@ export default function Visits() {
 
       if (visitsError) throw visitsError;
 
-      // Fetch creator names
       const userIds = [...new Set(visitsData?.map(v => v.created_by) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
@@ -173,6 +173,7 @@ export default function Visits() {
           motivo: formData.motivo,
           area_visita: formData.area_visita,
           credencial_url: credencialUrl,
+          estado: 'en_instalaciones',
           created_by: user.id,
         });
 
@@ -203,11 +204,38 @@ export default function Visits() {
     }
   };
 
+  const handleExit = async (visitId: string) => {
+    try {
+      const { error } = await supabase
+        .from("visitas")
+        .update({
+          estado: 'salio',
+          fecha_salida: new Date().toISOString()
+        })
+        .eq('id', visitId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Salida registrada exitosamente",
+      });
+    } catch (error) {
+      console.error("Error recording exit:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo registrar la salida",
+        variant: "destructive",
+      });
+    }
+  };
+
   const todayVisits = visits.filter(
     (v) => new Date(v.created_at).toDateString() === new Date().toDateString()
   );
-  const activeVisits = todayVisits.filter((v) => v.tipo === "visitante");
-  const activeProviders = todayVisits.filter((v) => v.tipo === "proveedor");
+  const activeVisits = todayVisits.filter((v) => v.estado === "en_instalaciones");
+  const activeVisitors = activeVisits.filter((v) => v.tipo === "visitante");
+  const activeProviders = activeVisits.filter((v) => v.tipo === "proveedor");
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -224,17 +252,17 @@ export default function Visits() {
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Visitas Hoy</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Visitantes Activos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{activeVisits.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Activas</p>
+            <div className="text-3xl font-bold text-foreground">{activeVisitors.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">En instalaciones</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Proveedores</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Proveedores Activos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-foreground">{activeProviders.length}</div>
@@ -244,11 +272,11 @@ export default function Visits() {
 
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Registros</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Registros Hoy</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{visits.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Todos los registros</p>
+            <div className="text-3xl font-bold text-foreground">{todayVisits.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Entradas registradas</p>
           </CardContent>
         </Card>
       </div>
@@ -317,15 +345,13 @@ export default function Visits() {
               <div className="space-y-2">
                 <Label htmlFor="credential">Fotografía de Credencial</Label>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="credential"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="cursor-pointer"
-                    />
-                  </div>
+                  <Input
+                    id="credential"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="cursor-pointer"
+                  />
                   {imagePreview && (
                     <div className="relative w-full h-48 border rounded-lg overflow-hidden">
                       <img 
@@ -353,58 +379,62 @@ export default function Visits() {
 
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Historial Reciente</CardTitle>
-            <CardDescription>Últimas visitas y proveedores registrados</CardDescription>
+            <CardTitle>Accesos Recientes</CardTitle>
+            <CardDescription>Personas actualmente en las instalaciones</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : visits.length === 0 ? (
+            ) : activeVisits.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No hay visitas registradas
+                No hay visitantes activos
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {visits.slice(0, 10).map((visit) => (
+                {activeVisits.map((visit) => (
                   <div
                     key={visit.id}
                     className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
+                          <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
+                            {visit.tipo}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
                           <Building2 className="h-3 w-3" />
                           {visit.empresa}
                         </p>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              Entrada: {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
+                              {new Date(visit.created_at).toLocaleTimeString("es-MX", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <p>
+                            <strong>Área:</strong> {visit.area_visita}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
-                        {visit.tipo}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
-                          {new Date(visit.created_at).toLocaleTimeString("es-MX", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        <span>Registrado por: {visit.creator_name}</span>
-                      </div>
-                      <p className="mt-1">
-                        <strong>Motivo:</strong> {visit.motivo}
-                      </p>
-                      <p>
-                        <strong>Área:</strong> {visit.area_visita}
-                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleExit(visit.id)}
+                        className="flex-shrink-0"
+                      >
+                        <LogOut className="h-4 w-4 mr-1" />
+                        Salida
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -413,6 +443,77 @@ export default function Visits() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Historial Completo</CardTitle>
+          <CardDescription>Todas las visitas registradas (incluyendo salidas)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : visits.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay visitas registradas
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {visits.slice(0, 20).map((visit) => (
+                <div
+                  key={visit.id}
+                  className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
+                        <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
+                          {visit.tipo}
+                        </Badge>
+                        <Badge variant={visit.estado === "en_instalaciones" ? "default" : "outline"}>
+                          {visit.estado === "en_instalaciones" ? "En instalaciones" : "Salió"}
+                        </Badge>
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">{visit.empresa}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            Entrada: {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
+                            {new Date(visit.created_at).toLocaleTimeString("es-MX", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        {visit.fecha_salida && (
+                          <div className="flex items-center gap-2">
+                            <LogOut className="h-3 w-3" />
+                            <span>
+                              Salida: {new Date(visit.fecha_salida).toLocaleDateString("es-MX")} •{" "}
+                              {new Date(visit.fecha_salida).toLocaleTimeString("es-MX", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3" />
+                          <span>Registrado por: {visit.creator_name}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

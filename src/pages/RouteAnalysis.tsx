@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { Route, MapPin, DollarSign, Clock, TrendingUp, Calculator, Fuel, TrendingDown } from "lucide-react";
 
 export default function RouteAnalysis() {
@@ -37,6 +38,32 @@ export default function RouteAnalysis() {
     porcentajeUtilidad: "",
     porcentajeIngresos: "",
   });
+
+  const guardarRuta = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase.from("rutas").insert({
+        nombre: formData.ruta,
+        origen: formData.ruta.split(" - ")[0] || formData.ruta,
+        destino: formData.ruta.split(" - ")[1] || "",
+        distancia_km: parseInt(formData.kilometrosRecorridos) || 0,
+        tiempo_estimado_horas: parseFloat(formData.totalHoras) || 0,
+        costo_estimado: parseFloat(formData.tarifaViaje) || 0,
+        costo_combustible: parseFloat(formData.consumoDiesel) || 0,
+        costo_casetas: parseFloat(formData.casetas) || 0,
+        rentabilidad: parseFloat(formData.porcentajeUtilidad) > 20 ? 'alta' : parseFloat(formData.porcentajeUtilidad) > 10 ? 'media' : 'baja',
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+      toast.success("Ruta guardada exitosamente");
+    } catch (error) {
+      console.error("Error saving route:", error);
+      toast.error("No se pudo guardar la ruta");
+    }
+  };
 
   const calcularAnalisis = () => {
     const tarifaViaje = parseFloat(formData.tarifaViaje) || 0;
@@ -143,10 +170,17 @@ export default function RouteAnalysis() {
               <CardTitle>Análisis de Factibilidad de Viaje</CardTitle>
               <CardDescription>Cálculo real de rentabilidad y costos operativos</CardDescription>
             </div>
-            <Button onClick={calcularAnalisis} className="bg-primary hover:bg-primary/90">
-              <Calculator className="h-4 w-4 mr-2" />
-              Calcular Análisis
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={calcularAnalisis} className="bg-primary hover:bg-primary/90">
+                <Calculator className="h-4 w-4 mr-2" />
+                Calcular Análisis
+              </Button>
+              {formData.utilidadViaje && (
+                <Button onClick={guardarRuta} variant="outline">
+                  Guardar Ruta
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

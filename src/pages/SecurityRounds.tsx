@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, QrCode, Camera, CheckCircle2, Clock, MapPin, AlertTriangle, User } from "lucide-react";
+import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,6 +38,10 @@ export default function SecurityRounds() {
     incidente: false,
     descripcion_incidente: "",
   });
+
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchRounds();
@@ -99,12 +103,67 @@ export default function SecurityRounds() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!selectedImage || !user) return null;
+
+    setUploadingImage(true);
+    try {
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('fotos-rondines')
+        .upload(filePath, selectedImage);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('fotos-rondines')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo subir la imagen",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setSubmitting(true);
     try {
+      let fotoUrl = null;
+      
+      if (formData.incidente && selectedImage) {
+        fotoUrl = await uploadImage();
+        if (!fotoUrl) {
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("rondines")
         .insert({
@@ -112,6 +171,7 @@ export default function SecurityRounds() {
           codigo_qr: formData.codigo_qr,
           incidente: formData.incidente,
           descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
+          foto_url: fotoUrl,
           created_by: user.id,
         });
 
@@ -128,6 +188,8 @@ export default function SecurityRounds() {
         incidente: false,
         descripcion_incidente: "",
       });
+      setSelectedImage(null);
+      setImagePreview(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error submitting round:", error);
@@ -224,11 +286,23 @@ export default function SecurityRounds() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Fotografía del Incidente</Label>
-                    <Button type="button" variant="outline" className="w-full">
-                      <Camera className="h-4 w-4 mr-2" />
-                      Capturar Imagen
-                    </Button>
+                    <Label htmlFor="incident-photo">Fotografía del Incidente</Label>
+                    <Input
+                      id="incident-photo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="cursor-pointer"
+                    />
+                    {imagePreview && (
+                      <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -244,9 +318,9 @@ export default function SecurityRounds() {
                 <Button
                   type="submit"
                   className="bg-primary hover:bg-primary/90"
-                  disabled={submitting}
+                  disabled={submitting || uploadingImage}
                 >
-                  {submitting ? "Registrando..." : "Registrar Rondín"}
+                  {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Rondín"}
                 </Button>
               </div>
             </form>

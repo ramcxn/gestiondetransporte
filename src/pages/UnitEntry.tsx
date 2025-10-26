@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Truck, Camera, AlertCircle, Clock, User, CheckCircle } from "lucide-react";
+import { Truck, AlertCircle, Clock, User, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -73,6 +73,13 @@ export default function UnitEntry() {
     descripcion_incidente: "",
   });
 
+  const [selectedImage1, setSelectedImage1] = useState<File | null>(null);
+  const [selectedImage2, setSelectedImage2] = useState<File | null>(null);
+  const [imagePreview1, setImagePreview1] = useState<string | null>(null);
+  const [imagePreview2, setImagePreview2] = useState<string | null>(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [showMonthlyReport, setShowMonthlyReport] = useState(false);
+
   useEffect(() => {
     fetchEntries();
 
@@ -134,6 +141,75 @@ export default function UnitEntry() {
     }
   };
 
+  const handleImageChange = (imageNumber: 1 | 2) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (imageNumber === 1) {
+        setSelectedImage1(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview1(reader.result as string);
+        reader.readAsDataURL(file);
+      } else {
+        setSelectedImage2(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview2(reader.result as string);
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const uploadImages = async (): Promise<{ foto1: string | null; foto2: string | null }> => {
+    if (!user) return { foto1: null, foto2: null };
+
+    setUploadingImages(true);
+    try {
+      let foto1Url = null;
+      let foto2Url = null;
+
+      if (selectedImage1) {
+        const fileExt1 = selectedImage1.name.split('.').pop();
+        const fileName1 = `${user.id}-${Date.now()}-1.${fileExt1}`;
+        const { error: uploadError1 } = await supabase.storage
+          .from('fotos-unidades')
+          .upload(fileName1, selectedImage1);
+
+        if (uploadError1) throw uploadError1;
+
+        const { data: { publicUrl: url1 } } = supabase.storage
+          .from('fotos-unidades')
+          .getPublicUrl(fileName1);
+        foto1Url = url1;
+      }
+
+      if (selectedImage2) {
+        const fileExt2 = selectedImage2.name.split('.').pop();
+        const fileName2 = `${user.id}-${Date.now()}-2.${fileExt2}`;
+        const { error: uploadError2 } = await supabase.storage
+          .from('fotos-unidades')
+          .upload(fileName2, selectedImage2);
+
+        if (uploadError2) throw uploadError2;
+
+        const { data: { publicUrl: url2 } } = supabase.storage
+          .from('fotos-unidades')
+          .getPublicUrl(fileName2);
+        foto2Url = url2;
+      }
+
+      return { foto1: foto1Url, foto2: foto2Url };
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron subir las imágenes",
+        variant: "destructive",
+      });
+      return { foto1: null, foto2: null };
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -151,6 +227,8 @@ export default function UnitEntry() {
 
     setSubmitting(true);
     try {
+      const { foto1, foto2 } = await uploadImages();
+
       const { error } = await supabase
         .from("ingreso_unidades")
         .insert({
@@ -163,6 +241,8 @@ export default function UnitEntry() {
           requiere_mantenimiento: formData.requiere_mantenimiento,
           incidente: formData.incidente,
           descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
+          foto_1_url: foto1,
+          foto_2_url: foto2,
           puntos_seguridad: checkedPoints,
           created_by: user.id,
         });
@@ -186,6 +266,10 @@ export default function UnitEntry() {
         descripcion_incidente: "",
       });
       setCheckedPoints({});
+      setSelectedImage1(null);
+      setSelectedImage2(null);
+      setImagePreview1(null);
+      setImagePreview2(null);
     } catch (error) {
       console.error("Error submitting entry:", error);
       toast({
@@ -197,6 +281,21 @@ export default function UnitEntry() {
       setSubmitting(false);
     }
   };
+
+  const getMonthlyEntries = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    return entries.filter(entry => {
+      const entryDate = new Date(entry.created_at);
+      return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+    });
+  };
+
+  const monthlyEntries = getMonthlyEntries();
+  const monthlyEntrances = monthlyEntries.filter(e => e.tipo_movimiento === "entrada");
+  const monthlyExits = monthlyEntries.filter(e => e.tipo_movimiento === "salida");
 
   const todayEntries = entries.filter(
     (e) => new Date(e.created_at).toDateString() === new Date().toDateString()
@@ -214,13 +313,95 @@ export default function UnitEntry() {
             <p className="text-muted-foreground">Registro basado en 17 puntos de seguridad CTPAT</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowHistory(!showHistory)}
-        >
-          {showHistory ? "Ocultar Historial" : "Ver Historial"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowMonthlyReport(!showMonthlyReport)}
+          >
+            {showMonthlyReport ? "Ocultar Reporte Mensual" : "Ver Reporte Mensual"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            {showHistory ? "Ocultar Historial" : "Ver Historial"}
+          </Button>
+        </div>
       </div>
+
+      {showMonthlyReport && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Reporte Mensual - {new Date().toLocaleDateString("es-MX", { month: "long", year: "numeric" })}</CardTitle>
+            <CardDescription>Resumen de entradas y salidas del mes actual</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3 mb-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Movimientos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-foreground">{monthlyEntries.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Entradas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-accent">{monthlyEntrances.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Salidas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-secondary">{monthlyExits.length}</div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold text-foreground">Movimientos del Mes</h4>
+              {monthlyEntries.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay registros este mes
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {monthlyEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="p-3 rounded-lg border border-border hover:shadow-sm transition-shadow"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Badge variant={entry.tipo_movimiento === "entrada" ? "default" : "secondary"}>
+                            {entry.tipo_movimiento}
+                          </Badge>
+                          <span className="font-medium">Unidad {entry.numero_unidad}</span>
+                          <span className="text-sm text-muted-foreground">• {entry.operador}</span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(entry.created_at).toLocaleDateString("es-MX", { 
+                            day: "2-digit", 
+                            month: "2-digit" 
+                          })} {new Date(entry.created_at).toLocaleTimeString("es-MX", {
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="shadow-card">
@@ -484,13 +665,43 @@ export default function UnitEntry() {
                   <div className="space-y-2">
                     <Label>Fotografías de la Unidad</Label>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                        <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">Foto 1 - Vista Frontal</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="photo1" className="text-sm">Foto 1 - Vista Frontal</Label>
+                        <Input
+                          id="photo1"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange(1)}
+                          className="cursor-pointer"
+                        />
+                        {imagePreview1 && (
+                          <div className="relative w-full h-32 border rounded-lg overflow-hidden">
+                            <img 
+                              src={imagePreview1} 
+                              alt="Vista frontal" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
                       </div>
-                      <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                        <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">Foto 2 - Vista Lateral</p>
+                      <div className="space-y-2">
+                        <Label htmlFor="photo2" className="text-sm">Foto 2 - Vista Lateral</Label>
+                        <Input
+                          id="photo2"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange(2)}
+                          className="cursor-pointer"
+                        />
+                        {imagePreview2 && (
+                          <div className="relative w-full h-32 border rounded-lg overflow-hidden">
+                            <img 
+                              src={imagePreview2} 
+                              alt="Vista lateral" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -556,8 +767,8 @@ export default function UnitEntry() {
               }}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={submitting}>
-                {submitting ? "Registrando..." : `Registrar ${entryType === "entrada" ? "Entrada" : "Salida"}`}
+              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={submitting || uploadingImages}>
+                {submitting ? "Registrando..." : uploadingImages ? "Subiendo imágenes..." : `Registrar ${entryType === "entrada" ? "Entrada" : "Salida"}`}
               </Button>
             </div>
           </form>

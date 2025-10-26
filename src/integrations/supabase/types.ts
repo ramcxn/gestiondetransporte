@@ -68,6 +68,51 @@ export type Database = {
         }
         Relationships: []
       }
+      operadores: {
+        Row: {
+          created_at: string
+          created_by: string
+          direccion: string
+          estado: string
+          fecha_alta: string
+          fecha_vencimiento_contrato: string
+          fecha_vencimiento_licencia: string | null
+          id: string
+          nombre: string
+          numero_empleado: string
+          numero_licencia: string | null
+          pdf_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          direccion: string
+          estado?: string
+          fecha_alta: string
+          fecha_vencimiento_contrato: string
+          fecha_vencimiento_licencia?: string | null
+          id?: string
+          nombre: string
+          numero_empleado: string
+          numero_licencia?: string | null
+          pdf_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          direccion?: string
+          estado?: string
+          fecha_alta?: string
+          fecha_vencimiento_contrato?: string
+          fecha_vencimiento_licencia?: string | null
+          id?: string
+          nombre?: string
+          numero_empleado?: string
+          numero_licencia?: string | null
+          pdf_url?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -227,6 +272,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "usuario"

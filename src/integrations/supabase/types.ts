@@ -16,54 +16,152 @@ export type Database = {
     Tables: {
       analisis_riesgos: {
         Row: {
+          condiciones_meteorologicas: string | null
+          condiciones_via: string | null
+          conductores: Json | null
           created_at: string
           created_by: string
+          declaraciones: string | null
           descripcion: string
+          descripcion_entorno: string | null
+          descripcion_impacto: string | null
+          diagrama_url: string | null
           estado: string
+          estudio_escena: string | null
+          factores_externos: string | null
+          fecha_hora_accidente: string | null
           fecha_identificacion: string
           fecha_revision: string | null
+          fotografias: Json | null
           id: string
+          iluminacion: string | null
           impacto: string
+          informes_medicos: Json | null
+          lesionados: Json | null
+          lugar_exacto: string | null
           medidas_mitigacion: string | null
           nivel_riesgo: string
           probabilidad: string
           responsable: string | null
+          testigos: Json | null
+          tipo_analisis: string | null
           tipo_riesgo: string
           titulo: string
+          trayectoria: string | null
+          vehiculos: Json | null
+          velocidad_estimada: string | null
         }
         Insert: {
+          condiciones_meteorologicas?: string | null
+          condiciones_via?: string | null
+          conductores?: Json | null
           created_at?: string
           created_by: string
+          declaraciones?: string | null
           descripcion: string
+          descripcion_entorno?: string | null
+          descripcion_impacto?: string | null
+          diagrama_url?: string | null
           estado?: string
+          estudio_escena?: string | null
+          factores_externos?: string | null
+          fecha_hora_accidente?: string | null
           fecha_identificacion: string
           fecha_revision?: string | null
+          fotografias?: Json | null
           id?: string
+          iluminacion?: string | null
           impacto: string
+          informes_medicos?: Json | null
+          lesionados?: Json | null
+          lugar_exacto?: string | null
           medidas_mitigacion?: string | null
           nivel_riesgo: string
           probabilidad: string
           responsable?: string | null
+          testigos?: Json | null
+          tipo_analisis?: string | null
           tipo_riesgo: string
           titulo: string
+          trayectoria?: string | null
+          vehiculos?: Json | null
+          velocidad_estimada?: string | null
         }
         Update: {
+          condiciones_meteorologicas?: string | null
+          condiciones_via?: string | null
+          conductores?: Json | null
           created_at?: string
           created_by?: string
+          declaraciones?: string | null
           descripcion?: string
+          descripcion_entorno?: string | null
+          descripcion_impacto?: string | null
+          diagrama_url?: string | null
           estado?: string
+          estudio_escena?: string | null
+          factores_externos?: string | null
+          fecha_hora_accidente?: string | null
           fecha_identificacion?: string
           fecha_revision?: string | null
+          fotografias?: Json | null
           id?: string
+          iluminacion?: string | null
           impacto?: string
+          informes_medicos?: Json | null
+          lesionados?: Json | null
+          lugar_exacto?: string | null
           medidas_mitigacion?: string | null
           nivel_riesgo?: string
           probabilidad?: string
           responsable?: string | null
+          testigos?: Json | null
+          tipo_analisis?: string | null
           tipo_riesgo?: string
           titulo?: string
+          trayectoria?: string | null
+          vehiculos?: Json | null
+          velocidad_estimada?: string | null
         }
         Relationships: []
+      }
+      asistencia_personal: {
+        Row: {
+          created_at: string
+          created_by: string
+          estado: string
+          fecha_entrada: string
+          fecha_salida: string | null
+          id: string
+          personal_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          estado?: string
+          fecha_entrada?: string
+          fecha_salida?: string | null
+          id?: string
+          personal_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          estado?: string
+          fecha_entrada?: string
+          fecha_salida?: string | null
+          id?: string
+          personal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asistencia_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       historial_sellos: {
         Row: {

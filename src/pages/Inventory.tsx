@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,87 +9,89 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Package, Truck, Search, AlertCircle, CheckCircle, MapPin } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Inventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { data: units = [], isLoading } = useQuery({
+    queryKey: ["unidades"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createUnitMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .insert({
+          numero_economico: formData.get("unit-id") as string,
+          tipo: formData.get("unit-type") as string,
+          marca: formData.get("brand") as string,
+          modelo: formData.get("model") as string,
+          placas: formData.get("plates") as string,
+          odometro: parseInt(formData.get("initial-odometer") as string),
+          ubicacion: formData.get("location") as string,
+          estado: formData.get("status") as string,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unidades"] });
+      toast.success("Unidad agregada exitosamente");
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Error al agregar unidad");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.success("Unidad agregada exitosamente");
-    setIsDialogOpen(false);
+    const formData = new FormData(e.currentTarget);
+    createUnitMutation.mutate(formData);
   };
 
-  const units = [
-    {
-      id: "TRC-001",
-      type: "Tracto",
-      status: "operational",
-      location: "Patio Principal",
-      maintenance: "ok",
-      lastEntry: "Hoy 08:30",
-      odometer: 145000,
-    },
-    {
-      id: "REM-234",
-      type: "Remolque",
-      status: "maintenance",
-      location: "Taller",
-      maintenance: "due",
-      lastEntry: "Ayer 16:45",
-      odometer: 182000,
-    },
-    {
-      id: "TRC-002",
-      type: "Tracto",
-      status: "in-transit",
-      location: "Ruta Nacional",
-      maintenance: "ok",
-      lastEntry: "Hace 2 días",
-      odometer: 98000,
-    },
-    {
-      id: "REM-567",
-      type: "Remolque",
-      status: "operational",
-      location: "Patio Principal",
-      maintenance: "ok",
-      lastEntry: "Hoy 09:15",
-      odometer: 156000,
-    },
-    {
-      id: "DOL-089",
-      type: "Dolly",
-      status: "operational",
-      location: "Patio B",
-      maintenance: "scheduled",
-      lastEntry: "Hoy 07:00",
-      odometer: 67000,
-    },
-  ];
+  const filteredUnits = units.filter((unit) =>
+    unit.numero_economico.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    unit.tipo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    unit.ubicacion.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const stats = {
+    total: units.length,
+    operational: units.filter(u => u.estado === 'disponible').length,
+    tractos: units.filter(u => u.tipo.toLowerCase().includes('tracto')).length,
+    remolques: units.filter(u => u.tipo.toLowerCase().includes('remolque')).length,
+    maintenance: units.filter(u => u.requiere_mantenimiento).length,
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "operational":
-        return <Badge className="bg-accent text-accent-foreground">Operativo</Badge>;
-      case "maintenance":
+      case "disponible":
+        return <Badge className="bg-accent text-accent-foreground">Disponible</Badge>;
+      case "en_viaje":
+        return <Badge className="bg-primary text-primary-foreground">En Viaje</Badge>;
+      case "mantenimiento":
         return <Badge className="bg-secondary text-secondary-foreground">Mantenimiento</Badge>;
-      case "in-transit":
-        return <Badge className="bg-primary text-primary-foreground">En Ruta</Badge>;
       default:
-        return null;
-    }
-  };
-
-  const getMaintenanceIcon = (maintenance: string) => {
-    switch (maintenance) {
-      case "ok":
-        return <CheckCircle className="h-4 w-4 text-accent" />;
-      case "due":
-        return <AlertCircle className="h-4 w-4 text-destructive" />;
-      case "scheduled":
-        return <AlertCircle className="h-4 w-4 text-secondary" />;
-      default:
-        return null;
+        return <Badge>{status}</Badge>;
     }
   };
 
@@ -119,52 +122,53 @@ export default function Inventory() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="unit-id">ID de Unidad</Label>
-                  <Input id="unit-id" placeholder="TRC-XXX o REM-XXX" required />
+                  <Label htmlFor="unit-id">Número Económico</Label>
+                  <Input id="unit-id" name="unit-id" placeholder="TRC-001" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit-type">Tipo de Unidad</Label>
-                  <Select>
+                  <Select name="unit-type" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tracto">Tracto</SelectItem>
-                      <SelectItem value="remolque">Remolque</SelectItem>
-                      <SelectItem value="dolly">Dolly</SelectItem>
+                      <SelectItem value="Tracto">Tracto</SelectItem>
+                      <SelectItem value="Remolque">Remolque</SelectItem>
+                      <SelectItem value="Dolly">Dolly</SelectItem>
+                      <SelectItem value="Caja">Caja</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="brand">Marca</Label>
-                  <Input id="brand" placeholder="Freightliner, Kenworth, etc." required />
+                  <Input id="brand" name="brand" placeholder="Freightliner, Kenworth, etc." required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="model">Modelo</Label>
-                  <Input id="model" placeholder="2020" required />
+                  <Input id="model" name="model" placeholder="2020" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="plates">Placas</Label>
-                  <Input id="plates" placeholder="ABC-123-D" required />
+                  <Input id="plates" name="plates" placeholder="ABC-123-D" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="initial-odometer">Odómetro Inicial (km)</Label>
-                  <Input id="initial-odometer" type="number" placeholder="0" required />
+                  <Input id="initial-odometer" name="initial-odometer" type="number" placeholder="0" defaultValue="0" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="location">Ubicación</Label>
-                  <Input id="location" placeholder="Patio Principal" required />
+                  <Input id="location" name="location" placeholder="Patio Principal" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">Estado</Label>
-                  <Select>
+                  <Select name="status" defaultValue="disponible" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="operational">Operativo</SelectItem>
-                      <SelectItem value="maintenance">Mantenimiento</SelectItem>
-                      <SelectItem value="in-transit">En Ruta</SelectItem>
+                      <SelectItem value="disponible">Disponible</SelectItem>
+                      <SelectItem value="en_viaje">En Viaje</SelectItem>
+                      <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -188,8 +192,8 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Unidades</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">45</div>
-            <p className="text-xs text-muted-foreground mt-1">38 operativas</p>
+            <div className="text-3xl font-bold text-foreground">{stats.total}</div>
+            <p className="text-xs text-muted-foreground mt-1">{stats.operational} disponibles</p>
           </CardContent>
         </Card>
 
@@ -198,8 +202,8 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Tractos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">18</div>
-            <p className="text-xs text-muted-foreground mt-1">16 disponibles</p>
+            <div className="text-3xl font-bold text-foreground">{stats.tractos}</div>
+            <p className="text-xs text-muted-foreground mt-1">En inventario</p>
           </CardContent>
         </Card>
 
@@ -208,8 +212,8 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Remolques</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">24</div>
-            <p className="text-xs text-muted-foreground mt-1">20 disponibles</p>
+            <div className="text-3xl font-bold text-foreground">{stats.remolques}</div>
+            <p className="text-xs text-muted-foreground mt-1">En inventario</p>
           </CardContent>
         </Card>
 
@@ -218,7 +222,7 @@ export default function Inventory() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Mantenimiento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">3</div>
+            <div className="text-3xl font-bold text-foreground">{stats.maintenance}</div>
             <p className="text-xs text-muted-foreground mt-1">Requieren atención</p>
           </CardContent>
         </Card>
@@ -233,66 +237,92 @@ export default function Inventory() {
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar unidad..." className="pl-10 w-64" />
+              <Input 
+                placeholder="Buscar unidad..." 
+                className="pl-10 w-64"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {units.map((unit) => (
-              <div
-                key={unit.id}
-                className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-muted rounded-lg">
-                      <Truck className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="font-semibold text-foreground">{unit.id}</h4>
-                        {getStatusBadge(unit.status)}
-                        <span className="text-sm text-muted-foreground">• {unit.type}</span>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Cargando inventario...</div>
+          ) : filteredUnits.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchQuery ? "No se encontraron unidades" : "No hay unidades registradas. Agrega la primera unidad."}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredUnits.map((unit) => (
+                <div
+                  key={unit.id}
+                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-muted rounded-lg">
+                        <Truck className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{unit.location}</span>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-semibold text-foreground">{unit.numero_economico}</h4>
+                          {getStatusBadge(unit.estado)}
+                          <span className="text-sm text-muted-foreground">• {unit.tipo}</span>
                         </div>
-                        <span>•</span>
-                        <span>Último ingreso: {unit.lastEntry}</span>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>{unit.marca} {unit.modelo}</span>
+                          {unit.placas && (
+                            <>
+                              <span>•</span>
+                              <span>Placas: {unit.placas}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{unit.ubicacion}</span>
+                          </div>
+                          {unit.ultima_entrada && (
+                            <>
+                              <span>•</span>
+                              <span>Última entrada: {new Date(unit.ultima_entrada).toLocaleDateString()}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <Button size="sm" variant="outline">
+                      Ver Detalles
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline">
-                    Ver Detalles
-                  </Button>
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-border">
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="flex items-center gap-2">
-                      {getMaintenanceIcon(unit.maintenance)}
-                      <span className="text-muted-foreground">
-                        {unit.maintenance === "ok"
-                          ? "Mantenimiento al día"
-                          : unit.maintenance === "due"
-                          ? "Requiere mantenimiento"
-                          : "Mantenimiento programado"}
-                      </span>
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        {unit.requiere_mantenimiento ? (
+                          <AlertCircle className="h-4 w-4 text-destructive" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-accent" />
+                        )}
+                        <span className="text-muted-foreground">
+                          {unit.requiere_mantenimiento ? "Requiere mantenimiento" : "Mantenimiento al día"}
+                        </span>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Odómetro: {unit.odometro.toLocaleString()} km
+                      </div>
                     </div>
-                    <div className="text-muted-foreground">
-                      Odómetro: {unit.odometer.toLocaleString()} km
-                    </div>
+                    {unit.requiere_mantenimiento && (
+                      <Badge variant="destructive">Atención requerida</Badge>
+                    )}
                   </div>
-                  {unit.maintenance === "due" && (
-                    <Badge variant="destructive">Atención requerida</Badge>
-                  )}
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -724,6 +724,57 @@ export type Database = {
           },
         ]
       }
+      unidades: {
+        Row: {
+          created_at: string
+          created_by: string
+          estado: string
+          id: string
+          marca: string
+          modelo: string
+          notas: string | null
+          numero_economico: string
+          odometro: number
+          placas: string | null
+          requiere_mantenimiento: boolean
+          tipo: string
+          ubicacion: string
+          ultima_entrada: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          estado?: string
+          id?: string
+          marca: string
+          modelo: string
+          notas?: string | null
+          numero_economico: string
+          odometro?: number
+          placas?: string | null
+          requiere_mantenimiento?: boolean
+          tipo: string
+          ubicacion: string
+          ultima_entrada?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          estado?: string
+          id?: string
+          marca?: string
+          modelo?: string
+          notas?: string | null
+          numero_economico?: string
+          odometro?: number
+          placas?: string | null
+          requiere_mantenimiento?: boolean
+          tipo?: string
+          ubicacion?: string
+          ultima_entrada?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

@@ -249,6 +249,101 @@ export default function Visits() {
         </div>
       </div>
 
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Nuevo Registro</CardTitle>
+              <CardDescription>Ingrese los datos del visitante o proveedor</CardDescription>
+            </div>
+            <Select value={visitorType} onValueChange={(value: "visitante" | "proveedor") => setVisitorType(value)}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="visitante">Visitante</SelectItem>
+                <SelectItem value="proveedor">Proveedor</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre Completo</Label>
+              <Input
+                id="name"
+                placeholder="Ej: Juan Pérez García"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="company">Empresa</Label>
+              <Input
+                id="company"
+                placeholder="Ej: ABC Logistics"
+                value={formData.empresa}
+                onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Motivo de Visita</Label>
+              <Textarea
+                id="reason"
+                placeholder="Describa el motivo de la visita"
+                value={formData.motivo}
+                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="area">Área a Visitar</Label>
+              <Input
+                id="area"
+                placeholder="Ej: Almacén, Oficinas, Patio"
+                value={formData.area_visita}
+                onChange={(e) => setFormData({ ...formData, area_visita: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credential">Fotografía de Credencial</Label>
+              <div className="space-y-2">
+                <Input
+                  id="credential"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
+                />
+                {imagePreview && (
+                  <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Seleccione una foto de la identificación oficial
+                </p>
+              </div>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90"
+              disabled={submitting || uploadingImage}
+            >
+              {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Entrada"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
@@ -281,170 +376,73 @@ export default function Visits() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Nuevo Registro</CardTitle>
-                <CardDescription>Ingrese los datos del visitante o proveedor</CardDescription>
-              </div>
-              <Select value={visitorType} onValueChange={(value: "visitante" | "proveedor") => setVisitorType(value)}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="visitante">Visitante</SelectItem>
-                  <SelectItem value="proveedor">Proveedor</SelectItem>
-                </SelectContent>
-              </Select>
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Accesos Recientes</CardTitle>
+          <CardDescription>Personas actualmente en las instalaciones</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre Completo</Label>
-                <Input
-                  id="name"
-                  placeholder="Ej: Juan Pérez García"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="company">Empresa</Label>
-                <Input
-                  id="company"
-                  placeholder="Ej: ABC Logistics"
-                  value={formData.empresa}
-                  onChange={(e) => setFormData({ ...formData, empresa: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reason">Motivo de Visita</Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Describa el motivo de la visita"
-                  value={formData.motivo}
-                  onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="area">Área a Visitar</Label>
-                <Input
-                  id="area"
-                  placeholder="Ej: Almacén, Oficinas, Patio"
-                  value={formData.area_visita}
-                  onChange={(e) => setFormData({ ...formData, area_visita: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="credential">Fotografía de Credencial</Label>
-                <div className="space-y-2">
-                  <Input
-                    id="credential"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="cursor-pointer"
-                  />
-                  {imagePreview && (
-                    <div className="relative w-full h-48 border rounded-lg overflow-hidden">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Seleccione una foto de la identificación oficial
-                  </p>
-                </div>
-              </div>
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90"
-                disabled={submitting || uploadingImage}
-              >
-                {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Entrada"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Accesos Recientes</CardTitle>
-            <CardDescription>Personas actualmente en las instalaciones</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : activeVisits.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay visitantes activos
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {activeVisits.map((visit) => (
-                  <div
-                    key={visit.id}
-                    className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
-                          <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
-                            {visit.tipo}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
-                          <Building2 className="h-3 w-3" />
-                          {visit.empresa}
-                        </p>
-                        <div className="text-xs text-muted-foreground space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3" />
-                            <span>
-                              Entrada: {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
-                              {new Date(visit.created_at).toLocaleTimeString("es-MX", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <p>
-                            <strong>Área:</strong> {visit.area_visita}
-                          </p>
-                        </div>
+          ) : activeVisits.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay visitantes activos
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {activeVisits.map((visit) => (
+                <div
+                  key={visit.id}
+                  className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
+                        <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
+                          {visit.tipo}
+                        </Badge>
                       </div>
-                      {visit.estado === "en_instalaciones" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleExit(visit.id)}
-                          className="flex-shrink-0"
-                        >
-                          <LogOut className="h-4 w-4 mr-1" />
-                          Salida
-                        </Button>
-                      )}
+                      <p className="text-sm text-muted-foreground flex items-center gap-1 mb-1">
+                        <Building2 className="h-3 w-3" />
+                        {visit.empresa}
+                      </p>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            Entrada: {new Date(visit.created_at).toLocaleDateString("es-MX")} •{" "}
+                            {new Date(visit.created_at).toLocaleTimeString("es-MX", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p>
+                          <strong>Área:</strong> {visit.area_visita}
+                        </p>
+                      </div>
                     </div>
+                    {visit.estado === "en_instalaciones" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleExit(visit.id)}
+                        className="flex-shrink-0"
+                      >
+                        <LogOut className="h-4 w-4 mr-1" />
+                        Salida
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="shadow-card">
         <CardHeader>

@@ -67,11 +67,29 @@ export default function UnitEntry() {
     operador: "",
     tipo_unidad: "tracto",
     numero_economico: "",
+    dolly: "",
+    remolque: "",
     odometro: "",
     requiere_mantenimiento: false,
     incidente: false,
     descripcion_incidente: "",
   });
+
+  const [equipos, setEquipos] = useState<any[]>([]);
+  
+  useEffect(() => {
+    fetchEquipos();
+  }, []);
+
+  const fetchEquipos = async () => {
+    const { data } = await supabase
+      .from("inventario_equipos")
+      .select("*")
+      .eq("estado", "disponible")
+      .order("numero_economico");
+    
+    if (data) setEquipos(data);
+  };
 
   const [selectedImage1, setSelectedImage1] = useState<File | null>(null);
   const [selectedImage2, setSelectedImage2] = useState<File | null>(null);
@@ -260,6 +278,8 @@ export default function UnitEntry() {
         operador: "",
         tipo_unidad: "tracto",
         numero_economico: "",
+        dolly: "",
+        remolque: "",
         odometro: "",
         requiere_mantenimiento: false,
         incidente: false,
@@ -562,14 +582,23 @@ export default function UnitEntry() {
               <TabsContent value="basico" className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="numero_unidad">Número de Unidad</Label>
-                    <Input
-                      id="numero_unidad"
-                      placeholder="MX-1234"
-                      value={formData.numero_unidad}
-                      onChange={(e) => setFormData({ ...formData, numero_unidad: e.target.value })}
+                    <Label htmlFor="numero_economico">Tracto (Número Económico) *</Label>
+                    <Select
+                      value={formData.numero_economico}
+                      onValueChange={(value) => setFormData({ ...formData, numero_economico: value, numero_unidad: value })}
                       required
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar tracto" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {equipos.filter(e => e.tipo_equipo === 'tracto').map((equipo) => (
+                          <SelectItem key={equipo.id} value={equipo.numero_economico}>
+                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="operador">Operador</Label>
@@ -582,30 +611,42 @@ export default function UnitEntry() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tipo_unidad">Tipo de Unidad</Label>
+                    <Label htmlFor="dolly">Dolly (Número Económico)</Label>
                     <Select
-                      value={formData.tipo_unidad}
-                      onValueChange={(value) => setFormData({ ...formData, tipo_unidad: value })}
+                      value={formData.dolly}
+                      onValueChange={(value) => setFormData({ ...formData, dolly: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Seleccionar dolly (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="tracto">Tracto</SelectItem>
-                        <SelectItem value="remolque">Remolque</SelectItem>
-                        <SelectItem value="dolly">Dolly</SelectItem>
+                        <SelectItem value="">Sin dolly</SelectItem>
+                        {equipos.filter(e => e.tipo_equipo === 'dolly').map((equipo) => (
+                          <SelectItem key={equipo.id} value={equipo.numero_economico}>
+                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="numero_economico">Número Económico</Label>
-                    <Input
-                      id="numero_economico"
-                      placeholder="ECO-123"
-                      value={formData.numero_economico}
-                      onChange={(e) => setFormData({ ...formData, numero_economico: e.target.value })}
-                      required
-                    />
+                    <Label htmlFor="remolque">Remolque (Número Económico)</Label>
+                    <Select
+                      value={formData.remolque}
+                      onValueChange={(value) => setFormData({ ...formData, remolque: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar remolque (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Sin remolque</SelectItem>
+                        {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
+                          <SelectItem key={equipo.id} value={equipo.numero_economico}>
+                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="odometro">Odómetro (km)</Label>
@@ -758,6 +799,8 @@ export default function UnitEntry() {
                   operador: "",
                   tipo_unidad: "tracto",
                   numero_economico: "",
+                  dolly: "",
+                  remolque: "",
                   odometro: "",
                   requiere_mantenimiento: false,
                   incidente: false,

@@ -53,6 +53,36 @@ export default function RiskAnalysis() {
     declaraciones: "",
   });
 
+  const [peritajeFiles, setPeritajeFiles] = useState<File[]>([]);
+
+  const handlePeritajeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setPeritajeFiles(Array.from(e.target.files));
+    }
+  };
+
+  const uploadPeritajeFiles = async (userId: string): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (const file of peritajeFiles) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('archivos-peritajes')
+        .upload(fileName, file);
+      
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage
+          .from('archivos-peritajes')
+          .getPublicUrl(fileName);
+        uploadedUrls.push(publicUrl);
+      }
+    }
+    
+    return uploadedUrls;
+  };
+
   const [incidentForm, setIncidentForm] = useState({
     titulo: "", descripcion: "", tipo_incidente: "accidente", gravedad: "media",
     ubicacion: "", unidad: "", operador: "", fecha_incidente: new Date().toISOString(),
@@ -92,6 +122,8 @@ export default function RiskAnalysis() {
     e.preventDefault();
     if (!user) return;
     try {
+      const uploadedFiles = await uploadPeritajeFiles(user.id);
+      
       await supabase.from("analisis_riesgos").insert({ 
         tipo_analisis: 'peritaje' as any,
         titulo: peritajeForm.titulo,
@@ -112,9 +144,11 @@ export default function RiskAnalysis() {
         trayectoria: peritajeForm.trayectoria,
         factores_externos: peritajeForm.factores_externos,
         declaraciones: peritajeForm.declaraciones,
+        archivos_adjuntos: uploadedFiles,
         created_by: user.id 
       } as any);
       toast({ title: "Éxito", description: "Peritaje registrado exitosamente" });
+      setPeritajeFiles([]);
       setIsPeritajeDialogOpen(false);
       fetchData();
     } catch (error) {
@@ -289,6 +323,25 @@ export default function RiskAnalysis() {
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg">Declaraciones</h3>
                   <Textarea placeholder="Resumen de declaraciones de conductores y testigos" rows={4} value={peritajeForm.declaraciones} onChange={(e) => setPeritajeForm({...peritajeForm, declaraciones: e.target.value})} />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Archivos Adjuntos</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="peritaje_files">Subir archivos (Fotos, PDFs, documentos)</Label>
+                    <Input
+                      id="peritaje_files"
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={handlePeritajeFileChange}
+                    />
+                    {peritajeFiles.length > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        {peritajeFiles.length} archivo(s) seleccionado(s)
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,19 +7,34 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, ClipboardList, Search, CheckCircle, XCircle, Clock, ArrowLeft } from "lucide-react";
+import { Plus, ClipboardList, Search, CheckCircle, XCircle, Clock, ArrowLeft, ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function WarehouseRequests() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [selectedSolicitud, setSelectedSolicitud] = useState<any>(null);
   const [selectedRefacciones, setSelectedRefacciones] = useState<Array<{ id: string; cantidad: number }>>([{ id: "", cantidad: 1 }]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    checkAdminStatus();
+  }, [user]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    const { data } = await supabase.rpc("is_admin");
+    setIsAdmin(data || false);
+  };
 
   const { data: solicitudes, isLoading } = useQuery({
     queryKey: ["solicitudes_refacciones"],
@@ -142,6 +157,50 @@ export default function WarehouseRequests() {
 
   const removeRefaccion = (index: number) => {
     setSelectedRefacciones(selectedRefacciones.filter((_, i) => i !== index));
+  };
+
+  const registerPurchaseMutation = useMutation({
+    mutationFn: async (formData: any) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user");
+
+      const { error } = await supabase
+        .from("solicitudes_refacciones")
+        .update({
+          estado_compra: "comprado",
+          fecha_compra: new Date().toISOString(),
+          comprador_id: user.id,
+          monto_compra: parseFloat(formData.monto_compra),
+          proveedor_compra: formData.proveedor_compra,
+        })
+        .eq("id", formData.solicitud_id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["solicitudes_refacciones"] });
+      toast({ title: "Compra registrada exitosamente" });
+      setPurchaseDialogOpen(false);
+      setSelectedSolicitud(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al registrar compra",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePurchaseSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    registerPurchaseMutation.mutate({
+      solicitud_id: selectedSolicitud.id,
+      monto_compra: formData.get("monto_compra"),
+      proveedor_compra: formData.get("proveedor_compra"),
+    });
   };
 
   const getStatusBadge = (estado: string) => {
@@ -343,6 +402,33 @@ export default function WarehouseRequests() {
                   <p className="text-sm">{solicitud.observaciones}</p>
                 </div>
               )}
+              {solicitud.estado_compra && (
+                <div>
+                  <span className="text-sm text-muted-foreground">Estado de Compra:</span>
+                  <Badge variant={solicitud.estado_compra === "comprado" ? "default" : "outline"}>
+                    {solicitud.estado_compra === "comprado" ? "Comprado" : "Pendiente de Compra"}
+                  </Badge>
+                  {solicitud.proveedor_compra && (
+                    <p className="text-sm mt-1">Proveedor: {solicitud.proveedor_compra}</p>
+                  )}
+                  {solicitud.monto_compra && (
+                    <p className="text-sm">Monto: ${solicitud.monto_compra}</p>
+                  )}
+                </div>
+              )}
+              {isAdmin && solicitud.estado === "aprobada" && solicitud.estado_compra !== "comprado" && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setSelectedSolicitud(solicitud);
+                    setPurchaseDialogOpen(true);
+                  }}
+                  className="mt-2"
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Registrar Compra
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -357,6 +443,46 @@ export default function WarehouseRequests() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Compra de Solicitud</DialogTitle>
+          </DialogHeader>
+          {selectedSolicitud && (
+            <form onSubmit={handlePurchaseSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Folio: {selectedSolicitud.folio}</p>
+                <p className="text-sm text-muted-foreground">Unidad: {selectedSolicitud.unidad}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="proveedor_compra">Proveedor *</Label>
+                <Input id="proveedor_compra" name="proveedor_compra" required />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="monto_compra">Monto Total de Compra *</Label>
+                <Input 
+                  id="monto_compra" 
+                  name="monto_compra" 
+                  type="number" 
+                  step="0.01" 
+                  min="0"
+                  required 
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setPurchaseDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit">Registrar Compra</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

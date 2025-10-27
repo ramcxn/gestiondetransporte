@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Calendar, AlertTriangle } from "lucide-react";
+import { Wrench, Calendar, AlertTriangle, Plus, X, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,10 @@ export default function Maintenance() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const [refacciones, setRefacciones] = useState<any[]>([]);
+  const [inventarioDisponible, setInventarioDisponible] = useState<any[]>([]);
+  const [selectedRefacciones, setSelectedRefacciones] = useState<Array<{ inventario_id: string; cantidad: number; costo_unitario: number }>>([]);
+
   const [formData, setFormData] = useState({
     unidad: "",
     tipo_mantenimiento: "preventivo",
@@ -47,6 +51,7 @@ export default function Maintenance() {
 
   useEffect(() => {
     fetchMaintenances();
+    fetchInventarioDisponible();
 
     const channel = supabase
       .channel('maintenance-changes')
@@ -67,6 +72,24 @@ export default function Maintenance() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchInventarioDisponible = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventario_refacciones")
+        .select(`
+          *,
+          refacciones (numero_parte, descripcion, precio_unitario)
+        `)
+        .eq("estado", "disponible")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setInventarioDisponible(data || []);
+    } catch (error) {
+      console.error("Error fetching inventario:", error);
+    }
+  };
 
   const fetchMaintenances = async () => {
     try {
@@ -95,7 +118,8 @@ export default function Maintenance() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      // Insertar mantenimiento
+      const { data: mantenimiento, error: maintenanceError } = await supabase
         .from("mantenimientos")
         .insert({
           unidad: formData.unidad,
@@ -107,9 +131,54 @@ export default function Maintenance() {
           descripcion: formData.descripcion,
           proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (maintenanceError) throw maintenanceError;
+
+      // Insertar refacciones usadas
+      if (selectedRefacciones.length > 0) {
+        const refaccionesData = selectedRefacciones.map(ref => ({
+          mantenimiento_id: mantenimiento.id,
+          inventario_id: ref.inventario_id,
+          cantidad: ref.cantidad,
+          costo_unitario: ref.costo_unitario,
+          costo_total: ref.cantidad * ref.costo_unitario,
+          created_by: user.id,
+        }));
+
+        const { error: refaccionesError } = await supabase
+          .from("refacciones_mantenimiento")
+          .insert(refaccionesData);
+
+        if (refaccionesError) throw refaccionesError;
+
+        // Actualizar estado del inventario
+        for (const ref of selectedRefacciones) {
+          await supabase
+            .from("inventario_refacciones")
+            .update({ 
+              estado: "asignado",
+              mantenimiento_id: mantenimiento.id 
+            })
+            .eq("id", ref.inventario_id);
+
+          // Registrar movimiento
+          await supabase
+            .from("movimientos_refacciones")
+            .insert({
+              tipo_movimiento: "salida",
+              refaccion_id: inventarioDisponible.find(i => i.id === ref.inventario_id)?.refaccion_id,
+              inventario_id: ref.inventario_id,
+              cantidad: ref.cantidad,
+              mantenimiento_id: mantenimiento.id,
+              costo_unitario: ref.costo_unitario,
+              costo_total: ref.cantidad * ref.costo_unitario,
+              created_by: user.id,
+            });
+        }
+      }
 
       toast({
         title: "Éxito",
@@ -126,7 +195,9 @@ export default function Maintenance() {
         descripcion: "",
         proximo_mantenimiento: "",
       });
+      setSelectedRefacciones([]);
       setIsDialogOpen(false);
+      fetchInventarioDisponible();
     } catch (error) {
       console.error("Error submitting maintenance:", error);
       toast({
@@ -137,6 +208,29 @@ export default function Maintenance() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const addRefaccion = () => {
+    setSelectedRefacciones([...selectedRefacciones, { inventario_id: "", cantidad: 1, costo_unitario: 0 }]);
+  };
+
+  const removeRefaccion = (index: number) => {
+    setSelectedRefacciones(selectedRefacciones.filter((_, i) => i !== index));
+  };
+
+  const updateRefaccion = (index: number, field: string, value: any) => {
+    const updated = [...selectedRefacciones];
+    if (field === "inventario_id") {
+      const item = inventarioDisponible.find(i => i.id === value);
+      updated[index] = {
+        ...updated[index],
+        inventario_id: value,
+        costo_unitario: item?.costo_unitario || 0,
+      };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setSelectedRefacciones(updated);
   };
 
   const thisMonth = maintenances.filter(m => {
@@ -264,6 +358,79 @@ export default function Maintenance() {
                   value={formData.proximo_mantenimiento}
                   onChange={(e) => setFormData({ ...formData, proximo_mantenimiento: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Refacciones Utilizadas</Label>
+                  <Button type="button" size="sm" variant="outline" onClick={addRefaccion}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Refacción
+                  </Button>
+                </div>
+                
+                {selectedRefacciones.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No se han agregado refacciones</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedRefacciones.map((ref, index) => (
+                      <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-6">
+                          <Label className="text-xs">Refacción</Label>
+                          <Select
+                            value={ref.inventario_id}
+                            onValueChange={(value) => updateRefaccion(index, "inventario_id", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {inventarioDisponible.map((item) => (
+                                <SelectItem key={item.id} value={item.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Package className="h-3 w-3" />
+                                    {item.refacciones?.numero_parte} - {item.numero_serie || "S/N"}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label className="text-xs">Cantidad</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={ref.cantidad}
+                            onChange={(e) => updateRefaccion(index, "cantidad", parseInt(e.target.value))}
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <Label className="text-xs">Costo Unit.</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={ref.costo_unitario}
+                            onChange={(e) => updateRefaccion(index, "costo_unitario", parseFloat(e.target.value))}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeRefaccion(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="text-right text-sm font-semibold pt-2 border-t">
+                      Total Refacciones: ${selectedRefacciones.reduce((sum, ref) => sum + (ref.cantidad * ref.costo_unitario), 0).toFixed(2)}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <Button

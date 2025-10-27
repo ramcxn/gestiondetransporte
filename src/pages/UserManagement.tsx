@@ -7,22 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, User, RefreshCw, Plus } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Shield, User, RefreshCw, Plus, Settings } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserWithRole {
   id: string;
@@ -41,10 +29,35 @@ interface NewUserForm {
   role: "admin" | "usuario";
 }
 
+const AVAILABLE_MODULES = [
+  { name: "Dashboard", key: "dashboard" },
+  { name: "Visitas/Proveedores", key: "visitas" },
+  { name: "Rondines de Seguridad", key: "rondines" },
+  { name: "Ingreso de Unidades", key: "unidades" },
+  { name: "Inventario de Equipo", key: "inventario" },
+  { name: "Almacén Refacciones", key: "almacen" },
+  { name: "Gestión del Operador", key: "operadores" },
+  { name: "Personal", key: "personal" },
+  { name: "Asistencia Personal", key: "asistencia" },
+  { name: "Antidoping", key: "antidoping" },
+  { name: "Alcoholímetro", key: "alcoholimetro" },
+  { name: "Mantenimiento", key: "mantenimiento" },
+  { name: "Viajes", key: "viajes" },
+  { name: "Liquidaciones", key: "liquidaciones" },
+  { name: "Análisis de Ruta", key: "analisis-ruta" },
+  { name: "Análisis de Riesgos", key: "analisis-riesgos" },
+  { name: "Sellos de Seguridad", key: "sellos" },
+  { name: "Ciberseguridad", key: "ciberseguridad" },
+  { name: "Gestión de Usuarios", key: "usuarios" },
+];
+
 const UserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const [creatingUser, setCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState<NewUserForm>({
     email: "",
@@ -59,21 +72,18 @@ const UserManagement = () => {
     try {
       setLoading(true);
       
-      // Fetch profiles with their roles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, email, full_name, puesto, created_at");
 
       if (profilesError) throw profilesError;
 
-      // Fetch roles for each user
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role");
 
       if (rolesError) throw rolesError;
 
-      // Combine data
       const usersWithRoles = profiles.map((profile) => {
         const userRole = roles.find((r) => r.user_id === profile.id);
         return {
@@ -92,6 +102,72 @@ const UserManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserPermissions = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_module_permissions")
+        .select("*")
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      const permissions: Record<string, boolean> = {};
+      AVAILABLE_MODULES.forEach(module => {
+        const perm = data?.find(p => p.module_name === module.key);
+        permissions[module.key] = perm ? perm.can_access : true;
+      });
+
+      setUserPermissions(permissions);
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+    }
+  };
+
+  const handleOpenPermissions = async (user: UserWithRole) => {
+    setSelectedUser(user);
+    await fetchUserPermissions(user.id);
+    setIsPermissionsDialogOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUser) return;
+
+    try {
+      // Delete existing permissions
+      await supabase
+        .from("user_module_permissions")
+        .delete()
+        .eq("user_id", selectedUser.id);
+
+      // Insert new permissions
+      const permissions = Object.entries(userPermissions).map(([module, canAccess]) => ({
+        user_id: selectedUser.id,
+        module_name: module,
+        can_access: canAccess,
+      }));
+
+      const { error } = await supabase
+        .from("user_module_permissions")
+        .insert(permissions);
+
+      if (error) throw error;
+
+      toast({
+        title: "Permisos actualizados",
+        description: "Los permisos del usuario han sido actualizados correctamente",
+      });
+
+      setIsPermissionsDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving permissions:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los permisos",
+        variant: "destructive",
+      });
     }
   };
 
@@ -175,7 +251,6 @@ const UserManagement = () => {
       });
       setIsDialogOpen(false);
       
-      // Wait a bit for the trigger to execute
       setTimeout(() => {
         fetchUsers();
       }, 1000);
@@ -297,7 +372,7 @@ const UserManagement = () => {
         <CardHeader>
           <CardTitle>Usuarios Registrados</CardTitle>
           <CardDescription>
-            Asigna roles de Administrador o Usuario a cada persona
+            Asigna roles y gestiona permisos de módulos para cada usuario
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -314,6 +389,7 @@ const UserManagement = () => {
                   <TableHead>Puesto</TableHead>
                   <TableHead>Rol Actual</TableHead>
                   <TableHead>Cambiar Rol</TableHead>
+                  <TableHead>Permisos</TableHead>
                   <TableHead>Fecha de Registro</TableHead>
                 </TableRow>
               </TableHeader>
@@ -352,6 +428,16 @@ const UserManagement = () => {
                       </Select>
                     </TableCell>
                     <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenPermissions(user)}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configurar
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       {new Date(user.created_at).toLocaleDateString("es-MX")}
                     </TableCell>
                   </TableRow>
@@ -361,6 +447,59 @@ const UserManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Permisos de Módulos - {selectedUser?.full_name}</DialogTitle>
+            <DialogDescription>
+              Selecciona los módulos a los que este usuario puede acceder
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedUser?.role === "admin" ? (
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p className="text-sm">
+                  Los administradores tienen acceso a todos los módulos por defecto
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                {AVAILABLE_MODULES.map((module) => (
+                  <div key={module.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={module.key}
+                      checked={userPermissions[module.key] ?? true}
+                      onCheckedChange={(checked) =>
+                        setUserPermissions({
+                          ...userPermissions,
+                          [module.key]: checked as boolean,
+                        })
+                      }
+                    />
+                    <Label htmlFor={module.key} className="cursor-pointer">
+                      {module.name}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedUser?.role !== "admin" && (
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsPermissionsDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleSavePermissions}>
+                  Guardar Permisos
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -374,7 +513,7 @@ const UserManagement = () => {
                 Administrador
               </h3>
               <p className="text-sm text-muted-foreground">
-                Acceso completo a todos los módulos del sistema
+                Acceso completo a todos los módulos del sistema (no requiere configuración de permisos)
               </p>
             </div>
             <div className="space-y-2">
@@ -382,12 +521,9 @@ const UserManagement = () => {
                 <User className="h-5 w-5 text-secondary" />
                 Usuario
               </h3>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Visitas / Proveedores</li>
-                <li>• Rondines de Seguridad</li>
-                <li>• Ingreso de Unidades</li>
-                <li>• Pruebas de Alcoholímetro</li>
-              </ul>
+              <p className="text-sm text-muted-foreground">
+                Acceso personalizable por módulo. Configure individualmente los permisos de cada usuario.
+              </p>
             </div>
           </div>
         </CardContent>

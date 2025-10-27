@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Truck,
@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import logo from "@/assets/logo.png";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -56,16 +57,71 @@ const allNavigationItems = [
 
 export function Layout({ children }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const location = useLocation();
   const { userRole, signOut, user } = useAuth();
 
-  // Filter navigation items based on user role
-  const navigationItems = allNavigationItems.filter((item) =>
-    item.roles.includes(userRole || "usuario")
-  );
+  useEffect(() => {
+    const fetchUserPermissions = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("user_module_permissions")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        const permissions: Record<string, boolean> = {};
+        data?.forEach(perm => {
+          permissions[perm.module_name] = perm.can_access;
+        });
+
+        setUserPermissions(permissions);
+      } catch (error) {
+        console.error("Error fetching permissions:", error);
+      } finally {
+        setPermissionsLoaded(true);
+      }
+    };
+
+    fetchUserPermissions();
+  }, [user]);
+
+  // Filter navigation items based on user role and permissions
+  const navigationItems = allNavigationItems.filter((item) => {
+    // Check if user has the required role
+    if (!item.roles.includes(userRole || "usuario")) {
+      return false;
+    }
+
+    // Admins always have access
+    if (userRole === "admin") {
+      return true;
+    }
+
+    // Check module-specific permissions for non-admin users
+    const modulePath = item.path.replace("/", "") || "dashboard";
+    
+    // If no permissions are set (empty object), allow all by default for backward compatibility
+    if (Object.keys(userPermissions).length === 0) {
+      return true;
+    }
+
+    // If permission is explicitly set, use it; otherwise default to true
+    return userPermissions[modulePath] !== false;
+  });
 
   return (
     <div className="flex h-screen bg-background">
+      {/* Loading state while permissions are being fetched */}
+      {!permissionsLoaded && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      )}
       {/* Sidebar */}
       <aside
         className={cn(

@@ -886,6 +886,57 @@ export type Database = {
           },
         ]
       }
+      refacciones_mantenimiento: {
+        Row: {
+          cantidad: number
+          costo_total: number
+          costo_unitario: number
+          created_at: string
+          created_by: string
+          id: string
+          inventario_id: string
+          mantenimiento_id: string
+          observaciones: string | null
+        }
+        Insert: {
+          cantidad?: number
+          costo_total: number
+          costo_unitario: number
+          created_at?: string
+          created_by: string
+          id?: string
+          inventario_id: string
+          mantenimiento_id: string
+          observaciones?: string | null
+        }
+        Update: {
+          cantidad?: number
+          costo_total?: number
+          costo_unitario?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          inventario_id?: string
+          mantenimiento_id?: string
+          observaciones?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refacciones_mantenimiento_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refacciones_mantenimiento_mantenimiento_id_fkey"
+            columns: ["mantenimiento_id"]
+            isOneToOne: false
+            referencedRelation: "mantenimientos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rondines: {
         Row: {
           codigo_qr: string
@@ -1175,6 +1226,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_module_permissions: {
+        Row: {
+          can_access: boolean
+          created_at: string
+          id: string
+          module_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          module_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_access?: boolean
+          created_at?: string
+          id?: string
+          module_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1337,6 +1415,10 @@ export type Database = {
     }
     Functions: {
       generate_solicitud_folio: { Args: never; Returns: string }
+      has_module_permission: {
+        Args: { _module_name: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

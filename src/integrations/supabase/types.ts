@@ -163,6 +163,64 @@ export type Database = {
           },
         ]
       }
+      detalle_solicitudes_refacciones: {
+        Row: {
+          cantidad_entregada: number | null
+          cantidad_solicitada: number
+          created_at: string
+          estado: string
+          id: string
+          inventario_asignado_id: string | null
+          observaciones: string | null
+          refaccion_id: string
+          solicitud_id: string
+        }
+        Insert: {
+          cantidad_entregada?: number | null
+          cantidad_solicitada: number
+          created_at?: string
+          estado?: string
+          id?: string
+          inventario_asignado_id?: string | null
+          observaciones?: string | null
+          refaccion_id: string
+          solicitud_id: string
+        }
+        Update: {
+          cantidad_entregada?: number | null
+          cantidad_solicitada?: number
+          created_at?: string
+          estado?: string
+          id?: string
+          inventario_asignado_id?: string | null
+          observaciones?: string | null
+          refaccion_id?: string
+          solicitud_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "detalle_solicitudes_refacciones_inventario_asignado_id_fkey"
+            columns: ["inventario_asignado_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "detalle_solicitudes_refacciones_refaccion_id_fkey"
+            columns: ["refaccion_id"]
+            isOneToOne: false
+            referencedRelation: "refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "detalle_solicitudes_refacciones_solicitud_id_fkey"
+            columns: ["solicitud_id"]
+            isOneToOne: false
+            referencedRelation: "solicitudes_refacciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       historial_sellos: {
         Row: {
           accion: string
@@ -330,6 +388,79 @@ export type Database = {
         }
         Relationships: []
       }
+      inventario_refacciones: {
+        Row: {
+          costo_unitario: number
+          created_at: string
+          created_by: string
+          documento_recepcion: string | null
+          estado: string
+          fecha_caducidad: string | null
+          fecha_recepcion: string
+          id: string
+          lote: string | null
+          mantenimiento_id: string | null
+          numero_serie: string | null
+          proveedor: string
+          refaccion_id: string
+          ubicacion_id: string
+        }
+        Insert: {
+          costo_unitario: number
+          created_at?: string
+          created_by: string
+          documento_recepcion?: string | null
+          estado?: string
+          fecha_caducidad?: string | null
+          fecha_recepcion?: string
+          id?: string
+          lote?: string | null
+          mantenimiento_id?: string | null
+          numero_serie?: string | null
+          proveedor: string
+          refaccion_id: string
+          ubicacion_id: string
+        }
+        Update: {
+          costo_unitario?: number
+          created_at?: string
+          created_by?: string
+          documento_recepcion?: string | null
+          estado?: string
+          fecha_caducidad?: string | null
+          fecha_recepcion?: string
+          id?: string
+          lote?: string | null
+          mantenimiento_id?: string | null
+          numero_serie?: string | null
+          proveedor?: string
+          refaccion_id?: string
+          ubicacion_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_refacciones_mantenimiento_id_fkey"
+            columns: ["mantenimiento_id"]
+            isOneToOne: false
+            referencedRelation: "mantenimientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_refacciones_refaccion_id_fkey"
+            columns: ["refaccion_id"]
+            isOneToOne: false
+            referencedRelation: "refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_refacciones_ubicacion_id_fkey"
+            columns: ["ubicacion_id"]
+            isOneToOne: false
+            referencedRelation: "ubicaciones_almacen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       liquidaciones: {
         Row: {
           created_at: string
@@ -436,6 +567,103 @@ export type Database = {
           unidad?: string
         }
         Relationships: []
+      }
+      movimientos_refacciones: {
+        Row: {
+          cantidad: number
+          costo_total: number | null
+          costo_unitario: number | null
+          created_at: string
+          created_by: string
+          documento_referencia: string | null
+          id: string
+          inventario_id: string | null
+          mantenimiento_id: string | null
+          observaciones: string | null
+          refaccion_id: string
+          solicitud_id: string | null
+          tipo_movimiento: string
+          ubicacion_destino: string | null
+          ubicacion_origen: string | null
+        }
+        Insert: {
+          cantidad: number
+          costo_total?: number | null
+          costo_unitario?: number | null
+          created_at?: string
+          created_by: string
+          documento_referencia?: string | null
+          id?: string
+          inventario_id?: string | null
+          mantenimiento_id?: string | null
+          observaciones?: string | null
+          refaccion_id: string
+          solicitud_id?: string | null
+          tipo_movimiento: string
+          ubicacion_destino?: string | null
+          ubicacion_origen?: string | null
+        }
+        Update: {
+          cantidad?: number
+          costo_total?: number | null
+          costo_unitario?: number | null
+          created_at?: string
+          created_by?: string
+          documento_referencia?: string | null
+          id?: string
+          inventario_id?: string | null
+          mantenimiento_id?: string | null
+          observaciones?: string | null
+          refaccion_id?: string
+          solicitud_id?: string | null
+          tipo_movimiento?: string
+          ubicacion_destino?: string | null
+          ubicacion_origen?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimientos_refacciones_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_refacciones_mantenimiento_id_fkey"
+            columns: ["mantenimiento_id"]
+            isOneToOne: false
+            referencedRelation: "mantenimientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_refacciones_refaccion_id_fkey"
+            columns: ["refaccion_id"]
+            isOneToOne: false
+            referencedRelation: "refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_refacciones_solicitud_id_fkey"
+            columns: ["solicitud_id"]
+            isOneToOne: false
+            referencedRelation: "solicitudes_refacciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_refacciones_ubicacion_destino_fkey"
+            columns: ["ubicacion_destino"]
+            isOneToOne: false
+            referencedRelation: "ubicaciones_almacen"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimientos_refacciones_ubicacion_origen_fkey"
+            columns: ["ubicacion_origen"]
+            isOneToOne: false
+            referencedRelation: "ubicaciones_almacen"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       operadores: {
         Row: {
@@ -584,6 +812,80 @@ export type Database = {
         }
         Relationships: []
       }
+      refacciones: {
+        Row: {
+          activa: boolean
+          categoria: string
+          created_at: string
+          created_by: string
+          descripcion: string
+          dias_vida_util: number | null
+          foto_url: string | null
+          id: string
+          notas: string | null
+          numero_parte: string
+          precio_unitario: number
+          proveedor: string
+          punto_reorden: number
+          requiere_serie: boolean
+          stock_maximo: number
+          stock_minimo: number
+          tiene_caducidad: boolean
+          ubicacion_principal: string | null
+          unidad_medida: string
+        }
+        Insert: {
+          activa?: boolean
+          categoria: string
+          created_at?: string
+          created_by: string
+          descripcion: string
+          dias_vida_util?: number | null
+          foto_url?: string | null
+          id?: string
+          notas?: string | null
+          numero_parte: string
+          precio_unitario: number
+          proveedor: string
+          punto_reorden: number
+          requiere_serie?: boolean
+          stock_maximo: number
+          stock_minimo?: number
+          tiene_caducidad?: boolean
+          ubicacion_principal?: string | null
+          unidad_medida: string
+        }
+        Update: {
+          activa?: boolean
+          categoria?: string
+          created_at?: string
+          created_by?: string
+          descripcion?: string
+          dias_vida_util?: number | null
+          foto_url?: string | null
+          id?: string
+          notas?: string | null
+          numero_parte?: string
+          precio_unitario?: number
+          proveedor?: string
+          punto_reorden?: number
+          requiere_serie?: boolean
+          stock_maximo?: number
+          stock_minimo?: number
+          tiene_caducidad?: boolean
+          ubicacion_principal?: string | null
+          unidad_medida?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refacciones_ubicacion_principal_fkey"
+            columns: ["ubicacion_principal"]
+            isOneToOne: false
+            referencedRelation: "ubicaciones_almacen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rondines: {
         Row: {
           codigo_qr: string
@@ -723,6 +1025,104 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      solicitudes_refacciones: {
+        Row: {
+          aprobador: string | null
+          created_at: string
+          created_by: string
+          estado: string
+          fecha_aprobacion: string | null
+          fecha_completada: string | null
+          fecha_requerida: string | null
+          fecha_solicitud: string
+          folio: string
+          id: string
+          mantenimiento_id: string | null
+          motivo_cancelacion: string | null
+          observaciones: string | null
+          prioridad: string
+          solicitante: string
+          unidad: string
+        }
+        Insert: {
+          aprobador?: string | null
+          created_at?: string
+          created_by: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_completada?: string | null
+          fecha_requerida?: string | null
+          fecha_solicitud?: string
+          folio: string
+          id?: string
+          mantenimiento_id?: string | null
+          motivo_cancelacion?: string | null
+          observaciones?: string | null
+          prioridad?: string
+          solicitante: string
+          unidad: string
+        }
+        Update: {
+          aprobador?: string | null
+          created_at?: string
+          created_by?: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_completada?: string | null
+          fecha_requerida?: string | null
+          fecha_solicitud?: string
+          folio?: string
+          id?: string
+          mantenimiento_id?: string | null
+          motivo_cancelacion?: string | null
+          observaciones?: string | null
+          prioridad?: string
+          solicitante?: string
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_refacciones_mantenimiento_id_fkey"
+            columns: ["mantenimiento_id"]
+            isOneToOne: false
+            referencedRelation: "mantenimientos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ubicaciones_almacen: {
+        Row: {
+          activa: boolean
+          capacidad: number | null
+          codigo: string
+          created_at: string
+          created_by: string
+          descripcion: string | null
+          id: string
+          tipo: string
+        }
+        Insert: {
+          activa?: boolean
+          capacidad?: number | null
+          codigo: string
+          created_at?: string
+          created_by: string
+          descripcion?: string | null
+          id?: string
+          tipo: string
+        }
+        Update: {
+          activa?: boolean
+          capacidad?: number | null
+          codigo?: string
+          created_at?: string
+          created_by?: string
+          descripcion?: string | null
+          id?: string
+          tipo?: string
+        }
+        Relationships: []
       }
       unidades: {
         Row: {
@@ -936,6 +1336,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_solicitud_folio: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

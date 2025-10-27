@@ -20,6 +20,7 @@ import {
   LogOut,
   Settings,
   Clock,
+  Warehouse,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const allNavigationItems = [
   { name: "Rondines de Seguridad", path: "/rondines", icon: Shield, roles: ["admin", "usuario"] },
   { name: "Ingreso de Unidades", path: "/unidades", icon: Truck, roles: ["admin", "usuario"] },
   { name: "Inventario de Equipo", path: "/inventario", icon: Package, roles: ["admin"] },
+  { name: "Almacén Refacciones", path: "/almacen", icon: Warehouse, roles: ["admin", "usuario"] },
   { name: "Gestión del Operador", path: "/operadores", icon: UserCheck, roles: ["admin"] },
   { name: "Personal", path: "/personal", icon: Users, roles: ["admin"] },
   { name: "Asistencia Personal", path: "/asistencia", icon: Clock, roles: ["admin", "usuario"] },

@@ -25,6 +25,13 @@ import RiskAnalysis from "./pages/RiskAnalysis";
 import SecuritySeals from "./pages/SecuritySeals";
 import Cybersecurity from "./pages/Cybersecurity";
 import UserManagement from "./pages/UserManagement";
+import Warehouse from "./pages/Warehouse";
+import WarehouseCatalog from "./pages/WarehouseCatalog";
+import WarehouseLocations from "./pages/WarehouseLocations";
+import WarehouseRequests from "./pages/WarehouseRequests";
+import WarehouseReception from "./pages/WarehouseReception";
+import WarehouseInventory from "./pages/WarehouseInventory";
+import WarehouseReports from "./pages/WarehouseReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -214,6 +221,76 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <UserManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Warehouse />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/catalogo"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseCatalog />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/ubicaciones"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseLocations />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/solicitudes"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseRequests />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/recepcion"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseReception />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/inventario"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseInventory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/almacen/reportes"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WarehouseReports />
                   </Layout>
                 </ProtectedRoute>
               }

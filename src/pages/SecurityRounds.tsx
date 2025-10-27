@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User } from "lucide-react";
+import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User, Camera } from "lucide-react";
+import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +36,7 @@ interface SecurityZone {
 
 export default function SecurityRounds() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [rounds, setRounds] = useState<SecurityRound[]>([]);
   const [zones, setZones] = useState<SecurityZone[]>([]);
   const [loading, setLoading] = useState(true);
@@ -237,16 +239,22 @@ export default function SecurityRounds() {
     }
   };
 
-  // Simulate QR scanner (in a real app, this would use device camera)
-  const simulateQRScan = () => {
-    if (zones.length > 0) {
-      const randomZone = zones[Math.floor(Math.random() * zones.length)];
-      setFormData({ ...formData, zona_id: randomZone.id });
+  const handleQRScan = (qrCode: string) => {
+    const zone = zones.find(z => z.codigo_qr === qrCode);
+    if (zone) {
+      setFormData({ ...formData, zona_id: zone.id });
       toast({
         title: "QR Escaneado",
-        description: `Zona detectada: ${randomZone.nombre}`,
+        description: `Zona detectada: ${zone.nombre}`,
+      });
+    } else {
+      toast({
+        title: "Código no encontrado",
+        description: "El código QR no corresponde a ninguna zona registrada",
+        variant: "destructive",
       });
     }
+    setShowQRScanner(false);
   };
 
   const todayRounds = rounds.filter(
@@ -299,12 +307,12 @@ export default function SecurityRounds() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button type="button" onClick={simulateQRScan}>
-                    <QrCode className="h-4 w-4" />
+                  <Button type="button" onClick={() => setShowQRScanner(true)}>
+                    <Camera className="h-4 w-4" />
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Haga clic en el botón QR para escanear el código de la zona
+                  Haga clic en el botón con la cámara para escanear el código QR de la zona
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -543,6 +551,13 @@ export default function SecurityRounds() {
           )}
         </CardContent>
       </Card>
+
+      {showQRScanner && (
+        <QRScanner 
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 }

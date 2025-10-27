@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Tag, Plus, CheckCircle, History, Clock } from "lucide-react";
+import { Tag, Plus, CheckCircle, History, Clock, Download } from "lucide-react";
+import { generateSecuritySealsPDF } from "@/lib/pdfUtils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,11 @@ export default function SecuritySeals() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+
+  const [newSealData, setNewSealData] = useState({
+    numero_sello: "",
+    tipo: "cable",
+  });
 
   const [assignData, setAssignData] = useState({
     viaje_id: "",
@@ -111,6 +117,35 @@ export default function SecuritySeals() {
     }
   };
 
+  const handleCreateSeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      const { error } = await supabase.from("sellos_seguridad").insert({
+        numero_sello: newSealData.numero_sello,
+        tipo: newSealData.tipo,
+        estado: 'disponible',
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Éxito", description: "Sello creado exitosamente" });
+      setIsDialogOpen(false);
+      setNewSealData({ numero_sello: "", tipo: "cable" });
+      fetchSeals();
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo crear el sello", variant: "destructive" });
+    }
+  };
+
+  const downloadInventoryPDF = () => {
+    const doc = generateSecuritySealsPDF(seals);
+    doc.save(`Inventario_Sellos_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast({ title: "PDF Generado", description: "Inventario descargado exitosamente" });
+  };
+
   const openHistory = async (seal: Seal) => {
     setSelectedSeal(seal);
     await fetchHistory(seal.id);
@@ -132,7 +167,45 @@ export default function SecuritySeals() {
             <p className="text-muted-foreground">Control y asignación a viajes/unidades</p>
           </div>
         </div>
-      </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={downloadInventoryPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            Imprimir PDF
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Sello
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Crear Nuevo Sello</DialogTitle></DialogHeader>
+              <form onSubmit={handleCreateSeal} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Número de Sello</Label>
+                  <Input value={newSealData.numero_sello} onChange={(e) => setNewSealData({...newSealData, numero_sello: e.target.value})} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={newSealData.tipo} onValueChange={(v) => setNewSealData({...newSealData, tipo: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cable">Cable</SelectItem>
+                      <SelectItem value="plastico">Plástico</SelectItem>
+                      <SelectItem value="metal">Metal</SelectItem>
+                      <SelectItem value="electronico">Electrónico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                  <Button type="submit">Crear Sello</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{seals.length}</div></CardContent></Card>

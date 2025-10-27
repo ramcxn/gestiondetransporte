@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, Shield, Plus, Calendar, Camera, Download, FileText } from "lucide-react";
+import { generateRiskAnalysisPDF } from "@/lib/pdfUtils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -147,12 +148,21 @@ export default function RiskAnalysis() {
   };
 
   const downloadPeritajePDF = (peritaje: any) => {
+    const doc = generateRiskAnalysisPDF(peritaje);
+    doc.save(`Peritaje_${peritaje.titulo.replace(/\s+/g, '_')}.pdf`);
     toast({
-      title: "Generando PDF",
-      description: "El informe se descargará en breve",
+      title: "PDF Generado",
+      description: "El informe se ha descargado exitosamente",
     });
-    // En producción, aquí se implementaría la generación del PDF
-    // Por ahora solo mostramos el toast
+  };
+
+  const downloadRiskPDF = (risk: any) => {
+    const doc = generateRiskAnalysisPDF(risk);
+    doc.save(`Riesgo_${risk.titulo.replace(/\s+/g, '_')}.pdf`);
+    toast({
+      title: "PDF Generado",
+      description: "El reporte se ha descargado exitosamente",
+    });
   };
 
   const highRisks = risks.filter(r => r.nivel_riesgo === 'alto' || r.nivel_riesgo === 'critico');
@@ -312,15 +322,20 @@ export default function RiskAnalysis() {
               <div className="space-y-3">
                 {riesgos.map(r => (
                   <div key={r.id} className="p-4 border rounded">
-                    <div className="flex justify-between">
-                      <div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
                         <h4 className="font-semibold">{r.titulo}</h4>
                         <p className="text-sm text-muted-foreground">{r.descripcion}</p>
                         {r.medidas_mitigacion && (
                           <p className="text-sm mt-2"><strong>Mitigación:</strong> {r.medidas_mitigacion}</p>
                         )}
                       </div>
-                      <Badge variant={r.nivel_riesgo === 'alto' || r.nivel_riesgo === 'critico' ? 'destructive' : 'secondary'}>{r.nivel_riesgo}</Badge>
+                      <div className="flex gap-2">
+                        <Badge variant={r.nivel_riesgo === 'alto' || r.nivel_riesgo === 'critico' ? 'destructive' : 'secondary'}>{r.nivel_riesgo}</Badge>
+                        <Button size="sm" variant="outline" onClick={() => downloadRiskPDF(r)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}

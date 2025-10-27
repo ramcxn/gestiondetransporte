@@ -14,8 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      acciones_correctivas: {
+        Row: {
+          acciones_contencion: string | null
+          acciones_correctivas: string
+          acciones_preventivas: string | null
+          actualizacion_procedimientos: string | null
+          analisis_causa_raiz: string | null
+          archivos_adjuntos: Json | null
+          area_afectada: string
+          created_at: string
+          created_by: string
+          descripcion_detallada: string
+          descripcion_problema: string
+          equipo_responsable: string
+          estado: string
+          evidencia_implementacion: string | null
+          fecha_compromiso: string
+          fecha_contencion: string | null
+          fecha_deteccion: string
+          fecha_implementacion: string | null
+          folio: string
+          herramientas_utilizadas: string | null
+          id: string
+          lecciones_aprendidas: string | null
+          lider_equipo: string
+          miembros_equipo: Json | null
+          prioridad: string
+          reconocimiento: string | null
+          responsable_accion: string
+          responsable_contencion: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          acciones_contencion?: string | null
+          acciones_correctivas: string
+          acciones_preventivas?: string | null
+          actualizacion_procedimientos?: string | null
+          analisis_causa_raiz?: string | null
+          archivos_adjuntos?: Json | null
+          area_afectada: string
+          created_at?: string
+          created_by: string
+          descripcion_detallada: string
+          descripcion_problema: string
+          equipo_responsable: string
+          estado?: string
+          evidencia_implementacion?: string | null
+          fecha_compromiso: string
+          fecha_contencion?: string | null
+          fecha_deteccion: string
+          fecha_implementacion?: string | null
+          folio: string
+          herramientas_utilizadas?: string | null
+          id?: string
+          lecciones_aprendidas?: string | null
+          lider_equipo: string
+          miembros_equipo?: Json | null
+          prioridad?: string
+          reconocimiento?: string | null
+          responsable_accion: string
+          responsable_contencion?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          acciones_contencion?: string | null
+          acciones_correctivas?: string
+          acciones_preventivas?: string | null
+          actualizacion_procedimientos?: string | null
+          analisis_causa_raiz?: string | null
+          archivos_adjuntos?: Json | null
+          area_afectada?: string
+          created_at?: string
+          created_by?: string
+          descripcion_detallada?: string
+          descripcion_problema?: string
+          equipo_responsable?: string
+          estado?: string
+          evidencia_implementacion?: string | null
+          fecha_compromiso?: string
+          fecha_contencion?: string | null
+          fecha_deteccion?: string
+          fecha_implementacion?: string | null
+          folio?: string
+          herramientas_utilizadas?: string | null
+          id?: string
+          lecciones_aprendidas?: string | null
+          lider_equipo?: string
+          miembros_equipo?: Json | null
+          prioridad?: string
+          reconocimiento?: string | null
+          responsable_accion?: string
+          responsable_contencion?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analisis_riesgos: {
         Row: {
+          archivos_adjuntos: Json | null
           condiciones_meteorologicas: string | null
           condiciones_via: string | null
           conductores: Json | null
@@ -52,6 +152,7 @@ export type Database = {
           velocidad_estimada: string | null
         }
         Insert: {
+          archivos_adjuntos?: Json | null
           condiciones_meteorologicas?: string | null
           condiciones_via?: string | null
           conductores?: Json | null
@@ -88,6 +189,7 @@ export type Database = {
           velocidad_estimada?: string | null
         }
         Update: {
+          archivos_adjuntos?: Json | null
           condiciones_meteorologicas?: string | null
           condiciones_via?: string | null
           conductores?: Json | null
@@ -1080,55 +1182,70 @@ export type Database = {
       solicitudes_refacciones: {
         Row: {
           aprobador: string | null
+          comprador_id: string | null
           created_at: string
           created_by: string
           estado: string
+          estado_compra: string | null
           fecha_aprobacion: string | null
           fecha_completada: string | null
+          fecha_compra: string | null
           fecha_requerida: string | null
           fecha_solicitud: string
           folio: string
           id: string
           mantenimiento_id: string | null
+          monto_compra: number | null
           motivo_cancelacion: string | null
           observaciones: string | null
           prioridad: string
+          proveedor_compra: string | null
           solicitante: string
           unidad: string
         }
         Insert: {
           aprobador?: string | null
+          comprador_id?: string | null
           created_at?: string
           created_by: string
           estado?: string
+          estado_compra?: string | null
           fecha_aprobacion?: string | null
           fecha_completada?: string | null
+          fecha_compra?: string | null
           fecha_requerida?: string | null
           fecha_solicitud?: string
           folio: string
           id?: string
           mantenimiento_id?: string | null
+          monto_compra?: number | null
           motivo_cancelacion?: string | null
           observaciones?: string | null
           prioridad?: string
+          proveedor_compra?: string | null
           solicitante: string
           unidad: string
         }
         Update: {
           aprobador?: string | null
+          comprador_id?: string | null
           created_at?: string
           created_by?: string
           estado?: string
+          estado_compra?: string | null
           fecha_aprobacion?: string | null
           fecha_completada?: string | null
+          fecha_compra?: string | null
           fecha_requerida?: string | null
           fecha_solicitud?: string
           folio?: string
           id?: string
           mantenimiento_id?: string | null
+          monto_compra?: number | null
           motivo_cancelacion?: string | null
           observaciones?: string | null
           prioridad?: string
+          proveedor_compra?: string | null
           solicitante?: string
           unidad?: string
         }
@@ -1414,6 +1531,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_accion_correctiva_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
       has_module_permission: {
         Args: { _module_name: string; _user_id: string }

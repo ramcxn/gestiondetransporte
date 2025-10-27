@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
+import logo from "@/assets/logo.png";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -73,9 +74,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex flex-col h-full">
           <div className="p-6 border-b border-border space-y-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-accent">
-                <Truck className="h-6 w-6 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="Logo" className="h-12 w-12 object-contain" />
               <div>
                 <h1 className="text-lg font-bold text-foreground">Gestión de Transporte</h1>
                 <p className="text-xs text-muted-foreground">CTPAT Compliance</p>

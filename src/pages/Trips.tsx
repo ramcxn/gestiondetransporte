@@ -285,14 +285,13 @@ export default function Trips() {
               <div className="space-y-2">
                 <Label htmlFor="route">Ruta Predefinida (opcional)</Label>
                 <Select
-                  value={formData.ruta_id}
+                  value={formData.ruta_id || undefined}
                   onValueChange={handleRouteChange}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar ruta" />
+                    <SelectValue placeholder="Sin ruta predefinida - Ingresar datos manualmente" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin ruta predefinida</SelectItem>
                     {routes.map((route) => (
                       <SelectItem key={route.id} value={route.id}>
                         {route.nombre} ({route.origen} → {route.destino})

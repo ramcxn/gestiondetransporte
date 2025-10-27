@@ -11,6 +11,7 @@ import { DollarSign, FileText, CheckCircle, XCircle, Calendar, Truck } from "luc
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { z } from "zod";
 
 interface Trip {
   id: string;
@@ -42,6 +43,14 @@ interface Settlement {
   created_at: string;
   viaje?: Trip;
 }
+
+// Validation schema for monetary inputs
+const settlementSchema = z.object({
+  monto_diesel: z.number().min(0, "El monto debe ser mayor o igual a 0").max(999999999.99, "El monto excede el límite máximo"),
+  monto_casetas: z.number().min(0, "El monto debe ser mayor o igual a 0").max(999999999.99, "El monto excede el límite máximo"),
+  otros_gastos: z.number().min(0, "El monto debe ser mayor o igual a 0").max(999999999.99, "El monto excede el límite máximo"),
+  deduccion: z.number().min(0, "La deducción debe ser mayor o igual a 0").max(999999999.99, "El monto excede el límite máximo"),
+});
 
 export default function Settlements() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -165,6 +174,26 @@ export default function Settlements() {
       const montoCasetas = parseFloat(formData.monto_casetas) || 0;
       const otrosGastos = parseFloat(formData.otros_gastos) || 0;
       const deduccion = parseFloat(formData.deduccion) || 0;
+      
+      // Validate inputs
+      const validationResult = settlementSchema.safeParse({
+        monto_diesel: montoDiesel,
+        monto_casetas: montoCasetas,
+        otros_gastos: otrosGastos,
+        deduccion: deduccion,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast({
+          title: "Error de validación",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+
       const montoTotal = trip.flete;
       const montoNeto = montoOperador - deduccion;
 
@@ -335,6 +364,8 @@ export default function Settlements() {
                     id="diesel"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="999999999.99"
                     placeholder="0.00"
                     value={formData.monto_diesel}
                     onChange={(e) => setFormData({ ...formData, monto_diesel: e.target.value })}
@@ -347,6 +378,8 @@ export default function Settlements() {
                     id="casetas"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="999999999.99"
                     placeholder="0.00"
                     value={formData.monto_casetas}
                     onChange={(e) => setFormData({ ...formData, monto_casetas: e.target.value })}
@@ -359,6 +392,8 @@ export default function Settlements() {
                     id="otros"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="999999999.99"
                     placeholder="0.00"
                     value={formData.otros_gastos}
                     onChange={(e) => setFormData({ ...formData, otros_gastos: e.target.value })}
@@ -370,6 +405,8 @@ export default function Settlements() {
                     id="deduccion"
                     type="number"
                     step="0.01"
+                    min="0"
+                    max="999999999.99"
                     placeholder="0.00"
                     value={formData.deduccion}
                     onChange={(e) => setFormData({ ...formData, deduccion: e.target.value })}

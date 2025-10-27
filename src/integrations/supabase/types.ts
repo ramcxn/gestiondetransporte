@@ -14,6 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
+      analisis_riesgos: {
+        Row: {
+          created_at: string
+          created_by: string
+          descripcion: string
+          estado: string
+          fecha_identificacion: string
+          fecha_revision: string | null
+          id: string
+          impacto: string
+          medidas_mitigacion: string | null
+          nivel_riesgo: string
+          probabilidad: string
+          responsable: string | null
+          tipo_riesgo: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          descripcion: string
+          estado?: string
+          fecha_identificacion: string
+          fecha_revision?: string | null
+          id?: string
+          impacto: string
+          medidas_mitigacion?: string | null
+          nivel_riesgo: string
+          probabilidad: string
+          responsable?: string | null
+          tipo_riesgo: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          descripcion?: string
+          estado?: string
+          fecha_identificacion?: string
+          fecha_revision?: string | null
+          id?: string
+          impacto?: string
+          medidas_mitigacion?: string | null
+          nivel_riesgo?: string
+          probabilidad?: string
+          responsable?: string | null
+          tipo_riesgo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      historial_sellos: {
+        Row: {
+          accion: string
+          created_at: string
+          created_by: string
+          descripcion: string | null
+          id: string
+          sello_id: string
+          unidad: string | null
+          viaje_id: string | null
+        }
+        Insert: {
+          accion: string
+          created_at?: string
+          created_by: string
+          descripcion?: string | null
+          id?: string
+          sello_id: string
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Update: {
+          accion?: string
+          created_at?: string
+          created_by?: string
+          descripcion?: string | null
+          id?: string
+          sello_id?: string
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historial_sellos_sello_id_fkey"
+            columns: ["sello_id"]
+            isOneToOne: false
+            referencedRelation: "sellos_seguridad"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historial_sellos_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidentes: {
+        Row: {
+          acciones_tomadas: string | null
+          costo_estimado: number | null
+          created_at: string
+          created_by: string
+          descripcion: string
+          estado: string
+          fecha_incidente: string
+          foto_url: string | null
+          gravedad: string
+          id: string
+          operador: string | null
+          tipo_incidente: string
+          titulo: string
+          ubicacion: string | null
+          unidad: string | null
+          viaje_id: string | null
+        }
+        Insert: {
+          acciones_tomadas?: string | null
+          costo_estimado?: number | null
+          created_at?: string
+          created_by: string
+          descripcion: string
+          estado?: string
+          fecha_incidente: string
+          foto_url?: string | null
+          gravedad: string
+          id?: string
+          operador?: string | null
+          tipo_incidente: string
+          titulo: string
+          ubicacion?: string | null
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Update: {
+          acciones_tomadas?: string | null
+          costo_estimado?: number | null
+          created_at?: string
+          created_by?: string
+          descripcion?: string
+          estado?: string
+          fecha_incidente?: string
+          foto_url?: string | null
+          gravedad?: string
+          id?: string
+          operador?: string | null
+          tipo_incidente?: string
+          titulo?: string
+          ubicacion?: string | null
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidentes_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingreso_unidades: {
         Row: {
           created_at: string
@@ -67,6 +231,68 @@ export type Database = {
           tipo_unidad?: string
         }
         Relationships: []
+      }
+      liquidaciones: {
+        Row: {
+          created_at: string
+          created_by: string
+          deduccion: number | null
+          estado: string
+          fecha_liquidacion: string | null
+          folio: string
+          id: string
+          monto_casetas: number
+          monto_diesel: number
+          monto_neto: number
+          monto_operador: number
+          monto_total: number
+          observaciones: string | null
+          otros_gastos: number | null
+          viaje_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deduccion?: number | null
+          estado?: string
+          fecha_liquidacion?: string | null
+          folio: string
+          id?: string
+          monto_casetas: number
+          monto_diesel: number
+          monto_neto: number
+          monto_operador: number
+          monto_total: number
+          observaciones?: string | null
+          otros_gastos?: number | null
+          viaje_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deduccion?: number | null
+          estado?: string
+          fecha_liquidacion?: string | null
+          folio?: string
+          id?: string
+          monto_casetas?: number
+          monto_diesel?: number
+          monto_neto?: number
+          monto_operador?: number
+          monto_total?: number
+          observaciones?: string | null
+          otros_gastos?: number | null
+          viaje_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidaciones_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       operadores: {
         Row: {
@@ -253,6 +479,65 @@ export type Database = {
           tiempo_estimado_horas?: number
         }
         Relationships: []
+      }
+      sellos_seguridad: {
+        Row: {
+          created_at: string
+          created_by: string
+          estado: string
+          fecha_asignacion: string | null
+          fecha_fabricacion: string | null
+          fecha_retiro: string | null
+          fecha_vencimiento: string | null
+          id: string
+          motivo_retiro: string | null
+          numero_sello: string
+          observaciones: string | null
+          tipo: string
+          unidad: string | null
+          viaje_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          estado?: string
+          fecha_asignacion?: string | null
+          fecha_fabricacion?: string | null
+          fecha_retiro?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          motivo_retiro?: string | null
+          numero_sello: string
+          observaciones?: string | null
+          tipo?: string
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          estado?: string
+          fecha_asignacion?: string | null
+          fecha_fabricacion?: string | null
+          fecha_retiro?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          motivo_retiro?: string | null
+          numero_sello?: string
+          observaciones?: string | null
+          tipo?: string
+          unidad?: string | null
+          viaje_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sellos_seguridad_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

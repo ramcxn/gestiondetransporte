@@ -1,54 +1,124 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Tag, Plus, CheckCircle, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { Tag, Plus, CheckCircle, History, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface Seal {
+  id: string;
+  numero_sello: string;
+  estado: string;
+  tipo: string;
+  viaje_id: string | null;
+  unidad: string | null;
+  fecha_asignacion: string | null;
+  created_at: string;
+}
 
 export default function SecuritySeals() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [selectedSeal, setSelectedSeal] = useState<Seal | null>(null);
+  const [seals, setSeals] = useState<Seal[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const seals = [
-    {
-      folio: "SEL-2024-001",
-      status: "available",
-      assignedTo: null,
-      date: null,
-    },
-    {
-      folio: "SEL-2024-002",
-      status: "assigned",
-      assignedTo: "TRC-001",
-      date: "2024-10-25",
-    },
-    {
-      folio: "SEL-2024-003",
-      status: "available",
-      assignedTo: null,
-      date: null,
-    },
-    {
-      folio: "SEL-2024-004",
-      status: "assigned",
-      assignedTo: "REM-234",
-      date: "2024-10-24",
-    },
-    {
-      folio: "SEL-2024-005",
-      status: "used",
-      assignedTo: "TRC-002",
-      date: "2024-10-20",
-    },
-  ];
+  const [assignData, setAssignData] = useState({
+    viaje_id: "",
+    unidad: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Sellos registrados exitosamente");
-    setIsDialogOpen(false);
+  useEffect(() => {
+    fetchSeals();
+    fetchTrips();
+  }, []);
+
+  const fetchSeals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("sellos_seguridad")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setSeals(data || []);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const fetchTrips = async () => {
+    const { data } = await supabase
+      .from("viajes")
+      .select("*")
+      .in('estado', ['programado', 'en_transito'])
+      .order("fecha_salida", { ascending: true });
+    setTrips(data || []);
+  };
+
+  const fetchHistory = async (sealId: string) => {
+    const { data } = await supabase
+      .from("historial_sellos")
+      .select("*")
+      .eq('sello_id', sealId)
+      .order("created_at", { ascending: false });
+    setHistory(data || []);
+  };
+
+  const handleAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedSeal) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from("sellos_seguridad")
+        .update({
+          estado: 'asignado',
+          viaje_id: assignData.viaje_id || null,
+          unidad: assignData.unidad,
+          fecha_asignacion: new Date().toISOString()
+        })
+        .eq('id', selectedSeal.id);
+
+      if (updateError) throw updateError;
+
+      await supabase.from("historial_sellos").insert({
+        sello_id: selectedSeal.id,
+        accion: 'asignado',
+        viaje_id: assignData.viaje_id || null,
+        unidad: assignData.unidad,
+        descripcion: `Asignado a ${assignData.unidad}`,
+        created_by: user.id,
+      });
+
+      toast({ title: "Éxito", description: "Sello asignado exitosamente" });
+      setIsAssignDialogOpen(false);
+      fetchSeals();
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo asignar el sello", variant: "destructive" });
+    }
+  };
+
+  const openHistory = async (seal: Seal) => {
+    setSelectedSeal(seal);
+    await fetchHistory(seal.id);
+    setIsHistoryDialogOpen(true);
+  };
+
+  const available = seals.filter(s => s.estado === 'disponible');
+  const assigned = seals.filter(s => s.estado === 'asignado');
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -58,167 +128,38 @@ export default function SecuritySeals() {
             <Tag className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Inventario de Sellos de Seguridad</h1>
-            <p className="text-muted-foreground">Control de folios y asignación</p>
+            <h1 className="text-2xl font-bold">Sellos de Seguridad</h1>
+            <p className="text-muted-foreground">Control y asignación a viajes/unidades</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Sellos
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Registrar Nuevos Sellos</DialogTitle>
-              <DialogDescription>Ingrese el rango de folios de los sellos</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="prefix">Prefijo</Label>
-                  <Input id="prefix" placeholder="SEL-2024-" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="batch">Lote</Label>
-                  <Input id="batch" placeholder="LOTE-001" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="start-number">Número Inicial</Label>
-                  <Input id="start-number" type="number" placeholder="001" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-number">Número Final</Label>
-                  <Input id="end-number" type="number" placeholder="100" required />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="supplier">Proveedor</Label>
-                  <Input id="supplier" placeholder="Nombre del proveedor" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="purchase-date">Fecha de Compra</Label>
-                  <Input id="purchase-date" type="date" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad</Label>
-                  <Input id="quantity" type="number" placeholder="100" required />
-                </div>
-              </div>
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Los sellos registrados estarán disponibles para asignación a las unidades.
-                  Asegúrese de que los folios sean consecutivos y únicos.
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">
-                  Registrar Sellos
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Sellos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">1,250</div>
-            <p className="text-xs text-muted-foreground mt-1">En inventario</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Disponibles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-accent">842</div>
-            <p className="text-xs text-muted-foreground mt-1">Sin asignar</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Asignados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-primary">358</div>
-            <p className="text-xs text-muted-foreground mt-1">En uso activo</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Utilizados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">50</div>
-            <p className="text-xs text-muted-foreground mt-1">Este mes</p>
-          </CardContent>
-        </Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{seals.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{available.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Asignados</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{assigned.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{assigned.length}</div></CardContent></Card>
       </div>
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Registro de Sellos</CardTitle>
-              <CardDescription>Estado actual del inventario</CardDescription>
-            </div>
-            <Input placeholder="Buscar folio..." className="w-64" />
-          </div>
-        </CardHeader>
+      <Card>
+        <CardHeader><CardTitle>Sellos Registrados</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-2">
             {seals.map((seal) => (
-              <div
-                key={seal.folio}
-                className="flex items-center justify-between p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
-              >
+              <div key={seal.id} className="flex justify-between items-center p-3 border rounded-lg">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-muted rounded-lg">
-                    <Tag className="h-4 w-4 text-muted-foreground" />
-                  </div>
+                  <Tag className="h-4 w-4" />
                   <div>
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium text-foreground">{seal.folio}</p>
-                      {seal.status === "available" && (
-                        <Badge className="bg-accent text-accent-foreground">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Disponible
-                        </Badge>
-                      )}
-                      {seal.status === "assigned" && (
-                        <Badge className="bg-primary text-primary-foreground">Asignado</Badge>
-                      )}
-                      {seal.status === "used" && (
-                        <Badge variant="secondary">Utilizado</Badge>
-                      )}
-                    </div>
-                    {seal.assignedTo && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Asignado a: {seal.assignedTo} • {seal.date}
-                      </p>
-                    )}
+                    <p className="font-medium">{seal.numero_sello}</p>
+                    {seal.unidad && <p className="text-sm text-muted-foreground">Asignado: {seal.unidad}</p>}
                   </div>
+                  <Badge variant={seal.estado === 'disponible' ? 'default' : 'secondary'}>{seal.estado}</Badge>
                 </div>
                 <div className="flex gap-2">
-                  {seal.status === "available" && (
-                    <Button size="sm" variant="outline">
-                      Asignar
-                    </Button>
+                  {seal.estado === 'disponible' && (
+                    <Button size="sm" onClick={() => { setSelectedSeal(seal); setIsAssignDialogOpen(true); }}>Asignar</Button>
                   )}
-                  <Button size="sm" variant="outline">
-                    Ver Historial
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => openHistory(seal)}><History className="h-4 w-4" /></Button>
                 </div>
               </div>
             ))}
@@ -226,24 +167,45 @@ export default function SecuritySeals() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-card bg-accent/5 border-accent/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
-            <AlertCircle className="h-5 w-5 text-accent" />
-            Reposición de Inventario
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">
-            El inventario actual está en nivel óptimo. Se recomienda realizar un pedido cuando
-            el inventario disponible sea menor a 500 unidades.
-          </p>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div className="h-full bg-accent rounded-full" style={{ width: "67%" }} />
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Asignar Sello</DialogTitle></DialogHeader>
+          <form onSubmit={handleAssign} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Viaje (opcional)</Label>
+              <Select value={assignData.viaje_id} onValueChange={(v) => setAssignData({...assignData, viaje_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Sin viaje" /></SelectTrigger>
+                <SelectContent>{trips.map(t => <SelectItem key={t.id} value={t.id}>{t.unidad} - {t.origen}→{t.destino}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Unidad</Label>
+              <Input value={assignData.unidad} onChange={(e) => setAssignData({...assignData, unidad: e.target.value})} required />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit">Asignar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Historial del Sello {selectedSeal?.numero_sello}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            {history.map((h) => (
+              <div key={h.id} className="p-3 border rounded flex justify-between">
+                <div>
+                  <Badge>{h.accion}</Badge>
+                  <p className="text-sm mt-1">{h.descripcion}</p>
+                </div>
+                <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-1" />{new Date(h.created_at).toLocaleDateString("es-MX")}</span>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">842 de 1,250 sellos disponibles (67%)</p>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

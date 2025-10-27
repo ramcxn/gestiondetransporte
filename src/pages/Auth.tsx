@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Truck, Shield } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -48,9 +48,8 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center items-center gap-2 text-primary">
-            <Truck className="h-12 w-12" />
-            <Shield className="h-12 w-12" />
+          <div className="flex justify-center">
+            <img src={logo} alt="Logo" className="h-24 w-24 object-contain" />
           </div>
           <CardTitle className="text-3xl font-bold">Gestión de Transporte</CardTitle>
           <CardDescription>Sistema CTPAT</CardDescription>

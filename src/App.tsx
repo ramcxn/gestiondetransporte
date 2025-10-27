@@ -32,6 +32,7 @@ import WarehouseRequests from "./pages/WarehouseRequests";
 import WarehouseReception from "./pages/WarehouseReception";
 import WarehouseInventory from "./pages/WarehouseInventory";
 import WarehouseReports from "./pages/WarehouseReports";
+import CorrectiveActions from "./pages/CorrectiveActions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -291,6 +292,16 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <WarehouseReports />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/acciones-correctivas"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CorrectiveActions />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, DollarSign } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, DollarSign, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function WarehouseReports() {
@@ -78,7 +80,15 @@ export default function WarehouseReports() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Reportes y Análisis</h2>
+      <div className="flex items-center justify-between">
+        <Link to="/almacen">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver a Almacén
+          </Button>
+        </Link>
+        <h2 className="text-2xl font-bold">Reportes y Análisis</h2>
+      </div>
 
       {/* KPIs */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

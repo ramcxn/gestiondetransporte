@@ -206,6 +206,7 @@ export default function SecuritySeals() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{seals.length}</div></CardContent></Card>

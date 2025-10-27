@@ -1,0 +1,180 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Truck, Package } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export default function EquipmentInventory() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: equipos, isLoading } = useQuery({
+    queryKey: ["inventario_equipos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventario_equipos")
+        .select("*")
+        .order("numero_economico");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (formData: any) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No authenticated user");
+
+      const { error } = await supabase.from("inventario_equipos").insert([
+        { ...formData, created_by: user.id },
+      ]);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventario_equipos"] });
+      toast({ title: "Éxito", description: "Equipo registrado exitosamente" });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    createMutation.mutate({
+      numero_economico: formData.get("numero_economico"),
+      tipo_equipo: formData.get("tipo_equipo"),
+      marca: formData.get("marca"),
+      modelo: formData.get("modelo"),
+      año: formData.get("año") ? parseInt(formData.get("año") as string) : null,
+      placas: formData.get("placas"),
+      numero_serie: formData.get("numero_serie"),
+      color: formData.get("color"),
+      capacidad_carga: formData.get("capacidad_carga") ? parseFloat(formData.get("capacidad_carga") as string) : null,
+      ubicacion: formData.get("ubicacion"),
+      observaciones: formData.get("observaciones"),
+    });
+  };
+
+  const filteredEquipos = equipos?.filter((e) =>
+    e.numero_economico.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.marca.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.modelo.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const disponibles = equipos?.filter(e => e.estado === 'disponible').length || 0;
+  const enUso = equipos?.filter(e => e.estado === 'en_uso').length || 0;
+  const mantenimiento = equipos?.filter(e => e.estado === 'mantenimiento').length || 0;
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Inventario de Equipos</h1>
+          <p className="text-muted-foreground">Tractos, Dollies y Remolques</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus className="h-4 w-4 mr-2" />Nuevo Equipo</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Registrar Nuevo Equipo</DialogTitle></DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2"><Label>Número Económico *</Label><Input name="numero_economico" required /></div>
+                <div className="space-y-2">
+                  <Label>Tipo de Equipo *</Label>
+                  <Select name="tipo_equipo" required>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tracto">Tracto</SelectItem>
+                      <SelectItem value="dolly">Dolly</SelectItem>
+                      <SelectItem value="remolque">Remolque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2"><Label>Marca *</Label><Input name="marca" required /></div>
+                <div className="space-y-2"><Label>Modelo *</Label><Input name="modelo" required /></div>
+                <div className="space-y-2"><Label>Año</Label><Input name="año" type="number" /></div>
+                <div className="space-y-2"><Label>Placas</Label><Input name="placas" /></div>
+                <div className="space-y-2"><Label>Número de Serie</Label><Input name="numero_serie" /></div>
+                <div className="space-y-2"><Label>Color</Label><Input name="color" /></div>
+                <div className="space-y-2"><Label>Capacidad Carga (ton)</Label><Input name="capacidad_carga" type="number" step="0.01" /></div>
+                <div className="space-y-2"><Label>Ubicación</Label><Input name="ubicacion" /></div>
+              </div>
+              <div className="space-y-2"><Label>Observaciones</Label><Textarea name="observaciones" /></div>
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Registrando..." : "Registrar"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total Equipos</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{equipos?.length || 0}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{disponibles}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{enUso}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Mantenimiento</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-secondary">{mantenimiento}</div></CardContent></Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Equipos Registrados</CardTitle>
+          <div className="relative max-w-sm mt-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar equipos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {filteredEquipos?.map((equipo) => (
+              <div key={equipo.id} className="p-4 border rounded-lg hover:shadow-card transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      {equipo.tipo_equipo === 'tracto' && <Truck className="h-5 w-5 text-primary" />}
+                      {equipo.tipo_equipo === 'dolly' && <Package className="h-5 w-5 text-secondary" />}
+                      {equipo.tipo_equipo === 'remolque' && <Package className="h-5 w-5 text-accent" />}
+                      <h4 className="font-semibold text-lg">{equipo.numero_economico}</h4>
+                      <Badge variant={equipo.estado === 'disponible' ? 'default' : 'secondary'}>{equipo.estado}</Badge>
+                    </div>
+                    <div className="grid gap-2 text-sm text-muted-foreground">
+                      <p><strong>Tipo:</strong> {equipo.tipo_equipo.toUpperCase()}</p>
+                      <p><strong>Marca/Modelo:</strong> {equipo.marca} {equipo.modelo}</p>
+                      {equipo.placas && <p><strong>Placas:</strong> {equipo.placas}</p>}
+                      {equipo.ubicacion && <p><strong>Ubicación:</strong> {equipo.ubicacion}</p>}
+                      {equipo.observaciones && <p className="mt-2">{equipo.observaciones}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

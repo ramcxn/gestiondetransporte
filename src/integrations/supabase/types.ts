@@ -490,6 +490,72 @@ export type Database = {
         }
         Relationships: []
       }
+      inventario_equipos: {
+        Row: {
+          año: number | null
+          capacidad_carga: number | null
+          color: string | null
+          created_at: string
+          created_by: string
+          estado: string
+          foto_url: string | null
+          id: string
+          marca: string
+          modelo: string
+          numero_economico: string
+          numero_serie: string | null
+          observaciones: string | null
+          placas: string | null
+          proximo_mantenimiento: string | null
+          tipo_equipo: string
+          ubicacion: string | null
+          ultima_inspeccion: string | null
+          updated_at: string
+        }
+        Insert: {
+          año?: number | null
+          capacidad_carga?: number | null
+          color?: string | null
+          created_at?: string
+          created_by: string
+          estado?: string
+          foto_url?: string | null
+          id?: string
+          marca: string
+          modelo: string
+          numero_economico: string
+          numero_serie?: string | null
+          observaciones?: string | null
+          placas?: string | null
+          proximo_mantenimiento?: string | null
+          tipo_equipo: string
+          ubicacion?: string | null
+          ultima_inspeccion?: string | null
+          updated_at?: string
+        }
+        Update: {
+          año?: number | null
+          capacidad_carga?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          estado?: string
+          foto_url?: string | null
+          id?: string
+          marca?: string
+          modelo?: string
+          numero_economico?: string
+          numero_serie?: string | null
+          observaciones?: string | null
+          placas?: string | null
+          proximo_mantenimiento?: string | null
+          tipo_equipo?: string
+          ubicacion?: string | null
+          ultima_inspeccion?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventario_refacciones: {
         Row: {
           costo_unitario: number

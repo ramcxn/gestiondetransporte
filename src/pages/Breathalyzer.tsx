@@ -17,7 +17,7 @@ interface BreathalyzerTest {
   nombre: string;
   tipo_persona: string;
   resultado: string;
-  nivel: number;
+  nivel: number | null;
   observaciones: string | null;
   created_at: string;
   created_by: string;
@@ -364,7 +364,7 @@ export default function Breathalyzer() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Wine className="h-4 w-4" />
-                          <span>Resultado: {test.nivel.toFixed(3)} g/dL</span>
+                          <span>Resultado: {test.nivel !== null ? test.nivel.toFixed(3) : '0.000'} g/dL</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4" />

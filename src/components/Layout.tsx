@@ -36,6 +36,7 @@ const allNavigationItems = [
   { name: "Ingreso de Unidades", path: "/unidades", icon: Truck, roles: ["admin", "usuario"] },
   { name: "Inventario de Equipo", path: "/inventario", icon: Package, roles: ["admin"] },
   { name: "Gestión del Operador", path: "/operadores", icon: UserCheck, roles: ["admin"] },
+  { name: "Personal", path: "/personal", icon: Users, roles: ["admin"] },
   { name: "Antidoping", path: "/antidoping", icon: FlaskConical, roles: ["admin"] },
   { name: "Alcoholímetro", path: "/alcoholimetro", icon: Wine, roles: ["admin", "usuario"] },
   { name: "Mantenimiento", path: "/mantenimiento", icon: Wrench, roles: ["admin"] },

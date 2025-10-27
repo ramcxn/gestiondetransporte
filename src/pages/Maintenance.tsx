@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,48 +6,148 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { Wrench, Calendar, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface Maintenance {
+  id: string;
+  unidad: string;
+  tipo_mantenimiento: string;
+  fecha_mantenimiento: string;
+  odometro: number;
+  costo: number;
+  proveedor: string;
+  descripcion: string;
+  proximo_mantenimiento: number | null;
+  estado: string;
+  created_at: string;
+}
 
 export default function Maintenance() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
-  const maintenanceRecords = [
-    {
-      id: "MNT-001",
-      unit: "TRC-001",
-      type: "Preventivo",
-      date: "2024-10-20",
-      cost: "$15,000",
-      status: "completed",
-      description: "Cambio de aceite y filtros, revisión general",
-    },
-    {
-      id: "MNT-002",
-      unit: "REM-234",
-      type: "Correctivo",
-      date: "2024-10-22",
-      cost: "$28,500",
-      status: "in-progress",
-      description: "Reparación de sistema de frenos",
-    },
-    {
-      id: "MNT-003",
-      unit: "TRC-005",
-      type: "Rescate Carretero",
-      date: "2024-10-24",
-      cost: "$12,000",
-      status: "completed",
-      description: "Asistencia carretera km 450 autopista",
-    },
-  ];
+  const [formData, setFormData] = useState({
+    unidad: "",
+    tipo_mantenimiento: "preventivo",
+    fecha_mantenimiento: "",
+    odometro: "",
+    costo: "",
+    proveedor: "",
+    descripcion: "",
+    proximo_mantenimiento: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Mantenimiento registrado exitosamente");
-    setIsDialogOpen(false);
+  useEffect(() => {
+    fetchMaintenances();
+
+    const channel = supabase
+      .channel('maintenance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'mantenimientos'
+        },
+        () => {
+          fetchMaintenances();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchMaintenances = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("mantenimientos")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMaintenances(data || []);
+    } catch (error) {
+      console.error("Error fetching maintenances:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mantenimientos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("mantenimientos")
+        .insert({
+          unidad: formData.unidad,
+          tipo_mantenimiento: formData.tipo_mantenimiento,
+          fecha_mantenimiento: formData.fecha_mantenimiento,
+          odometro: parseInt(formData.odometro),
+          costo: parseFloat(formData.costo),
+          proveedor: formData.proveedor,
+          descripcion: formData.descripcion,
+          proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
+          created_by: user.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Mantenimiento registrado exitosamente",
+      });
+
+      setFormData({
+        unidad: "",
+        tipo_mantenimiento: "preventivo",
+        fecha_mantenimiento: "",
+        odometro: "",
+        costo: "",
+        proveedor: "",
+        descripcion: "",
+        proximo_mantenimiento: "",
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error submitting maintenance:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo registrar el mantenimiento",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const thisMonth = maintenances.filter(m => {
+    const date = new Date(m.fecha_mantenimiento);
+    const now = new Date();
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  });
+
+  const inProgress = maintenances.filter(m => m.estado === "en_proceso");
+  const programmed = maintenances.filter(m => m.estado === "programado");
+  const totalCostThisMonth = thisMonth.reduce((sum, m) => sum + Number(m.costo), 0);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -77,22 +177,22 @@ export default function Maintenance() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unidad</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar unidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="trc1">TRC-001 - Tracto</SelectItem>
-                      <SelectItem value="rem1">REM-234 - Remolque</SelectItem>
-                      <SelectItem value="trc2">TRC-002 - Tracto</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="unit"
+                    placeholder="TRC-001"
+                    value={formData.unidad}
+                    onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maintenance-type">Tipo de Mantenimiento</Label>
-                  <Select>
+                  <Select
+                    value={formData.tipo_mantenimiento}
+                    onValueChange={(value) => setFormData({ ...formData, tipo_mantenimiento: value })}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="preventivo">Preventivo</SelectItem>
@@ -103,19 +203,45 @@ export default function Maintenance() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maintenance-date">Fecha</Label>
-                  <Input id="maintenance-date" type="date" required />
+                  <Input
+                    id="maintenance-date"
+                    type="date"
+                    value={formData.fecha_mantenimiento}
+                    onChange={(e) => setFormData({ ...formData, fecha_mantenimiento: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="odometer">Odómetro (km)</Label>
-                  <Input id="odometer" type="number" placeholder="150000" required />
+                  <Input
+                    id="odometer"
+                    type="number"
+                    placeholder="150000"
+                    value={formData.odometro}
+                    onChange={(e) => setFormData({ ...formData, odometro: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cost">Costo</Label>
-                  <Input id="cost" type="number" placeholder="15000" required />
+                  <Input
+                    id="cost"
+                    type="number"
+                    placeholder="15000"
+                    value={formData.costo}
+                    onChange={(e) => setFormData({ ...formData, costo: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="provider">Proveedor/Taller</Label>
-                  <Input id="provider" placeholder="Nombre del taller" required />
+                  <Input
+                    id="provider"
+                    placeholder="Nombre del taller"
+                    value={formData.proveedor}
+                    onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+                    required
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -124,19 +250,36 @@ export default function Maintenance() {
                   id="description"
                   placeholder="Detalle los trabajos realizados..."
                   rows={4}
+                  value={formData.descripcion}
+                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="next-maintenance">Próximo Mantenimiento (km)</Label>
-                <Input id="next-maintenance" type="number" placeholder="180000" />
+                <Input
+                  id="next-maintenance"
+                  type="number"
+                  placeholder="180000"
+                  value={formData.proximo_mantenimiento}
+                  onChange={(e) => setFormData({ ...formData, proximo_mantenimiento: e.target.value })}
+                />
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={submitting}
+                >
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90">
-                  Registrar Mantenimiento
+                <Button
+                  type="submit"
+                  className="bg-primary hover:bg-primary/90"
+                  disabled={submitting}
+                >
+                  {submitting ? "Registrando..." : "Registrar Mantenimiento"}
                 </Button>
               </div>
             </form>
@@ -150,8 +293,10 @@ export default function Maintenance() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Este Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">18</div>
-            <p className="text-xs text-muted-foreground mt-1">12 preventivos</p>
+            <div className="text-3xl font-bold text-foreground">{thisMonth.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {thisMonth.filter(m => m.tipo_mantenimiento === "preventivo").length} preventivos
+            </p>
           </CardContent>
         </Card>
 
@@ -160,7 +305,7 @@ export default function Maintenance() {
             <CardTitle className="text-sm font-medium text-muted-foreground">En Proceso</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-secondary">3</div>
+            <div className="text-3xl font-bold text-secondary">{inProgress.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Unidades en taller</p>
           </CardContent>
         </Card>
@@ -170,7 +315,7 @@ export default function Maintenance() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Programados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">7</div>
+            <div className="text-3xl font-bold text-foreground">{programmed.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Próximos 30 días</p>
           </CardContent>
         </Card>
@@ -180,7 +325,9 @@ export default function Maintenance() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Costo Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">$245K</div>
+            <div className="text-3xl font-bold text-foreground">
+              ${totalCostThisMonth.toLocaleString("es-MX")}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Este mes</p>
           </CardContent>
         </Card>
@@ -192,40 +339,47 @@ export default function Maintenance() {
           <CardDescription>Historial de servicios realizados</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {maintenanceRecords.map((record) => (
-              <div
-                key={record.id}
-                className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-semibold text-foreground">{record.unit}</h4>
-                      <Badge variant={record.status === "completed" ? "default" : "secondary"}>
-                        {record.status === "completed" ? "Completado" : "En Proceso"}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">• {record.type}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{record.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>{record.date}</span>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : maintenances.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay mantenimientos registrados
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {maintenances.map((record) => (
+                <div
+                  key={record.id}
+                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h4 className="font-semibold text-foreground">{record.unidad}</h4>
+                        <Badge variant={record.estado === "completado" ? "default" : "secondary"}>
+                          {record.estado === "completado" ? "Completado" : record.estado === "en_proceso" ? "En Proceso" : "Programado"}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">• {record.tipo_mantenimiento}</span>
                       </div>
-                      <span>•</span>
-                      <span>Costo: {record.cost}</span>
-                      <span>•</span>
-                      <span>{record.id}</span>
+                      <p className="text-sm text-muted-foreground mb-2">{record.descripcion}</p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>{new Date(record.fecha_mantenimiento).toLocaleDateString("es-MX")}</span>
+                        </div>
+                        <span>•</span>
+                        <span>Costo: ${record.costo.toLocaleString("es-MX")}</span>
+                        <span>•</span>
+                        <span>Odómetro: {record.odometro.toLocaleString()} km</span>
+                      </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline">
-                    Ver Detalles
-                  </Button>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

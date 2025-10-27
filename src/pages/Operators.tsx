@@ -474,6 +474,79 @@ export default function Operators() {
                         </div>
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              Ver Detalles
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Detalles del Operador</DialogTitle>
+                              <DialogDescription>Información completa del operador</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                  <Label className="text-muted-foreground">Nombre Completo</Label>
+                                  <p className="font-medium text-foreground">{operator.nombre}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-muted-foreground">Número de Empleado</Label>
+                                  <p className="font-medium text-foreground">{operator.numero_empleado}</p>
+                                </div>
+                                <div>
+                                  <Label className="text-muted-foreground">Fecha de Alta</Label>
+                                  <p className="font-medium text-foreground">
+                                    {new Date(operator.fecha_alta).toLocaleDateString("es-MX")}
+                                  </p>
+                                </div>
+                                <div>
+                                  <Label className="text-muted-foreground">Vencimiento de Contrato</Label>
+                                  <p className="font-medium text-foreground">
+                                    {new Date(operator.fecha_vencimiento_contrato).toLocaleDateString("es-MX")}
+                                  </p>
+                                </div>
+                                {operator.numero_licencia && (
+                                  <>
+                                    <div>
+                                      <Label className="text-muted-foreground">Número de Licencia</Label>
+                                      <p className="font-medium text-foreground">{operator.numero_licencia}</p>
+                                    </div>
+                                    <div>
+                                      <Label className="text-muted-foreground">Vencimiento de Licencia</Label>
+                                      <p className="font-medium text-foreground">
+                                        {operator.fecha_vencimiento_licencia 
+                                          ? new Date(operator.fecha_vencimiento_licencia).toLocaleDateString("es-MX")
+                                          : "N/A"}
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                                <div>
+                                  <Label className="text-muted-foreground">Estado</Label>
+                                  <Badge variant={operator.estado === "activo" ? "default" : "secondary"}>
+                                    {operator.estado}
+                                  </Badge>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <Label className="text-muted-foreground">Dirección</Label>
+                                  <p className="font-medium text-foreground">{operator.direccion}</p>
+                                </div>
+                              </div>
+                              {operator.pdf_url && (
+                                <Button 
+                                  className="w-full"
+                                  variant="outline"
+                                  onClick={() => window.open(operator.pdf_url!, '_blank')}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Ver Documento PDF
+                                </Button>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                         {operator.pdf_url && (
                           <Button 
                             size="sm" 

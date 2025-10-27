@@ -426,15 +426,17 @@ export default function Visits() {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleExit(visit.id)}
-                        className="flex-shrink-0"
-                      >
-                        <LogOut className="h-4 w-4 mr-1" />
-                        Salida
-                      </Button>
+                      {visit.estado === "en_instalaciones" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExit(visit.id)}
+                          className="flex-shrink-0"
+                        >
+                          <LogOut className="h-4 w-4 mr-1" />
+                          Salida
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

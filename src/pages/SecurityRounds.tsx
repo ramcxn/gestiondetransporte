@@ -193,7 +193,7 @@ export default function SecurityRounds() {
     try {
       let fotoUrl = null;
       
-      if (formData.incidente && selectedImage) {
+      if (selectedImage) {
         fotoUrl = await uploadImage();
       }
 
@@ -319,40 +319,41 @@ export default function SecurityRounds() {
                   ¿Se encontró algún incidente?
                 </Label>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="zone-photo">Fotografía de la Zona</Label>
+                <Input
+                  id="zone-photo"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="cursor-pointer"
+                />
+                {imagePreview && (
+                  <div className="relative w-full h-48 border rounded-lg overflow-hidden">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Fotografía del estado actual de la zona
+                </p>
+              </div>
               {formData.incidente && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="descripcion">Descripción del Incidente</Label>
-                    <Textarea
-                      id="descripcion"
-                      placeholder="Describa el incidente encontrado"
-                      value={formData.descripcion_incidente}
-                      onChange={(e) =>
-                        setFormData({ ...formData, descripcion_incidente: e.target.value })
-                      }
-                      required={formData.incidente}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="incident-photo">Fotografía del Incidente</Label>
-                    <Input
-                      id="incident-photo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="cursor-pointer"
-                    />
-                    {imagePreview && (
-                      <div className="relative w-full h-48 border rounded-lg overflow-hidden">
-                        <img 
-                          src={imagePreview} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <Label htmlFor="descripcion">Descripción del Incidente</Label>
+                  <Textarea
+                    id="descripcion"
+                    placeholder="Describa el incidente encontrado"
+                    value={formData.descripcion_incidente}
+                    onChange={(e) =>
+                      setFormData({ ...formData, descripcion_incidente: e.target.value })
+                    }
+                    required={formData.incidente}
+                  />
+                </div>
               )}
               <div className="flex justify-end gap-3 pt-4">
                 <Button

@@ -294,6 +294,51 @@ export type Database = {
           },
         ]
       }
+      mantenimientos: {
+        Row: {
+          costo: number
+          created_at: string
+          created_by: string
+          descripcion: string
+          estado: string
+          fecha_mantenimiento: string
+          id: string
+          odometro: number
+          proveedor: string
+          proximo_mantenimiento: number | null
+          tipo_mantenimiento: string
+          unidad: string
+        }
+        Insert: {
+          costo: number
+          created_at?: string
+          created_by: string
+          descripcion: string
+          estado?: string
+          fecha_mantenimiento: string
+          id?: string
+          odometro: number
+          proveedor: string
+          proximo_mantenimiento?: number | null
+          tipo_mantenimiento: string
+          unidad: string
+        }
+        Update: {
+          costo?: number
+          created_at?: string
+          created_by?: string
+          descripcion?: string
+          estado?: string
+          fecha_mantenimiento?: string
+          id?: string
+          odometro?: number
+          proveedor?: string
+          proximo_mantenimiento?: number | null
+          tipo_mantenimiento?: string
+          unidad?: string
+        }
+        Relationships: []
+      }
       operadores: {
         Row: {
           created_at: string
@@ -336,6 +381,48 @@ export type Database = {
           numero_empleado?: string
           numero_licencia?: string | null
           pdf_url?: string | null
+        }
+        Relationships: []
+      }
+      personal: {
+        Row: {
+          created_at: string
+          created_by: string
+          departamento: string
+          direccion: string
+          estado: string
+          fecha_alta: string
+          id: string
+          nombre: string
+          numero_empleado: string
+          puesto: string
+          telefono: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          departamento: string
+          direccion: string
+          estado?: string
+          fecha_alta: string
+          id?: string
+          nombre: string
+          numero_empleado: string
+          puesto: string
+          telefono?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          departamento?: string
+          direccion?: string
+          estado?: string
+          fecha_alta?: string
+          id?: string
+          nombre?: string
+          numero_empleado?: string
+          puesto?: string
+          telefono?: string | null
         }
         Relationships: []
       }

@@ -24,11 +24,23 @@ interface AntidopingTest {
   created_by: string;
 }
 
+interface Operator {
+  id: string;
+  nombre: string;
+}
+
+interface Personal {
+  id: string;
+  nombre: string;
+}
+
 export default function Antidoping() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState<AntidopingTest | null>(null);
   const [tests, setTests] = useState<AntidopingTest[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
+  const [personal, setPersonal] = useState<Personal[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -46,6 +58,8 @@ export default function Antidoping() {
 
   useEffect(() => {
     fetchTests();
+    fetchOperators();
+    fetchPersonal();
 
     const channel = supabase
       .channel('antidoping-changes')
@@ -85,6 +99,36 @@ export default function Antidoping() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOperators = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("operadores")
+        .select("id, nombre")
+        .eq("estado", "activo")
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setOperators(data || []);
+    } catch (error) {
+      console.error("Error fetching operators:", error);
+    }
+  };
+
+  const fetchPersonal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("personal")
+        .select("id, nombre")
+        .eq("estado", "activo")
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setPersonal(data || []);
+    } catch (error) {
+      console.error("Error fetching personal:", error);
     }
   };
 
@@ -224,31 +268,59 @@ export default function Antidoping() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre de la Persona</Label>
-                  <Input
-                    id="nombre"
-                    placeholder="Nombre completo"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="tipo_persona">Tipo de Persona</Label>
                   <Select 
                     value={formData.tipo_persona}
-                    onValueChange={(value) => setFormData({ ...formData, tipo_persona: value })}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, tipo_persona: value, nombre: "" });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="operador">Operador</SelectItem>
+                      <SelectItem value="personal">Personal</SelectItem>
                       <SelectItem value="visitante">Visitante</SelectItem>
                       <SelectItem value="proveedor">Proveedor</SelectItem>
-                      <SelectItem value="empleado">Empleado</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nombre">Nombre de la Persona</Label>
+                  {(formData.tipo_persona === "operador" || formData.tipo_persona === "personal") ? (
+                    <Select
+                      value={formData.nombre}
+                      onValueChange={(value) => setFormData({ ...formData, nombre: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar persona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formData.tipo_persona === "operador" ? (
+                          operators.map((op) => (
+                            <SelectItem key={op.id} value={op.nombre}>
+                              {op.nombre}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          personal.map((p) => (
+                            <SelectItem key={p.id} value={p.nombre}>
+                              {p.nombre}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="nombre"
+                      placeholder="Nombre completo"
+                      value={formData.nombre}
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                      required
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="resultado">Resultado</Label>

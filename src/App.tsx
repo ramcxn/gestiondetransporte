@@ -13,6 +13,7 @@ import SecurityRounds from "./pages/SecurityRounds";
 import Visits from "./pages/Visits";
 import Inventory from "./pages/Inventory";
 import Operators from "./pages/Operators";
+import Personal from "./pages/Personal";
 import Antidoping from "./pages/Antidoping";
 import Breathalyzer from "./pages/Breathalyzer";
 import Maintenance from "./pages/Maintenance";
@@ -92,6 +93,16 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <Operators />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/personal"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout>
+                    <Personal />
                   </Layout>
                 </ProtectedRoute>
               }

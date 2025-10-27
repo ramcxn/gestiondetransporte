@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,23 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Route, MapPin, DollarSign, Clock, TrendingUp, Calculator, Fuel, TrendingDown } from "lucide-react";
 
+interface SavedRoute {
+  id: string;
+  nombre: string;
+  origen: string;
+  destino: string;
+  distancia_km: number;
+  tiempo_estimado_horas: number;
+  costo_estimado: number;
+  costo_combustible: number | null;
+  costo_casetas: number | null;
+  rentabilidad: string | null;
+  created_at: string;
+}
+
 export default function RouteAnalysis() {
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [formData, setFormData] = useState({
     cliente: "PEPSI",
     ruta: "APODACA - LAREDO",
@@ -39,6 +55,26 @@ export default function RouteAnalysis() {
     porcentajeIngresos: "",
   });
 
+  useEffect(() => {
+    fetchSavedRoutes();
+  }, []);
+
+  const fetchSavedRoutes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("rutas")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      setSavedRoutes(data || []);
+    } catch (error) {
+      console.error("Error fetching routes:", error);
+    } finally {
+      setLoadingRoutes(false);
+    }
+  };
+
   const guardarRuta = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -59,6 +95,7 @@ export default function RouteAnalysis() {
 
       if (error) throw error;
       toast.success("Ruta guardada exitosamente");
+      fetchSavedRoutes();
     } catch (error) {
       console.error("Error saving route:", error);
       toast.error("No se pudo guardar la ruta");
@@ -115,41 +152,18 @@ export default function RouteAnalysis() {
     setFormData({ ...formData, [field]: value });
   };
 
-  const savedRoutes = [
-    {
-      id: "RT-001",
-      origin: "Monterrey, NL",
-      destination: "CDMX",
-      distance: "920 km",
-      estimatedTime: "12 hrs",
-      estimatedCost: "$25,000",
-      profitability: "high",
-      fuelCost: "$8,500",
-      tollCost: "$2,500",
-    },
-    {
-      id: "RT-002",
-      origin: "Guadalajara, JAL",
-      destination: "Tijuana, BC",
-      distance: "2,150 km",
-      estimatedTime: "28 hrs",
-      estimatedCost: "$42,000",
-      profitability: "medium",
-      fuelCost: "$16,500",
-      tollCost: "$4,200",
-    },
-    {
-      id: "RT-003",
-      origin: "CDMX",
-      destination: "Veracruz, VER",
-      distance: "420 km",
-      estimatedTime: "6 hrs",
-      estimatedCost: "$15,000",
-      profitability: "high",
-      fuelCost: "$3,800",
-      tollCost: "$1,200",
-    },
-  ];
+  const getProfitabilityBadge = (rentabilidad: string | null) => {
+    switch (rentabilidad) {
+      case "alta":
+        return <Badge className="bg-accent text-accent-foreground">Alta</Badge>;
+      case "media":
+        return <Badge className="bg-secondary text-secondary-foreground">Media</Badge>;
+      case "baja":
+        return <Badge variant="destructive">Baja</Badge>;
+      default:
+        return <Badge variant="outline">No calculada</Badge>;
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -482,11 +496,11 @@ export default function RouteAnalysis() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rutas Analizadas</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Rutas Guardadas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">247</div>
-            <p className="text-xs text-muted-foreground mt-1">Este mes</p>
+            <div className="text-3xl font-bold text-foreground">{savedRoutes.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Total registradas</p>
           </CardContent>
         </Card>
 
@@ -495,31 +509,95 @@ export default function RouteAnalysis() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Alta Rentabilidad</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-accent">68%</div>
-            <p className="text-xs text-muted-foreground mt-1">Rutas aprobadas</p>
+            <div className="text-3xl font-bold text-accent">
+              {savedRoutes.filter(r => r.rentabilidad === 'alta').length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Rutas rentables</p>
           </CardContent>
         </Card>
 
         <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Ahorro Promedio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Distancia Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">$3.2K</div>
-            <p className="text-xs text-muted-foreground mt-1">Por viaje optimizado</p>
+            <div className="text-3xl font-bold text-foreground">
+              {(savedRoutes.reduce((sum, r) => sum + r.distancia_km, 0) / 1000).toFixed(1)}K
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Kilómetros</p>
           </CardContent>
         </Card>
       </div>
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Análisis Guardados</CardTitle>
+          <CardTitle>Rutas Guardadas</CardTitle>
           <CardDescription>Historial de evaluaciones de factibilidad</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Las rutas guardadas aparecerán aquí y estarán disponibles para seleccionar al crear nuevos viajes.</p>
-          </div>
+          {loadingRoutes ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : savedRoutes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay rutas guardadas. Complete un análisis y guárdelo para verlo aquí.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedRoutes.map((route) => (
+                <div
+                  key={route.id}
+                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                        <h4 className="font-semibold text-foreground">{route.nombre}</h4>
+                        {getProfitabilityBadge(route.rentabilidad)}
+                      </div>
+                      <div className="grid gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{route.origen} → {route.destino}</span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Route className="h-4 w-4" />
+                            <span>{route.distancia_km} km</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{route.tiempo_estimado_horas.toFixed(1)} hrs</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4" />
+                            <span>${route.costo_estimado.toLocaleString()}</span>
+                          </div>
+                        </div>
+                        {(route.costo_combustible || route.costo_casetas) && (
+                          <div className="flex items-center gap-4 text-xs">
+                            {route.costo_combustible && (
+                              <div className="flex items-center gap-1">
+                                <Fuel className="h-3 w-3" />
+                                <span>Combustible: ${route.costo_combustible.toLocaleString()}</span>
+                              </div>
+                            )}
+                            {route.costo_casetas && (
+                              <span>Casetas: ${route.costo_casetas.toLocaleString()}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Guardada: {new Date(route.created_at).toLocaleDateString("es-MX")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

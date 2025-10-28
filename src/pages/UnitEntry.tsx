@@ -617,10 +617,9 @@ export default function UnitEntry() {
                       onValueChange={(value) => setFormData({ ...formData, dolly: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar dolly (opcional)" />
+                        <SelectValue placeholder="Sin dolly" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin dolly</SelectItem>
                         {equipos.filter(e => e.tipo_equipo === 'dolly').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.numero_economico}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
@@ -636,10 +635,9 @@ export default function UnitEntry() {
                       onValueChange={(value) => setFormData({ ...formData, remolque: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar remolque (opcional)" />
+                        <SelectValue placeholder="Sin remolque" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin remolque</SelectItem>
                         {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.numero_economico}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}

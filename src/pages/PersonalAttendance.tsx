@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, Users, LogOut, Calendar } from "lucide-react";
+import { Clock, Users, LogOut, Calendar, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import QRScanner from "@/components/QRScanner";
 
 interface Personal {
   id: string;
@@ -32,6 +33,7 @@ export default function PersonalAttendance() {
   const [selectedPersonal, setSelectedPersonal] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -160,6 +162,46 @@ export default function PersonalAttendance() {
     }
   };
 
+  const handleQRScan = async (qrData: string) => {
+    setShowQRScanner(false);
+    
+    try {
+      // Buscar en personal por qr_code
+      const { data: personalData, error: personalError } = await supabase
+        .from("personal")
+        .select("*")
+        .eq("qr_code", qrData)
+        .eq("estado", "activo")
+        .single();
+
+      if (personalError && personalError.code !== 'PGRST116') {
+        throw personalError;
+      }
+
+      if (personalData) {
+        setSelectedPersonal(personalData.id);
+        toast({
+          title: "Personal identificado",
+          description: `${personalData.nombre} - ${personalData.numero_empleado}`,
+        });
+        return;
+      }
+
+      toast({
+        title: "No encontrado",
+        description: "No se encontró personal con este código QR",
+        variant: "destructive",
+      });
+    } catch (error) {
+      console.error("Error scanning QR:", error);
+      toast({
+        title: "Error",
+        description: "Error al procesar el código QR",
+        variant: "destructive",
+      });
+    }
+  };
+
   const today = new Date().toDateString();
   const todayAttendances = attendances.filter(a => new Date(a.fecha_entrada).toDateString() === today);
   const presentNow = todayAttendances.filter(a => a.estado === "presente");
@@ -230,29 +272,42 @@ export default function PersonalAttendance() {
           <CardDescription>Seleccione el personal para registrar su entrada</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <Label>Personal</Label>
-              <Select value={selectedPersonal} onValueChange={setSelectedPersonal}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar personal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {personal.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nombre} - {p.numero_empleado} ({p.departamento})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowQRScanner(true)}
+                className="flex items-center gap-2"
+              >
+                <QrCode className="h-4 w-4" />
+                Escanear QR
+              </Button>
             </div>
-            <Button
-              onClick={handleEntry}
-              disabled={!selectedPersonal || submitting}
-              className="mt-8"
-            >
-              {submitting ? "Registrando..." : "Registrar Entrada"}
-            </Button>
+            
+            <div className="flex gap-4">
+              <div className="flex-1 space-y-2">
+                <Label>Personal</Label>
+                <Select value={selectedPersonal} onValueChange={setSelectedPersonal}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar personal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {personal.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nombre} - {p.numero_empleado} ({p.departamento})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleEntry}
+                disabled={!selectedPersonal || submitting}
+                className="mt-8"
+              >
+                {submitting ? "Registrando..." : "Registrar Entrada"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -397,6 +452,13 @@ export default function PersonalAttendance() {
           )}
         </CardContent>
       </Card>
+
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
     </div>
   );
 }

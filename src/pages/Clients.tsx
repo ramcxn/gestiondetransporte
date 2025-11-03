@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Building2, Search, Plus, FileText, Shield, Users, MapPin, Upload } from "lucide-react";
+import { Building2, Search, Plus, FileText, Shield, Users, MapPin, Upload, Trash2 } from "lucide-react";
 
 interface ClientInvestigation {
   // Datos generales
@@ -95,6 +96,25 @@ export default function Clients() {
     },
     onError: (error) => {
       toast.error("Error al registrar cliente");
+      console.error(error);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (clienteId: string) => {
+      const { error } = await supabase
+        .from("clientes")
+        .delete()
+        .eq("id", clienteId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Cliente eliminado exitosamente");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error("Error al eliminar cliente");
       console.error(error);
     },
   });
@@ -509,7 +529,7 @@ export default function Clients() {
                           </p>
                         )}
                       </div>
-                      <div className="text-right">
+                      <div className="flex flex-col items-end gap-2">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                           cliente.activo 
                             ? "bg-green-100 text-green-800" 
@@ -517,6 +537,31 @@ export default function Clients() {
                         }`}>
                           {cliente.activo ? "Activo" : "Inactivo"}
                         </span>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Eliminar
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente el cliente "{cliente.nombre}" del sistema.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteMutation.mutate(cliente.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </CardContent>

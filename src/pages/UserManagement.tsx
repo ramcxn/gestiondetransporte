@@ -216,10 +216,18 @@ const UserManagement = () => {
 
     setDeletingUser(true);
     try {
-      // Delete user from auth.users (this will cascade delete related records)
-      const { error } = await supabase.auth.admin.deleteUser(userToDelete.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("No hay sesión activa");
+      }
+
+      const { data, error } = await supabase.functions.invoke("delete-user", {
+        body: { userId: userToDelete.id },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Usuario eliminado",
@@ -233,7 +241,7 @@ const UserManagement = () => {
       console.error("Error deleting user:", error);
       toast({
         title: "Error",
-        description: "No se pudo eliminar el usuario. Solo los administradores pueden eliminar usuarios.",
+        description: error.message || "No se pudo eliminar el usuario. Solo los administradores pueden eliminar usuarios.",
         variant: "destructive",
       });
     } finally {

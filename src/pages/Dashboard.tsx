@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Truck, Users, Shield, AlertTriangle, Package, TrendingUp, UserCheck, Clock, Wrench, MapPin, Warehouse, ClipboardCheck, FileText, DollarSign, Activity, Calendar, Target } from "lucide-react";
+import { Truck, Users, Shield, AlertTriangle, Package, TrendingUp, UserCheck, Clock, Wrench, MapPin, Warehouse, ClipboardCheck, FileText, DollarSign, Activity, Calendar, Target, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -60,6 +64,32 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("general");
+  const [selectedKPIs, setSelectedKPIs] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dashboard-kpis');
+    return saved ? JSON.parse(saved) : ['equipos', 'viajes', 'mantenimiento', 'alertas', 'general', 'operaciones', 'almacen', 'personal', 'seguridad'];
+  });
+
+  const kpiOptions = [
+    { id: 'equipos', name: 'Equipos Totales', category: 'principales' },
+    { id: 'viajes', name: 'Viajes Activos', category: 'principales' },
+    { id: 'mantenimiento', name: 'Mantenimientos', category: 'principales' },
+    { id: 'alertas', name: 'Alertas Críticas', category: 'principales' },
+    { id: 'general', name: 'Vista General', category: 'tabs' },
+    { id: 'operaciones', name: 'Operaciones', category: 'tabs' },
+    { id: 'almacen', name: 'Almacén', category: 'tabs' },
+    { id: 'personal', name: 'Personal', category: 'tabs' },
+    { id: 'seguridad', name: 'Seguridad', category: 'tabs' },
+  ];
+
+  const toggleKPI = (kpiId: string) => {
+    setSelectedKPIs(prev => {
+      const newSelection = prev.includes(kpiId)
+        ? prev.filter(id => id !== kpiId)
+        : [...prev, kpiId];
+      localStorage.setItem('dashboard-kpis', JSON.stringify(newSelection));
+      return newSelection;
+    });
+  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -281,16 +311,73 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-primary-foreground/70">Cumplimiento Global</div>
-            <div className="text-4xl font-bold">{cumplimientoGlobal}%</div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <div className="text-sm text-primary-foreground/70">Cumplimiento Global</div>
+              <div className="text-4xl font-bold">{cumplimientoGlobal}%</div>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="secondary" size="icon" className="shrink-0">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Configurar KPIs</DialogTitle>
+                  <DialogDescription>
+                    Selecciona los KPIs y secciones que deseas visualizar en el dashboard
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">KPIs Principales</h4>
+                    {kpiOptions.filter(kpi => kpi.category === 'principales').map(kpi => (
+                      <div key={kpi.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={kpi.id}
+                          checked={selectedKPIs.includes(kpi.id)}
+                          onCheckedChange={() => toggleKPI(kpi.id)}
+                        />
+                        <Label
+                          htmlFor={kpi.id}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {kpi.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium">Secciones Detalladas</h4>
+                    {kpiOptions.filter(kpi => kpi.category === 'tabs').map(kpi => (
+                      <div key={kpi.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={kpi.id}
+                          checked={selectedKPIs.includes(kpi.id)}
+                          onCheckedChange={() => toggleKPI(kpi.id)}
+                        />
+                        <Label
+                          htmlFor={kpi.id}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {kpi.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
 
       {/* KPIs Principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-primary">
+      {selectedKPIs.some(kpi => ['equipos', 'viajes', 'mantenimiento', 'alertas'].includes(kpi)) && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {selectedKPIs.includes('equipos') && (
+            <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-primary">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Truck className="h-4 w-4" />
@@ -306,8 +393,10 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground mt-2">{stats.equiposMantenimiento} en mantenimiento</p>
           </CardContent>
         </Card>
+          )}
 
-        <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-accent">
+          {selectedKPIs.includes('viajes') && (
+            <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-accent">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4" />
@@ -325,8 +414,10 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+          )}
 
-        <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-secondary">
+          {selectedKPIs.includes('mantenimiento') && (
+            <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-secondary">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Wrench className="h-4 w-4" />
@@ -344,8 +435,10 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+          )}
 
-        <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-destructive">
+          {selectedKPIs.includes('alertas') && (
+            <Card className="shadow-card hover:shadow-elevated transition-shadow border-l-4 border-l-destructive">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -368,20 +461,24 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs con Categorías Detalladas */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="operaciones">Operaciones</TabsTrigger>
-          <TabsTrigger value="almacen">Almacén</TabsTrigger>
-          <TabsTrigger value="personal">Personal</TabsTrigger>
-          <TabsTrigger value="seguridad">Seguridad</TabsTrigger>
-        </TabsList>
+      {selectedKPIs.some(kpi => ['general', 'operaciones', 'almacen', 'personal', 'seguridad'].includes(kpi)) && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${selectedKPIs.filter(kpi => ['general', 'operaciones', 'almacen', 'personal', 'seguridad'].includes(kpi)).length}, minmax(0, 1fr))` }}>
+            {selectedKPIs.includes('general') && <TabsTrigger value="general">General</TabsTrigger>}
+            {selectedKPIs.includes('operaciones') && <TabsTrigger value="operaciones">Operaciones</TabsTrigger>}
+            {selectedKPIs.includes('almacen') && <TabsTrigger value="almacen">Almacén</TabsTrigger>}
+            {selectedKPIs.includes('personal') && <TabsTrigger value="personal">Personal</TabsTrigger>}
+            {selectedKPIs.includes('seguridad') && <TabsTrigger value="seguridad">Seguridad</TabsTrigger>}
+          </TabsList>
 
-        {/* TAB GENERAL */}
-        <TabsContent value="general" className="space-y-4">
+          {/* TAB GENERAL */}
+          {selectedKPIs.includes('general') && (
+            <TabsContent value="general" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="pb-3">
@@ -537,9 +634,11 @@ export default function Dashboard() {
             </Card>
           </div>
         </TabsContent>
+          )}
 
-        {/* TAB OPERACIONES */}
-        <TabsContent value="operaciones" className="space-y-4">
+          {/* TAB OPERACIONES */}
+          {selectedKPIs.includes('operaciones') && (
+            <TabsContent value="operaciones" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
@@ -637,9 +736,11 @@ export default function Dashboard() {
             </Card>
           </div>
         </TabsContent>
+          )}
 
-        {/* TAB ALMACÉN */}
-        <TabsContent value="almacen" className="space-y-4">
+          {/* TAB ALMACÉN */}
+          {selectedKPIs.includes('almacen') && (
+            <TabsContent value="almacen" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
@@ -726,9 +827,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </TabsContent>
+          )}
 
-        {/* TAB PERSONAL */}
-        <TabsContent value="personal" className="space-y-4">
+          {/* TAB PERSONAL */}
+          {selectedKPIs.includes('personal') && (
+            <TabsContent value="personal" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
@@ -813,9 +916,11 @@ export default function Dashboard() {
             </Card>
           </div>
         </TabsContent>
+          )}
 
-        {/* TAB SEGURIDAD */}
-        <TabsContent value="seguridad" className="space-y-4">
+          {/* TAB SEGURIDAD */}
+          {selectedKPIs.includes('seguridad') && (
+            <TabsContent value="seguridad" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="pb-3">
@@ -923,7 +1028,9 @@ export default function Dashboard() {
             </Card>
           </div>
         </TabsContent>
-      </Tabs>
+          )}
+        </Tabs>
+      )}
     </div>
   );
 }

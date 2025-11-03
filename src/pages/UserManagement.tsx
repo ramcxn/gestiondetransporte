@@ -33,10 +33,13 @@ interface NewUserForm {
 
 const AVAILABLE_MODULES = [
   { name: "Dashboard", key: "dashboard" },
+  { name: "Dashboard de Cumplimiento", key: "dashboard-cumplimiento" },
   { name: "Visitas/Proveedores", key: "visitas" },
   { name: "Rondines de Seguridad", key: "rondines" },
   { name: "Ingreso de Unidades", key: "unidades" },
   { name: "Inventario de Equipo", key: "inventario" },
+  { name: "Inventario de Operador", key: "inventario-operador" },
+  { name: "Revisión Documental", key: "revision-documental" },
   { name: "Almacén Refacciones", key: "almacen" },
   { name: "Gestión del Operador", key: "operadores" },
   { name: "Personal", key: "personal" },
@@ -51,6 +54,7 @@ const AVAILABLE_MODULES = [
   { name: "Sellos de Seguridad", key: "sellos" },
   { name: "Ciberseguridad", key: "ciberseguridad" },
   { name: "Gestión de Usuarios", key: "usuarios" },
+  { name: "Acciones Correctivas", key: "acciones-correctivas" },
 ];
 
 const UserManagement = () => {

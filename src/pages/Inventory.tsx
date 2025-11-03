@@ -72,16 +72,16 @@ export default function Inventory() {
   };
 
   const filteredUnits = units.filter((unit) =>
-    unit.numero_economico.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    unit.tipo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    unit.ubicacion.toLowerCase().includes(searchQuery.toLowerCase())
+    unit.numero_economico?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    unit.tipo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    unit.ubicacion?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {
     total: units.length,
     operational: units.filter(u => u.estado === 'disponible').length,
-    tractos: units.filter(u => u.tipo.toLowerCase().includes('tracto')).length,
-    remolques: units.filter(u => u.tipo.toLowerCase().includes('remolque')).length,
+    tractos: units.filter(u => u.tipo?.toLowerCase().includes('tracto')).length,
+    remolques: units.filter(u => u.tipo?.toLowerCase().includes('remolque')).length,
     maintenance: units.filter(u => u.requiere_mantenimiento).length,
   };
 

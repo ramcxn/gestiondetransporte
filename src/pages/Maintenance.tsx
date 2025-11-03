@@ -217,6 +217,7 @@ export default function Maintenance() {
           cantidad: ref.cantidad,
           costo_unitario: ref.costo_unitario,
           costo_total: ref.cantidad * ref.costo_unitario,
+          client_id: profile.client_id,
           created_by: user.id,
         }));
 
@@ -247,6 +248,7 @@ export default function Maintenance() {
               mantenimiento_id: mantenimiento.id,
               costo_unitario: ref.costo_unitario,
               costo_total: ref.cantidad * ref.costo_unitario,
+              client_id: profile.client_id,
               created_by: user.id,
             });
         }
@@ -515,10 +517,7 @@ export default function Maintenance() {
                             <SelectContent>
                               {inventarioDisponible.map((item) => (
                                 <SelectItem key={item.id} value={item.id}>
-                                  <div className="flex items-center gap-2">
-                                    <Package className="h-3 w-3" />
-                                    {item.refacciones?.numero_parte} - {item.numero_serie || "S/N"}
-                                  </div>
+                                  {item.refacciones?.numero_parte} - {item.refacciones?.descripcion} ({item.numero_serie || "S/N"}) - ${item.costo_unitario}
                                 </SelectItem>
                               ))}
                             </SelectContent>

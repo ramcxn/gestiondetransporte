@@ -37,13 +37,13 @@ interface Maintenance {
     cantidad: number;
     costo_unitario: number;
     costo_total: number;
-    inventario_refacciones: {
+    inventario_id: {
       numero_serie: string | null;
-      refacciones: {
+      refaccion_id: {
         numero_parte: string;
         descripcion: string;
       };
-    };
+    } | null;
   }>;
 }
 
@@ -137,7 +137,7 @@ export default function Maintenance() {
         .from("mantenimientos")
         .select(`
           *,
-          inventario_equipos!equipo_id (
+          inventario_equipos (
             numero_economico,
             tipo_equipo,
             marca,
@@ -148,9 +148,9 @@ export default function Maintenance() {
             cantidad,
             costo_unitario,
             costo_total,
-            inventario_refacciones:inventario_id (
+            inventario_id:inventario_refacciones (
               numero_serie,
-              refacciones:refaccion_id (
+              refaccion_id:refacciones (
                 numero_parte,
                 descripcion
               )
@@ -684,14 +684,14 @@ export default function Maintenance() {
                               <div key={ref.id} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
                                 <div className="flex-1">
                                   <span className="font-medium text-foreground">
-                                    {ref.inventario_refacciones?.refacciones?.numero_parte}
+                                    {ref.inventario_id?.refaccion_id?.numero_parte}
                                   </span>
                                   <span className="text-muted-foreground ml-2">
-                                    - {ref.inventario_refacciones?.refacciones?.descripcion}
+                                    - {ref.inventario_id?.refaccion_id?.descripcion}
                                   </span>
-                                  {ref.inventario_refacciones?.numero_serie && (
+                                  {ref.inventario_id?.numero_serie && (
                                     <span className="text-muted-foreground text-xs ml-2">
-                                      (S/N: {ref.inventario_refacciones.numero_serie})
+                                      (S/N: {ref.inventario_id.numero_serie})
                                     </span>
                                   )}
                                 </div>

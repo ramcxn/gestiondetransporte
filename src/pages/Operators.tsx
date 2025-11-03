@@ -39,6 +39,7 @@ export default function Operators() {
   const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
+  const [generatingQRs, setGeneratingQRs] = useState(false);
   const { user, userRole } = useAuth();
   const { toast } = useToast();
 
@@ -292,6 +293,61 @@ export default function Operators() {
     }
   };
 
+  const generateMissingQRCodes = async () => {
+    if (!user) return;
+
+    setGeneratingQRs(true);
+    try {
+      // Fetch operators without QR codes
+      const { data: operatorsWithoutQR, error: fetchError } = await supabase
+        .from("operadores")
+        .select("id, numero_empleado")
+        .is("qr_code", null);
+
+      if (fetchError) throw fetchError;
+
+      if (!operatorsWithoutQR || operatorsWithoutQR.length === 0) {
+        toast({
+          title: "Información",
+          description: "Todos los operadores ya tienen código QR",
+        });
+        return;
+      }
+
+      // Generate QR codes for each operator
+      const updates = operatorsWithoutQR.map(operator => ({
+        id: operator.id,
+        qr_code: `OPERADOR-${operator.numero_empleado}-${Date.now()}`
+      }));
+
+      // Update all operators with QR codes
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+          .from("operadores")
+          .update({ qr_code: update.qr_code })
+          .eq("id", update.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Se generaron ${updates.length} códigos QR para operadores`,
+      });
+
+      fetchOperators();
+    } catch (error) {
+      console.error("Error generating QR codes:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron generar los códigos QR",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingQRs(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -304,13 +360,25 @@ export default function Operators() {
             <p className="text-muted-foreground">Control de contratos y documentación</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <UserCheck className="h-4 w-4 mr-2" />
-              Nuevo Operador
+        <div className="flex gap-2">
+          {userRole === "admin" && (
+            <Button
+              onClick={generateMissingQRCodes}
+              disabled={generatingQRs}
+              variant="outline"
+              className="gap-2"
+            >
+              <QrCode className="h-4 w-4" />
+              {generatingQRs ? "Generando..." : "Generar QR Faltantes"}
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <UserCheck className="h-4 w-4 mr-2" />
+                Nuevo Operador
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Registrar Nuevo Operador</DialogTitle>
@@ -422,6 +490,7 @@ export default function Operators() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {(expiringLicenses.length > 0 || expiredLicenses.length > 0) && (

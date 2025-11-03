@@ -46,6 +46,7 @@ export default function Personal() {
   const [personToDeactivate, setPersonToDeactivate] = useState<PersonalRecord | null>(null);
   const [personToDelete, setPersonToDelete] = useState<PersonalRecord | null>(null);
   const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [generatingQRs, setGeneratingQRs] = useState(false);
   const { user, userRole } = useAuth();
   const { toast } = useToast();
 
@@ -372,6 +373,61 @@ export default function Personal() {
     }
   };
 
+  const generateMissingQRCodes = async () => {
+    if (!user) return;
+
+    setGeneratingQRs(true);
+    try {
+      // Fetch personal without QR codes
+      const { data: personalWithoutQR, error: fetchError } = await supabase
+        .from("personal")
+        .select("id, numero_empleado")
+        .is("qr_code", null);
+
+      if (fetchError) throw fetchError;
+
+      if (!personalWithoutQR || personalWithoutQR.length === 0) {
+        toast({
+          title: "Información",
+          description: "Todo el personal ya tiene código QR",
+        });
+        return;
+      }
+
+      // Generate QR codes for each person
+      const updates = personalWithoutQR.map(person => ({
+        id: person.id,
+        qr_code: `PERSONAL-${person.numero_empleado}-${Date.now()}`
+      }));
+
+      // Update all personal with QR codes
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+          .from("personal")
+          .update({ qr_code: update.qr_code })
+          .eq("id", update.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Se generaron ${updates.length} códigos QR para personal`,
+      });
+
+      fetchPersonal();
+    } catch (error) {
+      console.error("Error generating QR codes:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron generar los códigos QR",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingQRs(false);
+    }
+  };
+
   const administrativo = personal.filter(p => p.departamento === "administrativo");
   const taller = personal.filter(p => p.departamento === "taller");
   const activos = personal.filter(p => p.estado === "activo");
@@ -388,28 +444,40 @@ export default function Personal() {
             <p className="text-muted-foreground">Administrativo y de Taller</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setIsEditMode(false);
-            setFormData({
-              id: "",
-              nombre: "",
-              numero_empleado: "",
-              puesto: "",
-              departamento: "administrativo",
-              fecha_alta: "",
-              direccion: "",
-              telefono: "",
-            });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Users className="h-4 w-4 mr-2" />
-              Nuevo Personal
+        <div className="flex gap-2">
+          {userRole === "admin" && (
+            <Button
+              onClick={generateMissingQRCodes}
+              disabled={generatingQRs}
+              variant="outline"
+              className="gap-2"
+            >
+              <QrCode className="h-4 w-4" />
+              {generatingQRs ? "Generando..." : "Generar QR Faltantes"}
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setIsEditMode(false);
+              setFormData({
+                id: "",
+                nombre: "",
+                numero_empleado: "",
+                puesto: "",
+                departamento: "administrativo",
+                fecha_alta: "",
+                direccion: "",
+                telefono: "",
+              });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <Users className="h-4 w-4 mr-2" />
+                Nuevo Personal
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{isEditMode ? "Editar Personal" : "Registrar Personal"}</DialogTitle>
@@ -526,6 +594,7 @@ export default function Personal() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

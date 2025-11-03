@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Wine, Clock, CheckCircle, XCircle, User, Camera, Image as ImageIcon } from "lucide-react";
+import { Wine, Clock, CheckCircle, XCircle, User, Camera, Image as ImageIcon, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import QRScanner from "@/components/QRScanner";
 
 interface BreathalyzerTest {
   id: string;
@@ -32,6 +33,9 @@ export default function Breathalyzer() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [operadores, setOperadores] = useState<Array<{ id: string; nombre: string; numero_empleado: string; qr_code: string | null }>>([]);
+  const [personal, setPersonal] = useState<Array<{ id: string; nombre: string; numero_empleado: string; qr_code: string | null }>>([]);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -40,10 +44,13 @@ export default function Breathalyzer() {
     tipo_persona: "operator",
     nivel: "0.00",
     observaciones: "",
+    personId: "",
   });
 
   useEffect(() => {
     fetchTests();
+    fetchOperadores();
+    fetchPersonal();
     
     // Subscribe to realtime updates
     const channel = supabase
@@ -102,6 +109,36 @@ export default function Breathalyzer() {
     }
   };
 
+  const fetchOperadores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("operadores")
+        .select("id, nombre, numero_empleado, qr_code")
+        .eq("estado", "activo")
+        .order("nombre");
+
+      if (error) throw error;
+      setOperadores(data || []);
+    } catch (error) {
+      console.error("Error fetching operators:", error);
+    }
+  };
+
+  const fetchPersonal = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("personal")
+        .select("id, nombre, numero_empleado, qr_code")
+        .eq("estado", "activo")
+        .order("nombre");
+
+      if (error) throw error;
+      setPersonal(data || []);
+    } catch (error) {
+      console.error("Error fetching personal:", error);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -117,6 +154,79 @@ export default function Breathalyzer() {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
+  };
+
+  const handleQRScan = (qrData: string) => {
+    try {
+      // Try to find matching QR code in operadores
+      const operador = operadores.find(op => op.qr_code === qrData);
+      if (operador) {
+        setFormData({
+          ...formData,
+          nombre: operador.nombre,
+          tipo_persona: "operator",
+          personId: operador.id,
+        });
+        setShowQRScanner(false);
+        toast({
+          title: "Operador identificado",
+          description: `${operador.nombre} - ${operador.numero_empleado}`,
+        });
+        return;
+      }
+
+      // Try to find matching QR code in personal
+      const empleado = personal.find(p => p.qr_code === qrData);
+      if (empleado) {
+        setFormData({
+          ...formData,
+          nombre: empleado.nombre,
+          tipo_persona: "staff",
+          personId: empleado.id,
+        });
+        setShowQRScanner(false);
+        toast({
+          title: "Personal identificado",
+          description: `${empleado.nombre} - ${empleado.numero_empleado}`,
+        });
+        return;
+      }
+
+      toast({
+        title: "QR no reconocido",
+        description: "No se encontró registro para este código QR",
+        variant: "destructive",
+      });
+      setShowQRScanner(false);
+    } catch (error) {
+      console.error("Error scanning QR:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo procesar el código QR",
+        variant: "destructive",
+      });
+      setShowQRScanner(false);
+    }
+  };
+
+  const handlePersonSelect = (value: string) => {
+    const [tipo, id] = value.split("-");
+    let nombre = "";
+    
+    if (tipo === "operator") {
+      const op = operadores.find(o => o.id === id);
+      nombre = op?.nombre || "";
+    } else if (tipo === "staff") {
+      const emp = personal.find(p => p.id === id);
+      nombre = emp?.nombre || "";
+    }
+
+    setFormData({
+      ...formData,
+      nombre,
+      tipo_persona: tipo,
+      personId: id,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -180,6 +290,7 @@ export default function Breathalyzer() {
         tipo_persona: "operator",
         nivel: "0.00",
         observaciones: "",
+        personId: "",
       });
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -227,38 +338,79 @@ export default function Breathalyzer() {
               <DialogDescription>Complete la información de la prueba</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowQRScanner(true)}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Escanear QR
+                  </Button>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      O seleccionar manualmente
+                    </span>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="person-type">Tipo de Personal</Label>
+                  <Label htmlFor="person-select">Seleccionar Persona</Label>
                   <Select
-                    value={formData.tipo_persona}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, tipo_persona: value })
-                    }
+                    value={formData.personId ? `${formData.tipo_persona}-${formData.personId}` : ""}
+                    onValueChange={handlePersonSelect}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo" />
+                      <SelectValue placeholder="Buscar operador o personal..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="operator">Operador</SelectItem>
-                      <SelectItem value="visitor">Visitante</SelectItem>
-                      <SelectItem value="provider">Proveedor</SelectItem>
-                      <SelectItem value="staff">Personal</SelectItem>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        Operadores
+                      </div>
+                      {operadores.map((op) => (
+                        <SelectItem key={op.id} value={`operator-${op.id}`}>
+                          {op.nombre} - {op.numero_empleado}
+                        </SelectItem>
+                      ))}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
+                        Personal
+                      </div>
+                      {personal.map((emp) => (
+                        <SelectItem key={emp.id} value={`staff-${emp.id}`}>
+                          {emp.nombre} - {emp.numero_empleado}
+                        </SelectItem>
+                      ))}
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
+                        Otros
+                      </div>
+                      <SelectItem value="visitor-manual">Visitante (manual)</SelectItem>
+                      <SelectItem value="provider-manual">Proveedor (manual)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="person-name">Nombre Completo</Label>
-                  <Input
-                    id="person-name"
-                    placeholder="Nombre de la persona"
-                    value={formData.nombre}
-                    onChange={(e) =>
-                      setFormData({ ...formData, nombre: e.target.value })
-                    }
-                    required
-                  />
-                </div>
+
+                {(formData.tipo_persona === "visitor" || formData.tipo_persona === "provider" || !formData.personId) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="person-name">Nombre Completo</Label>
+                    <Input
+                      id="person-name"
+                      placeholder="Nombre de la persona"
+                      value={formData.nombre}
+                      onChange={(e) =>
+                        setFormData({ ...formData, nombre: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                )}
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="result">Resultado (g/dL)</Label>
                   <Input
@@ -334,6 +486,13 @@ export default function Breathalyzer() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {showQRScanner && (
+        <QRScanner
+          onScan={handleQRScan}
+          onClose={() => setShowQRScanner(false)}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="shadow-card">

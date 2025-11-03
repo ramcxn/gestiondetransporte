@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { UserCheck, Calendar, FileText, MapPin, AlertTriangle, Download, Trash2 } from "lucide-react";
+import { UserCheck, Calendar, FileText, MapPin, AlertTriangle, Download, Trash2, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { QRCodeGenerator, generateQRCodeDataURL } from "@/components/QRCodeGenerator";
 
 interface Operator {
   id: string;
@@ -22,6 +23,7 @@ interface Operator {
   numero_licencia: string | null;
   fecha_vencimiento_licencia: string | null;
   pdf_url: string | null;
+  qr_code: string | null;
   estado: string;
   created_at: string;
 }
@@ -35,6 +37,8 @@ export default function Operators() {
   const [uploadingPDF, setUploadingPDF] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
   const { user, userRole } = useAuth();
   const { toast } = useToast();
 
@@ -163,6 +167,9 @@ export default function Operators() {
 
       if (!profile?.client_id) throw new Error("No client_id found");
 
+      // Generate unique QR code
+      const qrCode = `OPERADOR-${formData.numero_empleado}-${Date.now()}`;
+
       const { error } = await supabase
         .from("operadores")
         .insert({
@@ -174,6 +181,7 @@ export default function Operators() {
           numero_licencia: formData.numero_licencia || null,
           fecha_vencimiento_licencia: formData.fecha_vencimiento_licencia || null,
           pdf_url: pdfUrl,
+          qr_code: qrCode,
           client_id: profile.client_id,
           created_by: user.id,
         });
@@ -231,6 +239,30 @@ export default function Operators() {
   const expiredLicenses = operators.filter(op => 
     op.fecha_vencimiento_licencia && isLicenseExpired(op.fecha_vencimiento_licencia)
   );
+
+  const openQRDialog = (operator: Operator) => {
+    setSelectedOperator(operator);
+    setQrDialogOpen(true);
+  };
+
+  const downloadQRCode = async (operator: Operator) => {
+    if (!operator.qr_code) return;
+
+    try {
+      const dataUrl = await generateQRCodeDataURL(operator.qr_code);
+      const link = document.createElement("a");
+      link.download = `QR-${operator.numero_empleado}-${operator.nombre}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error("Error downloading QR code:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo descargar el código QR",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDelete = async () => {
     if (!operatorToDelete) return;
@@ -598,6 +630,14 @@ export default function Operators() {
                             Ver PDF
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openQRDialog(operator)}
+                        >
+                          <QrCode className="h-4 w-4 mr-1" />
+                          Ver QR
+                        </Button>
                         {userRole === "admin" && (
                           <Button 
                             size="sm" 
@@ -637,6 +677,39 @@ export default function Operators() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* QR Code Dialog */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Código QR del Operador</DialogTitle>
+            <DialogDescription>
+              {selectedOperator?.nombre} - {selectedOperator?.numero_empleado}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOperator && selectedOperator.qr_code ? (
+            <div className="space-y-4">
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                <QRCodeGenerator value={selectedOperator.qr_code} size={250} />
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Este código QR puede ser escaneado en el sistema para identificación rápida del operador.</p>
+              </div>
+              <Button
+                onClick={() => downloadQRCode(selectedOperator)}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar QR
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay código QR disponible
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -570,6 +570,7 @@ export type Database = {
           created_at: string
           created_by: string
           descripcion_incidente: string | null
+          dolly_id: string | null
           foto_1_url: string | null
           foto_2_url: string | null
           id: string
@@ -579,15 +580,19 @@ export type Database = {
           odometro: number
           operador: string
           puntos_seguridad: Json | null
+          remolque_1_id: string | null
+          remolque_2_id: string | null
           requiere_mantenimiento: boolean | null
           tipo_movimiento: string
           tipo_unidad: string
+          tracto_id: string | null
         }
         Insert: {
           client_id?: string | null
           created_at?: string
           created_by: string
           descripcion_incidente?: string | null
+          dolly_id?: string | null
           foto_1_url?: string | null
           foto_2_url?: string | null
           id?: string
@@ -597,15 +602,19 @@ export type Database = {
           odometro: number
           operador: string
           puntos_seguridad?: Json | null
+          remolque_1_id?: string | null
+          remolque_2_id?: string | null
           requiere_mantenimiento?: boolean | null
           tipo_movimiento: string
           tipo_unidad: string
+          tracto_id?: string | null
         }
         Update: {
           client_id?: string | null
           created_at?: string
           created_by?: string
           descripcion_incidente?: string | null
+          dolly_id?: string | null
           foto_1_url?: string | null
           foto_2_url?: string | null
           id?: string
@@ -615,9 +624,12 @@ export type Database = {
           odometro?: number
           operador?: string
           puntos_seguridad?: Json | null
+          remolque_1_id?: string | null
+          remolque_2_id?: string | null
           requiere_mantenimiento?: boolean | null
           tipo_movimiento?: string
           tipo_unidad?: string
+          tracto_id?: string | null
         }
         Relationships: [
           {
@@ -625,6 +637,34 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingreso_unidades_dolly_id_fkey"
+            columns: ["dolly_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_equipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingreso_unidades_remolque_1_id_fkey"
+            columns: ["remolque_1_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_equipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingreso_unidades_remolque_2_id_fkey"
+            columns: ["remolque_2_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_equipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingreso_unidades_tracto_id_fkey"
+            columns: ["tracto_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_equipos"
             referencedColumns: ["id"]
           },
         ]

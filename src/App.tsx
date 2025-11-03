@@ -15,6 +15,7 @@ import Inventory from "./pages/Inventory";
 import Operators from "./pages/Operators";
 import Personal from "./pages/Personal";
 import PersonalAttendance from "./pages/PersonalAttendance";
+import Vacaciones from "./pages/Vacaciones";
 import Antidoping from "./pages/Antidoping";
 import Breathalyzer from "./pages/Breathalyzer";
 import Maintenance from "./pages/Maintenance";
@@ -126,6 +127,16 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <PersonalAttendance />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/vacaciones"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout>
+                    <Vacaciones />
                   </Layout>
                 </ProtectedRoute>
               }

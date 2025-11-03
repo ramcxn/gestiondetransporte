@@ -1893,6 +1893,63 @@ export type Database = {
         }
         Relationships: []
       }
+      vacaciones: {
+        Row: {
+          aprobado_por: string | null
+          client_id: string
+          created_at: string
+          created_by: string
+          dias_totales: number
+          empleado_id: string
+          empleado_nombre: string
+          estado: string
+          fecha_aprobacion: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          motivo: string | null
+          observaciones: string | null
+          tipo_empleado: string
+          updated_at: string
+        }
+        Insert: {
+          aprobado_por?: string | null
+          client_id: string
+          created_at?: string
+          created_by: string
+          dias_totales: number
+          empleado_id: string
+          empleado_nombre: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          motivo?: string | null
+          observaciones?: string | null
+          tipo_empleado: string
+          updated_at?: string
+        }
+        Update: {
+          aprobado_por?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          dias_totales?: number
+          empleado_id?: string
+          empleado_nombre?: string
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          motivo?: string | null
+          observaciones?: string | null
+          tipo_empleado?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       viajes: {
         Row: {
           client_id: string

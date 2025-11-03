@@ -26,6 +26,7 @@ import {
   BarChart,
   Camera,
   ClipboardCheck,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ const allNavigationItems = [
   { name: "Gestión del Operador", path: "/operadores", icon: UserCheck, roles: ["admin"] },
   { name: "Personal", path: "/personal", icon: Users, roles: ["admin"] },
   { name: "Asistencia Personal", path: "/asistencia", icon: Clock, roles: ["admin", "usuario"] },
+  { name: "Vacaciones", path: "/vacaciones", icon: Calendar, roles: ["admin"] },
   { name: "Antidoping", path: "/antidoping", icon: FlaskConical, roles: ["admin"] },
   { name: "Alcoholímetro", path: "/alcoholimetro", icon: Wine, roles: ["admin", "usuario"] },
   { name: "Mantenimiento", path: "/mantenimiento", icon: Wrench, roles: ["admin"] },

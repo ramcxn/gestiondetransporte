@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Calendar, Phone, MapPin } from "lucide-react";
+import { Users, Calendar, Phone, MapPin, UserX } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -31,6 +32,8 @@ export default function Personal() {
   const [personal, setPersonal] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [personToDeactivate, setPersonToDeactivate] = useState<PersonalRecord | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -149,6 +152,39 @@ export default function Personal() {
   const openDetails = (person: PersonalRecord) => {
     setSelectedPerson(person);
     setDetailsDialogOpen(true);
+  };
+
+  const handleDeactivate = async () => {
+    if (!personToDeactivate) return;
+
+    try {
+      const { error } = await supabase
+        .from("personal")
+        .update({ estado: "inactivo" })
+        .eq("id", personToDeactivate.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Empleado dado de baja exitosamente",
+      });
+
+      setDeactivateDialogOpen(false);
+      setPersonToDeactivate(null);
+    } catch (error) {
+      console.error("Error deactivating personal:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo dar de baja al empleado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeactivateDialog = (person: PersonalRecord) => {
+    setPersonToDeactivate(person);
+    setDeactivateDialogOpen(true);
   };
 
   const administrativo = personal.filter(p => p.departamento === "administrativo");
@@ -360,13 +396,25 @@ export default function Personal() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openDetails(person)}
-                    >
-                      Ver Detalles
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openDetails(person)}
+                      >
+                        Ver Detalles
+                      </Button>
+                      {person.estado === "activo" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => openDeactivateDialog(person)}
+                        >
+                          <UserX className="h-4 w-4 mr-1" />
+                          Dar de Baja
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -430,6 +478,25 @@ export default function Personal() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Deactivate Confirmation Dialog */}
+      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Dar de baja a este empleado?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cambiará el estado del empleado {personToDeactivate?.nombre} a "inactivo".
+              El registro se mantendrá en el sistema pero no aparecerá en las estadísticas de empleados activos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeactivate} className="bg-destructive hover:bg-destructive/90">
+              Dar de Baja
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

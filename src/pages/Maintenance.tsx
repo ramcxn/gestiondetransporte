@@ -31,6 +31,19 @@ interface Maintenance {
     marca: string;
     modelo: string;
   };
+  refacciones_mantenimiento?: Array<{
+    id: string;
+    cantidad: number;
+    costo_unitario: number;
+    costo_total: number;
+    inventario_refacciones: {
+      numero_serie: string | null;
+      refacciones: {
+        numero_parte: string;
+        descripcion: string;
+      };
+    };
+  }>;
 }
 
 export default function Maintenance() {
@@ -127,6 +140,19 @@ export default function Maintenance() {
             tipo,
             marca,
             modelo
+          ),
+          refacciones_mantenimiento (
+            id,
+            cantidad,
+            costo_unitario,
+            costo_total,
+            inventario_refacciones:inventario_id (
+              numero_serie,
+              refacciones:refaccion_id (
+                numero_parte,
+                descripcion
+              )
+            )
           )
         `)
         .order("created_at", { ascending: false });
@@ -608,7 +634,7 @@ export default function Maintenance() {
                         <span className="text-sm text-muted-foreground">• {record.tipo_mantenimiento}</span>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{record.descripcion}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
                           <span>{new Date(record.fecha_mantenimiento).toLocaleDateString("es-MX")}</span>
@@ -618,6 +644,41 @@ export default function Maintenance() {
                         <span>•</span>
                         <span>Odómetro: {record.odometro.toLocaleString()} km</span>
                       </div>
+                      {record.refacciones_mantenimiento && record.refacciones_mantenimiento.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-foreground">Refacciones utilizadas:</span>
+                          </div>
+                          <div className="grid gap-2">
+                            {record.refacciones_mantenimiento.map((ref) => (
+                              <div key={ref.id} className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
+                                <div className="flex-1">
+                                  <span className="font-medium text-foreground">
+                                    {ref.inventario_refacciones?.refacciones?.numero_parte}
+                                  </span>
+                                  <span className="text-muted-foreground ml-2">
+                                    - {ref.inventario_refacciones?.refacciones?.descripcion}
+                                  </span>
+                                  {ref.inventario_refacciones?.numero_serie && (
+                                    <span className="text-muted-foreground text-xs ml-2">
+                                      (S/N: {ref.inventario_refacciones.numero_serie})
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 text-muted-foreground">
+                                  <span>Cant: {ref.cantidad}</span>
+                                  <span>•</span>
+                                  <span className="font-medium">${ref.costo_total.toLocaleString("es-MX")}</span>
+                                </div>
+                              </div>
+                            ))}
+                            <div className="text-right text-sm font-semibold text-foreground pt-1">
+                              Total refacciones: ${record.refacciones_mantenimiento.reduce((sum, ref) => sum + Number(ref.costo_total), 0).toLocaleString("es-MX")}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

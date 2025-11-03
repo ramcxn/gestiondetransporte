@@ -6,10 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Calendar, Truck, Navigation } from "lucide-react";
+import { MapPin, Calendar, Truck, Navigation, Map as MapIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import TripsMap from "@/components/TripsMap";
 
 interface Trip {
   id: string;
@@ -78,6 +79,8 @@ export default function Trips() {
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [mapboxToken, setMapboxToken] = useState<string>("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -103,6 +106,7 @@ export default function Trips() {
     fetchOperadores();
     fetchUnidades();
     fetchClientes();
+    fetchMapboxToken();
 
     const channel = supabase
       .channel('trips-changes')
@@ -123,6 +127,20 @@ export default function Trips() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchMapboxToken = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("get-mapbox-token");
+      
+      if (error) throw error;
+      
+      if (data?.token) {
+        setMapboxToken(data.token);
+      }
+    } catch (error) {
+      console.error("Error fetching Mapbox token:", error);
+    }
+  };
 
   const fetchOperadores = async () => {
     try {
@@ -396,14 +414,23 @@ export default function Trips() {
             <p className="text-muted-foreground">Control de rutas y operaciones</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <MapPin className="h-4 w-4 mr-2" />
-              Nuevo Viaje
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setShowMap(!showMap)}
+            variant="outline"
+            className="gap-2"
+          >
+            <MapIcon className="h-4 w-4" />
+            {showMap ? "Ocultar Mapa" : "Ver Mapa"}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <MapPin className="h-4 w-4 mr-2" />
+                Nuevo Viaje
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Registrar Nuevo Viaje</DialogTitle>
               <DialogDescription>Complete la información del viaje o seleccione una ruta predefinida</DialogDescription>
@@ -591,8 +618,9 @@ export default function Trips() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -638,6 +666,21 @@ export default function Trips() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Mapa de ubicaciones */}
+      {showMap && mapboxToken && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Ubicación de Viajes en Tiempo Real</CardTitle>
+            <CardDescription>
+              Mapa interactivo con las ubicaciones actuales de los viajes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TripsMap trips={trips} mapboxToken={mapboxToken} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-card">
         <CardHeader>

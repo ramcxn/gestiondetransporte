@@ -579,6 +579,7 @@ export type Database = {
           numero_unidad: string
           odometro: number
           operador: string
+          operador_id: string | null
           puntos_seguridad: Json | null
           remolque_1_id: string | null
           remolque_2_id: string | null
@@ -601,6 +602,7 @@ export type Database = {
           numero_unidad: string
           odometro: number
           operador: string
+          operador_id?: string | null
           puntos_seguridad?: Json | null
           remolque_1_id?: string | null
           remolque_2_id?: string | null
@@ -623,6 +625,7 @@ export type Database = {
           numero_unidad?: string
           odometro?: number
           operador?: string
+          operador_id?: string | null
           puntos_seguridad?: Json | null
           remolque_1_id?: string | null
           remolque_2_id?: string | null
@@ -644,6 +647,13 @@ export type Database = {
             columns: ["dolly_id"]
             isOneToOne: false
             referencedRelation: "inventario_equipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingreso_unidades_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
             referencedColumns: ["id"]
           },
           {

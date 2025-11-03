@@ -74,6 +74,10 @@ interface UnitEntry {
     modelo: string;
     placas: string;
   } | null;
+  operador_data?: {
+    nombre: string;
+    numero_empleado: string;
+  } | null;
 }
 
 export default function UnitEntry() {
@@ -89,6 +93,7 @@ export default function UnitEntry() {
   const [formData, setFormData] = useState({
     numero_unidad: "",
     operador: "",
+    operador_id: "",
     tipo_unidad: "tracto",
     numero_economico: "",
     tracto_id: "",
@@ -102,9 +107,11 @@ export default function UnitEntry() {
   });
 
   const [equipos, setEquipos] = useState<any[]>([]);
+  const [operadores, setOperadores] = useState<any[]>([]);
   
   useEffect(() => {
     fetchEquipos();
+    fetchOperadores();
   }, []);
 
   const fetchEquipos = async () => {
@@ -115,6 +122,16 @@ export default function UnitEntry() {
       .order("numero_economico");
     
     if (data) setEquipos(data);
+  };
+
+  const fetchOperadores = async () => {
+    const { data } = await supabase
+      .from("operadores")
+      .select("*")
+      .eq("estado", "activo")
+      .order("nombre");
+    
+    if (data) setOperadores(data);
   };
 
   const [selectedImage1, setSelectedImage1] = useState<File | null>(null);
@@ -157,7 +174,8 @@ export default function UnitEntry() {
           tracto:inventario_equipos!tracto_id(numero_economico, marca, modelo, placas),
           dolly:inventario_equipos!dolly_id(numero_economico, marca, modelo, placas),
           remolque_1:inventario_equipos!remolque_1_id(numero_economico, marca, modelo, placas),
-          remolque_2:inventario_equipos!remolque_2_id(numero_economico, marca, modelo, placas)
+          remolque_2:inventario_equipos!remolque_2_id(numero_economico, marca, modelo, placas),
+          operador_data:operadores!operador_id(nombre, numero_empleado)
         `)
         .order("created_at", { ascending: false });
 
@@ -285,6 +303,7 @@ export default function UnitEntry() {
           tipo_movimiento: entryType,
           numero_unidad: formData.numero_unidad,
           operador: formData.operador,
+          operador_id: formData.operador_id || null,
           tipo_unidad: formData.tipo_unidad,
           numero_economico: formData.numero_economico,
           tracto_id: formData.tracto_id || null,
@@ -312,6 +331,7 @@ export default function UnitEntry() {
       setFormData({
         numero_unidad: "",
         operador: "",
+        operador_id: "",
         tipo_unidad: "tracto",
         numero_economico: "",
         tracto_id: "",
@@ -555,7 +575,7 @@ export default function UnitEntry() {
                           </div>
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4" />
-                            <span>Operador: {entry.operador}</span>
+                            <span>Operador: {entry.operador_data?.nombre || entry.operador} - {entry.operador_data?.numero_empleado || 'N/A'}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Truck className="h-4 w-4" />
@@ -665,14 +685,30 @@ export default function UnitEntry() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="operador">Operador</Label>
-                    <Input
-                      id="operador"
-                      placeholder="Nombre del operador"
-                      value={formData.operador}
-                      onChange={(e) => setFormData({ ...formData, operador: e.target.value })}
+                    <Label htmlFor="operador">Operador *</Label>
+                    <Select
+                      value={formData.operador_id}
+                      onValueChange={(value) => {
+                        const operador = operadores.find(o => o.id === value);
+                        setFormData({ 
+                          ...formData, 
+                          operador_id: value,
+                          operador: operador?.nombre || ''
+                        });
+                      }}
                       required
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar operador" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {operadores.map((operador) => (
+                          <SelectItem key={operador.id} value={operador.id}>
+                            {operador.nombre} - {operador.numero_empleado}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="dolly">Dolly (Número Económico)</Label>
@@ -877,6 +913,7 @@ export default function UnitEntry() {
                 setFormData({
                   numero_unidad: "",
                   operador: "",
+                  operador_id: "",
                   tipo_unidad: "tracto",
                   numero_economico: "",
                   tracto_id: "",

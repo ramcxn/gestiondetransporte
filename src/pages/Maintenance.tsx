@@ -26,12 +26,6 @@ interface Maintenance {
   estado: string;
   created_at: string;
   equipo_id: string | null;
-  inventario_equipos?: {
-    numero_economico: string;
-    tipo_equipo: string;
-    marca: string;
-    modelo: string;
-  } | null;
   refacciones_mantenimiento?: Array<{
     id: string;
     cantidad: number;
@@ -137,12 +131,6 @@ export default function Maintenance() {
         .from("mantenimientos")
         .select(`
           *,
-          inventario_equipos (
-            numero_economico,
-            tipo_equipo,
-            marca,
-            modelo
-          ),
           refacciones_mantenimiento (
             id,
             cantidad,
@@ -189,21 +177,27 @@ export default function Maintenance() {
       if (!profile?.client_id) throw new Error("No client_id found");
 
       // Insertar mantenimiento
+      const mantenimientoData: any = {
+        unidad: formData.unidad,
+        tipo_mantenimiento: formData.tipo_mantenimiento,
+        fecha_mantenimiento: formData.fecha_mantenimiento,
+        odometro: parseInt(formData.odometro),
+        costo: parseFloat(formData.costo),
+        proveedor: formData.proveedor,
+        descripcion: formData.descripcion,
+        proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
+        client_id: profile.client_id,
+        created_by: user.id,
+      };
+
+      // Solo incluir equipo_id si fue seleccionado
+      if (formData.equipo_id) {
+        mantenimientoData.equipo_id = formData.equipo_id;
+      }
+
       const { data: mantenimiento, error: maintenanceError } = await supabase
         .from("mantenimientos")
-        .insert({
-          unidad: formData.unidad,
-          equipo_id: formData.equipo_id || null,
-          tipo_mantenimiento: formData.tipo_mantenimiento,
-          fecha_mantenimiento: formData.fecha_mantenimiento,
-          odometro: parseInt(formData.odometro),
-          costo: parseFloat(formData.costo),
-          proveedor: formData.proveedor,
-          descripcion: formData.descripcion,
-          proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
-          client_id: profile.client_id,
-          created_by: user.id,
-        })
+        .insert(mantenimientoData)
         .select()
         .single();
 
@@ -379,35 +373,39 @@ export default function Maintenance() {
                     onValueChange={(value) => {
                       const unidad = unidades.find(u => u.id === value);
                       setFormData({ 
-                      ...formData, 
-                      equipo_id: value,
-                      unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo_equipo}` : ""
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccione una unidad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unidades.map((unidad) => (
-                      <SelectItem key={unidad.id} value={unidad.id}>
-                        {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        ...formData, 
+                        equipo_id: value,
+                        unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo_equipo}` : ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione una unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unidades.map((unidad) => (
+                        <SelectItem key={unidad.id} value={unidad.id}>
+                          {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    O ingrese manualmente si no está en el inventario
+                    Opcional - puede ser llenado manualmente abajo
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unidad (Manual)</Label>
+                  <Label htmlFor="unit">Unidad *</Label>
                   <Input
                     id="unit"
                     placeholder="TRC-001"
                     value={formData.unidad}
                     onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
+                    required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Identificador de la unidad o equipo
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="maintenance-type">Tipo de Mantenimiento</Label>
@@ -652,10 +650,7 @@ export default function Maintenance() {
                   <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h4 className="font-semibold text-foreground">
-                          {record.inventario_equipos ? 
-                            `${record.inventario_equipos.numero_economico} - ${record.inventario_equipos.tipo_equipo} ${record.inventario_equipos.marca}` : 
-                            record.unidad
-                          }
+                          {record.unidad}
                         </h4>
                         <Badge variant={record.estado === "completado" ? "default" : "secondary"}>
                           {record.estado === "completado" ? "Completado" : record.estado === "en_proceso" ? "En Proceso" : "Programado"}

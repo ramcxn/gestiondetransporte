@@ -26,6 +26,9 @@ import SecuritySeals from "./pages/SecuritySeals";
 import Cybersecurity from "./pages/Cybersecurity";
 import UserManagement from "./pages/UserManagement";
 import Clients from "./pages/Clients";
+import OperatorInventory from "./pages/OperatorInventory";
+import DocumentalReview from "./pages/DocumentalReview";
+import ComplianceDashboard from "./pages/ComplianceDashboard";
 import Warehouse from "./pages/Warehouse";
 import WarehouseCatalog from "./pages/WarehouseCatalog";
 import WarehouseLocations from "./pages/WarehouseLocations";
@@ -233,6 +236,36 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <Clients />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventario-operador"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <OperatorInventory />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/revision-documental"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DocumentalReview />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard-cumplimiento"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ComplianceDashboard />
                   </Layout>
                 </ProtectedRoute>
               }

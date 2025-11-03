@@ -676,6 +676,81 @@ export type Database = {
           },
         ]
       }
+      inventario_operador: {
+        Row: {
+          botas_seguridad: boolean
+          casco: boolean
+          chaleco_reflejante: boolean
+          cinturones_seguridad: boolean
+          client_id: string
+          created_at: string
+          created_by: string
+          estado: string
+          extintor: boolean
+          fecha_hora: string
+          firma_operador_url: string | null
+          firma_supervisor_url: string | null
+          gato_hidraulico: boolean
+          herramienta_basica: boolean
+          id: string
+          lampara: boolean
+          numero_unidad: string
+          observaciones: string | null
+          operador_nombre: string
+          supervisor_id: string | null
+          tipo_revision: string
+          triangulos_emergencia: boolean
+        }
+        Insert: {
+          botas_seguridad?: boolean
+          casco?: boolean
+          chaleco_reflejante?: boolean
+          cinturones_seguridad?: boolean
+          client_id: string
+          created_at?: string
+          created_by: string
+          estado?: string
+          extintor?: boolean
+          fecha_hora?: string
+          firma_operador_url?: string | null
+          firma_supervisor_url?: string | null
+          gato_hidraulico?: boolean
+          herramienta_basica?: boolean
+          id?: string
+          lampara?: boolean
+          numero_unidad: string
+          observaciones?: string | null
+          operador_nombre: string
+          supervisor_id?: string | null
+          tipo_revision: string
+          triangulos_emergencia?: boolean
+        }
+        Update: {
+          botas_seguridad?: boolean
+          casco?: boolean
+          chaleco_reflejante?: boolean
+          cinturones_seguridad?: boolean
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          estado?: string
+          extintor?: boolean
+          fecha_hora?: string
+          firma_operador_url?: string | null
+          firma_supervisor_url?: string | null
+          gato_hidraulico?: boolean
+          herramienta_basica?: boolean
+          id?: string
+          lampara?: boolean
+          numero_unidad?: string
+          observaciones?: string | null
+          operador_nombre?: string
+          supervisor_id?: string | null
+          tipo_revision?: string
+          triangulos_emergencia?: boolean
+        }
+        Relationships: []
+      }
       inventario_refacciones: {
         Row: {
           client_id: string | null
@@ -1329,6 +1404,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      revision_documental: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          empresa: string
+          estado_general: string
+          fecha_revision: string
+          foto_analisis_fisicoquimico: string | null
+          foto_dictamen_humos: string | null
+          foto_licencia_operador: string | null
+          foto_poliza_seguro: string | null
+          foto_tarjeta_circulacion: string | null
+          id: string
+          numero_economico: string
+          observaciones: string | null
+          operador_nombre: string
+          placas: string | null
+          updated_at: string
+          vigencia_analisis_fisicoquimico: string | null
+          vigencia_dictamen_humos: string | null
+          vigencia_licencia: string | null
+          vigencia_poliza_seguro: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          empresa: string
+          estado_general?: string
+          fecha_revision?: string
+          foto_analisis_fisicoquimico?: string | null
+          foto_dictamen_humos?: string | null
+          foto_licencia_operador?: string | null
+          foto_poliza_seguro?: string | null
+          foto_tarjeta_circulacion?: string | null
+          id?: string
+          numero_economico: string
+          observaciones?: string | null
+          operador_nombre: string
+          placas?: string | null
+          updated_at?: string
+          vigencia_analisis_fisicoquimico?: string | null
+          vigencia_dictamen_humos?: string | null
+          vigencia_licencia?: string | null
+          vigencia_poliza_seguro?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          empresa?: string
+          estado_general?: string
+          fecha_revision?: string
+          foto_analisis_fisicoquimico?: string | null
+          foto_dictamen_humos?: string | null
+          foto_licencia_operador?: string | null
+          foto_poliza_seguro?: string | null
+          foto_tarjeta_circulacion?: string | null
+          id?: string
+          numero_economico?: string
+          observaciones?: string | null
+          operador_nombre?: string
+          placas?: string | null
+          updated_at?: string
+          vigencia_analisis_fisicoquimico?: string | null
+          vigencia_dictamen_humos?: string | null
+          vigencia_licencia?: string | null
+          vigencia_poliza_seguro?: string | null
+        }
+        Relationships: []
       }
       rondines: {
         Row: {

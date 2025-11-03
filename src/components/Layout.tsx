@@ -23,6 +23,9 @@ import {
   Warehouse,
   FileText,
   Building2,
+  BarChart,
+  Camera,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,6 +59,9 @@ const allNavigationItems = [
   { name: "Sellos de Seguridad", path: "/sellos", icon: Tag, roles: ["admin"] },
   { name: "Ciberseguridad", path: "/ciberseguridad", icon: ShieldCheck, roles: ["admin"] },
   { name: "Clientes CTPAT", path: "/clientes", icon: Building2, roles: ["admin"] },
+  { name: "Inventario Operador", path: "/inventario-operador", icon: ClipboardCheck, roles: ["admin", "usuario"] },
+  { name: "Revisión Documental", path: "/revision-documental", icon: Camera, roles: ["admin", "usuario"] },
+  { name: "Dashboard Cumplimiento", path: "/dashboard-cumplimiento", icon: BarChart, roles: ["admin", "usuario"] },
   { name: "Gestión de Usuarios", path: "/usuarios", icon: Settings, roles: ["admin"] },
 ];
 

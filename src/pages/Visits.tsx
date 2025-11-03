@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User, LogOut } from "lucide-react";
+import { Users, Building2, Clock, User, LogOut, Camera, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -31,6 +31,7 @@ export default function Visits() {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -112,6 +113,51 @@ export default function Visits() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+      
+      // Wait for video to be ready
+      await new Promise(resolve => {
+        video.onloadedmetadata = resolve;
+      });
+      
+      // Create canvas and capture frame
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(video, 0, 0);
+      
+      // Stop the stream
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Convert to blob and file
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `credencial-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          setSelectedImage(file);
+          setImagePreview(canvas.toDataURL('image/jpeg'));
+          setShowCamera(false);
+        }
+      }, 'image/jpeg', 0.9);
+      
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo acceder a la cámara",
+        variant: "destructive",
+      });
     }
   };
 
@@ -312,13 +358,17 @@ export default function Visits() {
             <div className="space-y-2">
               <Label htmlFor="credential">Fotografía de Credencial</Label>
               <div className="space-y-2">
-                <Input
-                  id="credential"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="cursor-pointer"
-                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCamera(true)}
+                    className="flex-1"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Tomar Foto
+                  </Button>
+                </div>
                 {imagePreview && (
                   <div className="relative w-full h-48 border rounded-lg overflow-hidden">
                     <img 
@@ -326,10 +376,22 @@ export default function Visits() {
                       alt="Preview" 
                       className="w-full h-full object-cover"
                     />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        setImagePreview(null);
+                        setSelectedImage(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Seleccione una foto de la identificación oficial
+                  Tome una foto de la identificación oficial
                 </p>
               </div>
             </div>
@@ -514,6 +576,85 @@ export default function Visits() {
           )}
         </CardContent>
       </Card>
+
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose: () => void }) {
+  const videoRef = useState<HTMLVideoElement | null>(null)[0];
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    let currentStream: MediaStream | null = null;
+
+    const startCamera = async () => {
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        currentStream = mediaStream;
+        setStream(mediaStream);
+        
+        if (videoRef) {
+          videoRef.srcObject = mediaStream;
+        }
+      } catch (error) {
+        console.error("Error starting camera:", error);
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+      <div className="relative w-full max-w-4xl">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white"
+          onClick={onClose}
+        >
+          <X className="h-6 w-6" />
+        </Button>
+        
+        <div className="relative bg-black rounded-lg overflow-hidden">
+          <video
+            ref={(ref) => {
+              if (ref && stream) {
+                ref.srcObject = stream;
+                ref.play();
+              }
+            }}
+            autoPlay
+            playsInline
+            className="w-full h-auto"
+          />
+          
+          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+            <Button
+              size="lg"
+              onClick={onCapture}
+              className="rounded-full h-16 w-16 bg-white hover:bg-gray-200"
+            >
+              <Camera className="h-8 w-8 text-black" />
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

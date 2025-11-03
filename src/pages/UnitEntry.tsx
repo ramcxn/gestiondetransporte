@@ -116,7 +116,7 @@ export default function UnitEntry() {
 
   const fetchEquipos = async () => {
     const { data } = await supabase
-      .from("inventario_equipos")
+      .from("unidades")
       .select("*")
       .eq("estado", "disponible")
       .order("numero_economico");
@@ -676,7 +676,7 @@ export default function UnitEntry() {
                         <SelectValue placeholder="Seleccionar tracto" />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo === 'tracto').map((equipo) => (
+                        {equipos.filter(e => e.tipo?.toLowerCase() === 'tracto').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
                           </SelectItem>
@@ -720,7 +720,7 @@ export default function UnitEntry() {
                         <SelectValue placeholder="Sin dolly (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo === 'dolly').map((equipo) => (
+                        {equipos.filter(e => e.tipo?.toLowerCase() === 'dolly').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
                           </SelectItem>
@@ -738,7 +738,7 @@ export default function UnitEntry() {
                         <SelectValue placeholder="Sin remolque (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
+                        {equipos.filter(e => e.tipo?.toLowerCase() === 'remolque').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
                           </SelectItem>
@@ -756,7 +756,7 @@ export default function UnitEntry() {
                         <SelectValue placeholder="Sin remolque (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
+                        {equipos.filter(e => e.tipo?.toLowerCase() === 'remolque').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
                           </SelectItem>

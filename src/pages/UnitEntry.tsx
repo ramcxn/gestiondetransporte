@@ -677,14 +677,13 @@ export default function UnitEntry() {
                   <div className="space-y-2">
                     <Label htmlFor="dolly">Dolly (Número Económico)</Label>
                     <Select
-                      value={formData.dolly_id}
+                      value={formData.dolly_id || undefined}
                       onValueChange={(value) => setFormData({ ...formData, dolly_id: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sin dolly" />
+                        <SelectValue placeholder="Sin dolly (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin dolly</SelectItem>
                         {equipos.filter(e => e.tipo_equipo === 'dolly').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
@@ -696,14 +695,13 @@ export default function UnitEntry() {
                   <div className="space-y-2">
                     <Label htmlFor="remolque_1">Remolque 1 (Número Económico)</Label>
                     <Select
-                      value={formData.remolque_1_id}
+                      value={formData.remolque_1_id || undefined}
                       onValueChange={(value) => setFormData({ ...formData, remolque_1_id: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sin remolque" />
+                        <SelectValue placeholder="Sin remolque (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin remolque</SelectItem>
                         {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
@@ -715,14 +713,13 @@ export default function UnitEntry() {
                   <div className="space-y-2">
                     <Label htmlFor="remolque_2">Remolque 2 (Número Económico)</Label>
                     <Select
-                      value={formData.remolque_2_id}
+                      value={formData.remolque_2_id || undefined}
                       onValueChange={(value) => setFormData({ ...formData, remolque_2_id: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sin remolque" />
+                        <SelectValue placeholder="Sin remolque (opcional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Sin remolque</SelectItem>
                         {equipos.filter(e => e.tipo_equipo === 'remolque').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}

@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Route, MapPin, DollarSign, Clock, TrendingUp, Calculator, Fuel, TrendingDown } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SavedRoute {
   id: string;
@@ -25,6 +26,7 @@ interface SavedRoute {
 }
 
 export default function RouteAnalysis() {
+  const { clientId } = useAuth();
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [formData, setFormData] = useState({
@@ -78,7 +80,15 @@ export default function RouteAnalysis() {
   const guardarRuta = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Debes iniciar sesión para guardar rutas");
+        return;
+      }
+
+      if (!clientId) {
+        toast.error("No se pudo obtener el ID del cliente");
+        return;
+      }
 
       const { error } = await supabase.from("rutas").insert({
         nombre: formData.ruta,
@@ -91,6 +101,7 @@ export default function RouteAnalysis() {
         costo_casetas: parseFloat(formData.casetas) || 0,
         rentabilidad: parseFloat(formData.porcentajeUtilidad) > 20 ? 'alta' : parseFloat(formData.porcentajeUtilidad) > 10 ? 'media' : 'baja',
         created_by: user.id,
+        client_id: clientId,
       });
 
       if (error) throw error;

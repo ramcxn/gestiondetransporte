@@ -315,7 +315,7 @@ export default function Inventory() {
                         </span>
                       </div>
                       <div className="text-muted-foreground">
-                        Odómetro: {unit.odometro.toLocaleString()} km
+                        Odómetro: {unit.odometro?.toLocaleString() ?? 'N/A'} km
                       </div>
                     </div>
                     {unit.requiere_mantenimiento && (

@@ -11,7 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import UnitEntry from "./pages/UnitEntry";
 import SecurityRounds from "./pages/SecurityRounds";
 import Visits from "./pages/Visits";
-import Inventory from "./pages/Inventory";
+import EquipmentInventory from "./pages/EquipmentInventory";
 import Operators from "./pages/Operators";
 import Personal from "./pages/Personal";
 import PersonalAttendance from "./pages/PersonalAttendance";
@@ -96,7 +96,7 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
-                    <Inventory />
+                    <EquipmentInventory />
                   </Layout>
                 </ProtectedRoute>
               }

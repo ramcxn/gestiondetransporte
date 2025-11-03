@@ -21,7 +21,6 @@ export default function DocumentalReview() {
   const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, File>>({});
   
   const [formData, setFormData] = useState({
-    unidad_id: "",
     numero_economico: "",
     placas: "",
     operador_nombre: "",
@@ -130,7 +129,6 @@ export default function DocumentalReview() {
 
   const resetForm = () => {
     setFormData({
-      unidad_id: "",
       numero_economico: "",
       placas: "",
       operador_nombre: "",
@@ -234,13 +232,12 @@ export default function DocumentalReview() {
                 <div className="space-y-2">
                   <Label htmlFor="numero_economico">Unidad *</Label>
                   <Select
-                    value={formData.unidad_id}
+                    value={formData.numero_economico}
                     onValueChange={(value) => {
-                      const unidad = unidades?.find(u => u.id === value);
+                      const unidad = unidades?.find(u => u.numero_economico === value);
                       setFormData({ 
                         ...formData, 
-                        unidad_id: value,
-                        numero_economico: unidad?.numero_economico || "",
+                        numero_economico: value,
                         placas: unidad?.placas || ""
                       });
                     }}
@@ -250,7 +247,7 @@ export default function DocumentalReview() {
                     </SelectTrigger>
                     <SelectContent>
                       {unidades?.map((unidad) => (
-                        <SelectItem key={unidad.id} value={unidad.id}>
+                        <SelectItem key={unidad.id} value={unidad.numero_economico}>
                           {unidad.numero_economico} - {unidad.tipo} {unidad.marca} {unidad.modelo}
                         </SelectItem>
                       ))}

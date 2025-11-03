@@ -431,8 +431,50 @@ export default function SecurityRounds() {
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Zonas de Seguridad ({zones.length})</CardTitle>
-          <CardDescription>Puntos de verificación con código QR</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Zonas de Seguridad ({zones.length})</CardTitle>
+              <CardDescription>Puntos de verificación con código QR</CardDescription>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Gestionar Zonas
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Gestión de Zonas de Seguridad</DialogTitle>
+                  <DialogDescription>
+                    Para agregar nuevas zonas de seguridad, contacte al administrador del sistema
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Las zonas de seguridad deben ser configuradas por un administrador para garantizar
+                    la correcta generación de códigos QR y la asignación de ubicaciones.
+                  </p>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Zonas Activas:</h4>
+                    {zones.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No hay zonas configuradas</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {zones.map((zone) => (
+                          <li key={zone.id} className="text-sm flex items-center gap-2">
+                            <MapPin className="h-3 w-3 text-primary" />
+                            <span className="font-medium">{zone.nombre}</span>
+                            <span className="text-muted-foreground">- {zone.ubicacion}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">

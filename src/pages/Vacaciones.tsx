@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plane, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Calendar, Plane, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, differenceInDays, isAfter } from "date-fns";
@@ -309,6 +309,29 @@ export default function Vacaciones() {
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const eliminarVacacion = async (vacacionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("vacaciones")
+        .delete()
+        .eq("id", vacacionId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Vacación eliminada exitosamente",
+      });
+    } catch (error) {
+      console.error("Error deleting vacation:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la vacación",
         variant: "destructive",
       });
     }
@@ -651,6 +674,37 @@ export default function Vacaciones() {
                         >
                           Completar
                         </Button>
+                      )}
+                      {userRole === "admin" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Eliminar
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar vacación?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta acción no se puede deshacer. Se eliminará permanentemente el registro de vacaciones de {vacacion.empleado_nombre}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => eliminarVacacion(vacacion.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>

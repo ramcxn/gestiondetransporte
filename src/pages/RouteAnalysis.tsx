@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Route, MapPin, DollarSign, Clock, TrendingUp, Calculator, Fuel, TrendingDown } from "lucide-react";
+import { Route, MapPin, DollarSign, Clock, TrendingUp, Calculator, Fuel, TrendingDown, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/useAuth";
 
 interface SavedRoute {
@@ -26,7 +27,7 @@ interface SavedRoute {
 }
 
 export default function RouteAnalysis() {
-  const { clientId } = useAuth();
+  const { clientId, userRole } = useAuth();
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
   const [clientes, setClientes] = useState<Array<{ id: string; nombre: string }>>([]);
@@ -130,6 +131,22 @@ export default function RouteAnalysis() {
     } catch (error) {
       console.error("Error saving route:", error);
       toast.error("No se pudo guardar la ruta");
+    }
+  };
+
+  const eliminarRuta = async (routeId: string) => {
+    try {
+      const { error } = await supabase
+        .from("rutas")
+        .delete()
+        .eq("id", routeId);
+
+      if (error) throw error;
+      toast.success("Ruta eliminada exitosamente");
+      fetchSavedRoutes();
+    } catch (error) {
+      console.error("Error deleting route:", error);
+      toast.error("No se pudo eliminar la ruta");
     }
   };
 
@@ -634,6 +651,33 @@ export default function RouteAnalysis() {
                         )}
                       </div>
                     </div>
+                    {userRole === "admin" && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Eliminar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar ruta?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminará permanentemente la ruta "{route.nombre}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => eliminarRuta(route.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Guardada: {new Date(route.created_at).toLocaleDateString("es-MX")}

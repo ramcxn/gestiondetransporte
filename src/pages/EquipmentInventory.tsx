@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function EquipmentInventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [operacionFilter, setOperacionFilter] = useState<string>("all");
+  const [estadoFilter, setEstadoFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<any | null>(null);
   const { toast } = useToast();
@@ -97,11 +99,14 @@ export default function EquipmentInventory() {
     });
   };
 
-  const filteredEquipos = equipos?.filter((e) =>
-    e.numero_economico.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.marca.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    e.modelo.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEquipos = equipos?.filter((e) => {
+    const matchesSearch = e.numero_economico.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.marca.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.modelo.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesOperacion = operacionFilter === "all" || e.operacion === operacionFilter;
+    const matchesEstado = estadoFilter === "all" || e.estado === estadoFilter;
+    return matchesSearch && matchesOperacion && matchesEstado;
+  });
 
   const disponibles = equipos?.filter(e => e.estado === 'disponible').length || 0;
   const enUso = equipos?.filter(e => e.estado === 'en_uso').length || 0;
@@ -179,14 +184,42 @@ export default function EquipmentInventory() {
       <Card>
         <CardHeader>
           <CardTitle>Equipos Registrados</CardTitle>
-          <div className="relative max-w-sm mt-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar equipos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+          <div className="flex flex-col md:flex-row gap-4 mt-4">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar equipos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            </div>
+            <Select value={operacionFilter} onValueChange={setOperacionFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filtrar por operación" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las operaciones</SelectItem>
+                <SelectItem value="HH Express">HH Express</SelectItem>
+                <SelectItem value="Portecalesa">Portecalesa</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="disponible">Disponible</SelectItem>
+                <SelectItem value="en_uso">En Uso</SelectItem>
+                <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {filteredEquipos?.map((equipo) => (
+          {filteredEquipos && filteredEquipos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron equipos con los filtros seleccionados
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredEquipos?.map((equipo) => (
               <div key={equipo.id} className="p-4 border rounded-lg hover:shadow-card transition-shadow">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -223,8 +256,9 @@ export default function EquipmentInventory() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -100,12 +100,22 @@ export default function SecuritySeals() {
 
       if (updateError) throw updateError;
 
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       await supabase.from("historial_sellos").insert({
         sello_id: selectedSeal.id,
         accion: 'asignado',
         viaje_id: assignData.viaje_id || null,
         unidad: assignData.unidad,
-        descripcion: `Asignado a ${assignData.unidad}`,
+        descripcion: `Asignado a unidad ${assignData.unidad}${assignData.viaje_id ? ' para viaje' : ''}`,
+        client_id: profile.client_id,
         created_by: user.id,
       });
 
@@ -122,10 +132,20 @@ export default function SecuritySeals() {
     if (!user) return;
 
     try {
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       const { error } = await supabase.from("sellos_seguridad").insert({
         numero_sello: newSealData.numero_sello,
         tipo: newSealData.tipo,
         estado: 'disponible',
+        client_id: profile.client_id,
         created_by: user.id,
       });
 
@@ -246,15 +266,31 @@ export default function SecuritySeals() {
           <DialogHeader><DialogTitle>Asignar Sello</DialogTitle></DialogHeader>
           <form onSubmit={handleAssign} className="space-y-4">
             <div className="space-y-2">
-              <Label>Viaje (opcional)</Label>
-              <Select value={assignData.viaje_id} onValueChange={(v) => setAssignData({...assignData, viaje_id: v})}>
-                <SelectTrigger><SelectValue placeholder="Sin viaje" /></SelectTrigger>
-                <SelectContent>{trips.map(t => <SelectItem key={t.id} value={t.id}>{t.unidad} - {t.origen}→{t.destino}</SelectItem>)}</SelectContent>
-              </Select>
+              <Label>Unidad *</Label>
+              <Input 
+                value={assignData.unidad} 
+                onChange={(e) => setAssignData({...assignData, unidad: e.target.value})} 
+                placeholder="Número de unidad"
+                required 
+              />
             </div>
             <div className="space-y-2">
-              <Label>Unidad</Label>
-              <Input value={assignData.unidad} onChange={(e) => setAssignData({...assignData, unidad: e.target.value})} required />
+              <Label>Viaje (opcional)</Label>
+              <Select 
+                value={assignData.viaje_id} 
+                onValueChange={(v) => setAssignData({...assignData, viaje_id: v})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin viaje asignado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trips.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      Viaje: {t.unidad} - {t.origen} → {t.destino}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Cancelar</Button>

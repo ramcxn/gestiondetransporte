@@ -38,7 +38,6 @@ export default function OperatorInventory() {
   const sigSupervisorRef = useRef<SignatureCanvas>(null);
   
   const [formData, setFormData] = useState({
-    operador_id: "",
     operador_nombre: "",
     numero_unidad: "",
     tipo_revision: "ingreso",
@@ -150,7 +149,6 @@ export default function OperatorInventory() {
 
   const resetForm = () => {
     setFormData({
-      operador_id: "",
       operador_nombre: "",
       numero_unidad: "",
       tipo_revision: "ingreso",
@@ -221,23 +219,21 @@ export default function OperatorInventory() {
                 <div className="space-y-2">
                   <Label htmlFor="operador_nombre">Operador *</Label>
                   <Select
-                    value={formData.operador_id}
+                    value={formData.operador_nombre}
                     onValueChange={(value) => {
-                      const operador = operadores?.find(op => op.id === value);
                       setFormData({ 
                         ...formData, 
-                        operador_id: value,
-                        operador_nombre: operador?.nombre || ""
+                        operador_nombre: value
                       });
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un operador" />
+                      <SelectValue placeholder="Seleccionar operador" />
                     </SelectTrigger>
                     <SelectContent>
                       {operadores?.map((operador) => (
-                        <SelectItem key={operador.id} value={operador.id}>
-                          {operador.nombre} - {operador.numero_empleado}
+                        <SelectItem key={operador.id} value={operador.nombre}>
+                          {operador.nombre} ({operador.numero_empleado})
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -41,13 +41,41 @@ interface Route {
   costo_estimado: number;
 }
 
+interface Operador {
+  id: string;
+  nombre: string;
+  numero_empleado: string;
+  estado: string;
+}
+
+interface Unidad {
+  id: string;
+  numero_economico: string;
+  tipo_equipo: string;
+  marca: string;
+  modelo: string;
+  estado: string;
+}
+
+interface Cliente {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
 export default function Trips() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
+  const [operadores, setOperadores] = useState<Operador[]>([]);
+  const [unidades, setUnidades] = useState<Unidad[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingOperadores, setLoadingOperadores] = useState(true);
+  const [loadingUnidades, setLoadingUnidades] = useState(true);
+  const [loadingClientes, setLoadingClientes] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [updatingLocation, setUpdatingLocation] = useState(false);
   const { user } = useAuth();
@@ -72,6 +100,9 @@ export default function Trips() {
   useEffect(() => {
     fetchRoutes();
     fetchTrips();
+    fetchOperadores();
+    fetchUnidades();
+    fetchClientes();
 
     const channel = supabase
       .channel('trips-changes')
@@ -92,6 +123,57 @@ export default function Trips() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchOperadores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("operadores")
+        .select("id, nombre, numero_empleado, estado")
+        .eq('estado', 'activo')
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setOperadores(data || []);
+    } catch (error) {
+      console.error("Error fetching operadores:", error);
+    } finally {
+      setLoadingOperadores(false);
+    }
+  };
+
+  const fetchUnidades = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventario_equipos")
+        .select("id, numero_economico, tipo_equipo, marca, modelo, estado")
+        .eq('estado', 'disponible')
+        .order("numero_economico", { ascending: true });
+
+      if (error) throw error;
+      setUnidades(data || []);
+    } catch (error) {
+      console.error("Error fetching unidades:", error);
+    } finally {
+      setLoadingUnidades(false);
+    }
+  };
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("id, nombre, activo")
+        .eq('activo', true)
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error) {
+      console.error("Error fetching clientes:", error);
+    } finally {
+      setLoadingClientes(false);
+    }
+  };
 
   const fetchRoutes = async () => {
     try {
@@ -313,23 +395,51 @@ export default function Trips() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="operador">Operador</Label>
-                  <Input
-                    id="operador"
-                    placeholder="Nombre del operador"
+                  <Select
                     value={formData.operador}
-                    onChange={(e) => setFormData({ ...formData, operador: e.target.value })}
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, operador: value })}
+                  >
+                    <SelectTrigger id="operador">
+                      <SelectValue placeholder="Seleccionar operador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingOperadores ? (
+                        <SelectItem value="loading" disabled>Cargando...</SelectItem>
+                      ) : operadores.length === 0 ? (
+                        <SelectItem value="empty" disabled>No hay operadores disponibles</SelectItem>
+                      ) : (
+                        operadores.map((operador) => (
+                          <SelectItem key={operador.id} value={operador.nombre}>
+                            {operador.nombre} - {operador.numero_empleado}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unidad">Unidad</Label>
-                  <Input
-                    id="unidad"
-                    placeholder="TRC-001"
+                  <Select
                     value={formData.unidad}
-                    onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, unidad: value })}
+                  >
+                    <SelectTrigger id="unidad">
+                      <SelectValue placeholder="Seleccionar unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingUnidades ? (
+                        <SelectItem value="loading" disabled>Cargando...</SelectItem>
+                      ) : unidades.length === 0 ? (
+                        <SelectItem value="empty" disabled>No hay unidades disponibles</SelectItem>
+                      ) : (
+                        unidades.map((unidad) => (
+                          <SelectItem key={unidad.id} value={unidad.numero_economico}>
+                            {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="origen">Origen</Label>
@@ -394,14 +504,28 @@ export default function Trips() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente</Label>
-                  <Input
-                    id="cliente"
-                    placeholder="Nombre del cliente"
+                  <Label htmlFor="cliente">Cliente CTPAT</Label>
+                  <Select
                     value={formData.cliente}
-                    onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                    required
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, cliente: value })}
+                  >
+                    <SelectTrigger id="cliente">
+                      <SelectValue placeholder="Seleccionar cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingClientes ? (
+                        <SelectItem value="loading" disabled>Cargando...</SelectItem>
+                      ) : clientes.length === 0 ? (
+                        <SelectItem value="empty" disabled>No hay clientes disponibles</SelectItem>
+                      ) : (
+                        clientes.map((cliente) => (
+                          <SelectItem key={cliente.id} value={cliente.nombre}>
+                            {cliente.nombre}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sucursal">Sucursal</Label>

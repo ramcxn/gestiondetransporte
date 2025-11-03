@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Shield, User, RefreshCw, Plus, Settings } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -67,6 +68,7 @@ const UserManagement = () => {
     role: "usuario",
   });
   const { toast } = useToast();
+  const { clientId } = useAuth();
 
   const fetchUsers = async () => {
     try {
@@ -219,6 +221,15 @@ const UserManagement = () => {
       return;
     }
 
+    if (!clientId) {
+      toast({
+        title: "Error",
+        description: "No se pudo obtener el ID del cliente",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCreatingUser(true);
     try {
       const redirectUrl = `${window.location.origin}/`;
@@ -231,6 +242,7 @@ const UserManagement = () => {
             full_name: newUser.full_name,
             puesto: newUser.puesto,
             role: newUser.role,
+            client_id: clientId,
           },
         },
       });

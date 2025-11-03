@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Wine, Clock, CheckCircle, XCircle, User } from "lucide-react";
+import { Wine, Clock, CheckCircle, XCircle, User, Camera, Image as ImageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,7 @@ interface BreathalyzerTest {
   resultado: string;
   nivel: number | null;
   observaciones: string | null;
+  archivo_url: string | null;
   created_at: string;
   created_by: string;
   creator_name?: string;
@@ -29,6 +30,8 @@ export default function Breathalyzer() {
   const [tests, setTests] = useState<BreathalyzerTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -99,6 +102,23 @@ export default function Breathalyzer() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "Error",
+          description: "El archivo es muy grande. Máximo 10MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -108,6 +128,34 @@ export default function Breathalyzer() {
       const nivel = parseFloat(formData.nivel);
       const resultado = nivel === 0 ? "Negativo" : nivel < 0.08 ? "Positivo Bajo" : "Positivo Alto";
 
+      let archivoUrl = null;
+
+      // Upload file if selected
+      if (selectedFile) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+
+        if (!profile?.client_id) throw new Error("No client_id found");
+
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${profile.client_id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { error: uploadError, data } = await supabase.storage
+          .from("archivos-antidoping")
+          .upload(fileName, selectedFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("archivos-antidoping")
+          .getPublicUrl(fileName);
+
+        archivoUrl = publicUrl;
+      }
+
       const { error } = await supabase
         .from("pruebas_alcoholimetro")
         .insert({
@@ -116,6 +164,7 @@ export default function Breathalyzer() {
           nivel: nivel,
           resultado: resultado,
           observaciones: formData.observaciones || null,
+          archivo_url: archivoUrl,
           created_by: user.id,
         });
 
@@ -132,6 +181,8 @@ export default function Breathalyzer() {
         nivel: "0.00",
         observaciones: "",
       });
+      setSelectedFile(null);
+      setPreviewUrl(null);
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error submitting test:", error);
@@ -232,6 +283,28 @@ export default function Breathalyzer() {
                       setFormData({ ...formData, observaciones: e.target.value })
                     }
                   />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="foto">Foto de la Prueba (opcional)</Label>
+                  <div className="flex items-center gap-4">
+                    <Input
+                      id="foto"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="cursor-pointer"
+                    />
+                    <Camera className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  {previewUrl && (
+                    <div className="mt-2 relative w-32 h-32">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-full h-full object-cover rounded-lg border border-border"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="p-4 bg-muted rounded-lg">
@@ -373,6 +446,26 @@ export default function Breathalyzer() {
                         {test.observaciones && (
                           <div className="mt-2 p-2 bg-muted rounded text-sm">
                             <strong>Observaciones:</strong> {test.observaciones}
+                          </div>
+                        )}
+                        {test.archivo_url && (
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">Foto de la prueba:</span>
+                            </div>
+                            <a
+                              href={test.archivo_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block"
+                            >
+                              <img
+                                src={test.archivo_url}
+                                alt="Foto de prueba"
+                                className="w-40 h-40 object-cover rounded-lg border border-border hover:shadow-lg transition-shadow cursor-pointer"
+                              />
+                            </a>
                           </div>
                         )}
                       </div>

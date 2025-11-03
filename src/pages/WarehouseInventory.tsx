@@ -3,7 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Package, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Search, Package, AlertTriangle, ArrowLeft, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function WarehouseInventory() {
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: inventario, isLoading } = useQuery({
     queryKey: ["inventario_completo"],
@@ -62,6 +67,29 @@ export default function WarehouseInventory() {
       );
 
       return resumen;
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (inventarioId: string) => {
+      const { error } = await supabase
+        .from("inventario_refacciones")
+        .delete()
+        .eq("id", inventarioId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventario_completo"] });
+      queryClient.invalidateQueries({ queryKey: ["resumen_stock"] });
+      toast({ title: "Item eliminado del inventario exitosamente" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar item",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -220,6 +248,34 @@ export default function WarehouseInventory() {
                       <span className="text-muted-foreground">Costo:</span>
                       <span className="font-medium">${item.costo_unitario}</span>
                     </div>
+                  </div>
+
+                  <div className="pt-3 border-t">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="w-full">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Eliminar
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>¿Eliminar item del inventario?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta acción no se puede deshacer. Se eliminará permanentemente este item del inventario.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Eliminar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardContent>
               </Card>

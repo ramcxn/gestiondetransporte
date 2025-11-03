@@ -210,6 +210,17 @@ export default function Breathalyzer() {
   };
 
   const handlePersonSelect = (value: string) => {
+    if (value === "visitor-manual" || value === "provider-manual") {
+      const tipo = value.replace("-manual", "");
+      setFormData({
+        ...formData,
+        nombre: "",
+        tipo_persona: tipo,
+        personId: "",
+      });
+      return;
+    }
+
     const [tipo, id] = value.split("-");
     let nombre = "";
     
@@ -365,7 +376,13 @@ export default function Breathalyzer() {
                 <div className="space-y-2">
                   <Label htmlFor="person-select">Seleccionar Persona</Label>
                   <Select
-                    value={formData.personId ? `${formData.tipo_persona}-${formData.personId}` : ""}
+                    value={
+                      formData.personId 
+                        ? `${formData.tipo_persona}-${formData.personId}` 
+                        : (formData.tipo_persona === "visitor" || formData.tipo_persona === "provider")
+                          ? `${formData.tipo_persona}-manual`
+                          : ""
+                    }
                     onValueChange={handlePersonSelect}
                   >
                     <SelectTrigger>
@@ -397,7 +414,7 @@ export default function Breathalyzer() {
                   </Select>
                 </div>
 
-                {(formData.tipo_persona === "visitor" || formData.tipo_persona === "provider" || !formData.personId) && (
+                {(formData.tipo_persona === "visitor" || formData.tipo_persona === "provider") && !formData.personId && (
                   <div className="space-y-2">
                     <Label htmlFor="person-name">Nombre Completo</Label>
                     <Input
@@ -483,16 +500,18 @@ export default function Breathalyzer() {
                 </Button>
               </div>
             </form>
+
+            {showQRScanner && (
+              <div className="absolute inset-0 z-50 bg-background">
+                <QRScanner
+                  onScan={handleQRScan}
+                  onClose={() => setShowQRScanner(false)}
+                />
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
-
-      {showQRScanner && (
-        <QRScanner
-          onScan={handleQRScan}
-          onClose={() => setShowQRScanner(false)}
-        />
-      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="shadow-card">

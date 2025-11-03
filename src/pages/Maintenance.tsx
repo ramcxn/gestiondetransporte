@@ -614,20 +614,9 @@ export default function Maintenance() {
             Mantenimientos Programados Próximos
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-            <div>
-              <p className="font-medium text-foreground">TRC-003</p>
-              <p className="text-sm text-muted-foreground">Mantenimiento preventivo - 185,450 km</p>
-            </div>
-            <Badge variant="secondary">5 días</Badge>
-          </div>
-          <div className="flex items-center justify-between p-3 bg-background rounded-lg">
-            <div>
-              <p className="font-medium text-foreground">REM-456</p>
-              <p className="text-sm text-muted-foreground">Cambio de llantas - 178,900 km</p>
-            </div>
-            <Badge variant="secondary">12 días</Badge>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            No hay mantenimientos programados próximos
           </div>
         </CardContent>
       </Card>

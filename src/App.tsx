@@ -25,6 +25,7 @@ import RiskAnalysis from "./pages/RiskAnalysis";
 import SecuritySeals from "./pages/SecuritySeals";
 import Cybersecurity from "./pages/Cybersecurity";
 import UserManagement from "./pages/UserManagement";
+import Clients from "./pages/Clients";
 import Warehouse from "./pages/Warehouse";
 import WarehouseCatalog from "./pages/WarehouseCatalog";
 import WarehouseLocations from "./pages/WarehouseLocations";
@@ -222,6 +223,16 @@ const App = () => (
                 <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <UserManagement />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/clientes"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout>
+                    <Clients />
                   </Layout>
                 </ProtectedRoute>
               }

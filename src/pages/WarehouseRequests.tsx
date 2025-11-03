@@ -71,6 +71,15 @@ export default function WarehouseRequests() {
       // Generar folio
       const { data: folioData } = await supabase.rpc("generate_solicitud_folio");
       
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       const { data: solicitud, error: solicitudError } = await supabase
         .from("solicitudes_refacciones")
         .insert([
@@ -82,6 +91,7 @@ export default function WarehouseRequests() {
             fecha_requerida: formData.fecha_requerida || null,
             observaciones: formData.observaciones,
             solicitante: user.id,
+            client_id: profile.client_id,
             created_by: user.id,
           },
         ])

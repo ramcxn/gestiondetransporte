@@ -22,6 +22,7 @@ import {
   Clock,
   Warehouse,
   FileText,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,7 @@ const allNavigationItems = [
   { name: "Acciones Correctivas", path: "/acciones-correctivas", icon: FileText, roles: ["admin"] },
   { name: "Sellos de Seguridad", path: "/sellos", icon: Tag, roles: ["admin"] },
   { name: "Ciberseguridad", path: "/ciberseguridad", icon: ShieldCheck, roles: ["admin"] },
+  { name: "Clientes CTPAT", path: "/clientes", icon: Building2, roles: ["admin"] },
   { name: "Gestión de Usuarios", path: "/usuarios", icon: Settings, roles: ["admin"] },
 ];
 

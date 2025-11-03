@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   userRole: "admin" | "usuario" | null;
+  clientId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
@@ -19,6 +20,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "usuario" | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -38,6 +40,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const fetchClientId = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", userId)
+        .single();
+
+      if (error) throw error;
+      setClientId(data?.client_id || null);
+    } catch (error) {
+      console.error("Error fetching client_id:", error);
+      setClientId(null);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -48,9 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           setTimeout(() => {
             fetchUserRole(session.user.id);
+            fetchClientId(session.user.id);
           }, 0);
         } else {
           setUserRole(null);
+          setClientId(null);
         }
         setLoading(false);
       }
@@ -63,6 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (session?.user) {
         fetchUserRole(session.user.id);
+        fetchClientId(session.user.id);
       }
       setLoading(false);
     });
@@ -106,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setSession(null);
     setUserRole(null);
+    setClientId(null);
     navigate("/auth");
   };
 
@@ -115,6 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         session,
         userRole,
+        clientId,
         loading,
         signIn,
         signUp,

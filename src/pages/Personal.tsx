@@ -94,6 +94,15 @@ export default function Personal() {
 
     setSubmitting(true);
     try {
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       const { error } = await supabase
         .from("personal")
         .insert({
@@ -104,6 +113,7 @@ export default function Personal() {
           fecha_alta: formData.fecha_alta,
           direccion: formData.direccion,
           telefono: formData.telefono || null,
+          client_id: profile.client_id,
           created_by: user.id,
         });
 

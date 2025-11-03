@@ -135,6 +135,15 @@ export default function Trips() {
 
     setSubmitting(true);
     try {
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       const { error } = await supabase
         .from("viajes")
         .insert({
@@ -148,6 +157,7 @@ export default function Trips() {
           flete: parseFloat(formData.flete),
           cliente: formData.cliente,
           sucursal: formData.sucursal,
+          client_id: profile.client_id,
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
           created_by: user.id,

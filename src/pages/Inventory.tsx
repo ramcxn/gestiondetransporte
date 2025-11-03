@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 export default function Inventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { user } = useAuth();
+  const { user, clientId } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: units = [], isLoading } = useQuery({
@@ -33,6 +33,8 @@ export default function Inventory() {
 
   const createUnitMutation = useMutation({
     mutationFn: async (formData: FormData) => {
+      if (!user || !clientId) throw new Error("No authenticated user");
+      
       const { data, error } = await supabase
         .from("unidades")
         .insert({
@@ -44,7 +46,8 @@ export default function Inventory() {
           odometro: parseInt(formData.get("initial-odometer") as string),
           ubicacion: formData.get("location") as string,
           estado: formData.get("status") as string,
-          created_by: user?.id,
+          client_id: clientId,
+          created_by: user.id,
         })
         .select()
         .single();

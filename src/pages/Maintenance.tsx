@@ -118,6 +118,15 @@ export default function Maintenance() {
 
     setSubmitting(true);
     try {
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       // Insertar mantenimiento
       const { data: mantenimiento, error: maintenanceError } = await supabase
         .from("mantenimientos")
@@ -130,6 +139,7 @@ export default function Maintenance() {
           proveedor: formData.proveedor,
           descripcion: formData.descripcion,
           proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
+          client_id: profile.client_id,
           created_by: user.id,
         })
         .select()

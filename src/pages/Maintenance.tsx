@@ -31,7 +31,7 @@ interface Maintenance {
     tipo_equipo: string;
     marca: string;
     modelo: string;
-  };
+  } | null;
   refacciones_mantenimiento?: Array<{
     id: string;
     cantidad: number;
@@ -137,7 +137,7 @@ export default function Maintenance() {
         .from("mantenimientos")
         .select(`
           *,
-          equipo_id (
+          inventario_equipos!equipo_id (
             numero_economico,
             tipo_equipo,
             marca,
@@ -652,8 +652,8 @@ export default function Maintenance() {
                   <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h4 className="font-semibold text-foreground">
-                          {(record as any).equipo_id ? 
-                            `${(record as any).equipo_id.numero_economico} - ${(record as any).equipo_id.tipo_equipo} ${(record as any).equipo_id.marca}` : 
+                          {record.inventario_equipos ? 
+                            `${record.inventario_equipos.numero_economico} - ${record.inventario_equipos.tipo_equipo} ${record.inventario_equipos.marca}` : 
                             record.unidad
                           }
                         </h4>

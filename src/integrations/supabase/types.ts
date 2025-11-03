@@ -1074,6 +1074,8 @@ export type Database = {
           client_id: string
           created_at: string
           created_by: string
+          dias_vacaciones_disponibles: number | null
+          dias_vacaciones_tomados: number | null
           direccion: string
           estado: string
           fecha_alta: string
@@ -1084,11 +1086,14 @@ export type Database = {
           numero_empleado: string
           numero_licencia: string | null
           pdf_url: string | null
+          qr_code: string | null
         }
         Insert: {
           client_id: string
           created_at?: string
           created_by: string
+          dias_vacaciones_disponibles?: number | null
+          dias_vacaciones_tomados?: number | null
           direccion: string
           estado?: string
           fecha_alta: string
@@ -1099,11 +1104,14 @@ export type Database = {
           numero_empleado: string
           numero_licencia?: string | null
           pdf_url?: string | null
+          qr_code?: string | null
         }
         Update: {
           client_id?: string
           created_at?: string
           created_by?: string
+          dias_vacaciones_disponibles?: number | null
+          dias_vacaciones_tomados?: number | null
           direccion?: string
           estado?: string
           fecha_alta?: string
@@ -1114,6 +1122,7 @@ export type Database = {
           numero_empleado?: string
           numero_licencia?: string | null
           pdf_url?: string | null
+          qr_code?: string | null
         }
         Relationships: [
           {
@@ -1131,6 +1140,8 @@ export type Database = {
           created_at: string
           created_by: string
           departamento: string
+          dias_vacaciones_disponibles: number | null
+          dias_vacaciones_tomados: number | null
           direccion: string
           estado: string
           fecha_alta: string
@@ -1138,6 +1149,7 @@ export type Database = {
           nombre: string
           numero_empleado: string
           puesto: string
+          qr_code: string | null
           telefono: string | null
         }
         Insert: {
@@ -1145,6 +1157,8 @@ export type Database = {
           created_at?: string
           created_by: string
           departamento: string
+          dias_vacaciones_disponibles?: number | null
+          dias_vacaciones_tomados?: number | null
           direccion: string
           estado?: string
           fecha_alta: string
@@ -1152,6 +1166,7 @@ export type Database = {
           nombre: string
           numero_empleado: string
           puesto: string
+          qr_code?: string | null
           telefono?: string | null
         }
         Update: {
@@ -1159,6 +1174,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           departamento?: string
+          dias_vacaciones_disponibles?: number | null
+          dias_vacaciones_tomados?: number | null
           direccion?: string
           estado?: string
           fecha_alta?: string
@@ -1166,6 +1183,7 @@ export type Database = {
           nombre?: string
           numero_empleado?: string
           puesto?: string
+          qr_code?: string | null
           telefono?: string | null
         }
         Relationships: [
@@ -1899,16 +1917,19 @@ export type Database = {
           client_id: string
           created_at: string
           created_by: string
+          dias_disponibles_antes: number | null
           dias_totales: number
           empleado_id: string
           empleado_nombre: string
           estado: string
+          excede_dias_disponibles: boolean | null
           fecha_aprobacion: string | null
           fecha_fin: string
           fecha_inicio: string
           id: string
           motivo: string | null
           observaciones: string | null
+          requiere_aprobacion: boolean | null
           tipo_empleado: string
           updated_at: string
         }
@@ -1917,16 +1938,19 @@ export type Database = {
           client_id: string
           created_at?: string
           created_by: string
+          dias_disponibles_antes?: number | null
           dias_totales: number
           empleado_id: string
           empleado_nombre: string
           estado?: string
+          excede_dias_disponibles?: boolean | null
           fecha_aprobacion?: string | null
           fecha_fin: string
           fecha_inicio: string
           id?: string
           motivo?: string | null
           observaciones?: string | null
+          requiere_aprobacion?: boolean | null
           tipo_empleado: string
           updated_at?: string
         }
@@ -1935,16 +1959,19 @@ export type Database = {
           client_id?: string
           created_at?: string
           created_by?: string
+          dias_disponibles_antes?: number | null
           dias_totales?: number
           empleado_id?: string
           empleado_nombre?: string
           estado?: string
+          excede_dias_disponibles?: boolean | null
           fecha_aprobacion?: string | null
           fecha_fin?: string
           fecha_inicio?: string
           id?: string
           motivo?: string | null
           observaciones?: string | null
+          requiere_aprobacion?: boolean | null
           tipo_empleado?: string
           updated_at?: string
         }
@@ -2123,6 +2150,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actualizar_dias_vacaciones: { Args: never; Returns: undefined }
+      calcular_dias_vacaciones: {
+        Args: { fecha_alta: string }
+        Returns: number
+      }
       generate_accion_correctiva_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
       get_user_client_id: { Args: never; Returns: string }

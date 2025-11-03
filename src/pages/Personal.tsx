@@ -6,11 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Calendar, Phone, MapPin, UserX } from "lucide-react";
+import { Users, Calendar, Phone, MapPin, UserX, QrCode, Edit, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { QRCodeGenerator, generateQRCodeDataURL } from "@/components/QRCodeGenerator";
+import { calcularDiasVacaciones } from "@/lib/vacacionesUtils";
 
 interface PersonalRecord {
   id: string;
@@ -23,11 +25,16 @@ interface PersonalRecord {
   telefono: string | null;
   estado: string;
   created_at: string;
+  qr_code: string | null;
+  dias_vacaciones_disponibles: number;
+  dias_vacaciones_tomados: number;
 }
 
 export default function Personal() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonalRecord | null>(null);
   const [personal, setPersonal] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +45,7 @@ export default function Personal() {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
+    id: "",
     nombre: "",
     numero_empleado: "",
     puesto: "",
@@ -97,7 +105,6 @@ export default function Personal() {
 
     setSubmitting(true);
     try {
-      // Get client_id
       const { data: profile } = await supabase
         .from("profiles")
         .select("client_id")
@@ -106,28 +113,61 @@ export default function Personal() {
 
       if (!profile?.client_id) throw new Error("No client_id found");
 
-      const { error } = await supabase
-        .from("personal")
-        .insert({
-          nombre: formData.nombre,
-          numero_empleado: formData.numero_empleado,
-          puesto: formData.puesto,
-          departamento: formData.departamento,
-          fecha_alta: formData.fecha_alta,
-          direccion: formData.direccion,
-          telefono: formData.telefono || null,
-          client_id: profile.client_id,
-          created_by: user.id,
+      if (isEditMode && formData.id) {
+        // Update existing record
+        const { error } = await supabase
+          .from("personal")
+          .update({
+            nombre: formData.nombre,
+            numero_empleado: formData.numero_empleado,
+            puesto: formData.puesto,
+            departamento: formData.departamento,
+            fecha_alta: formData.fecha_alta,
+            direccion: formData.direccion,
+            telefono: formData.telefono || null,
+          })
+          .eq("id", formData.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Éxito",
+          description: "Personal actualizado exitosamente",
         });
+      } else {
+        // Generate unique QR code
+        const qrCode = `PERSONAL-${formData.numero_empleado}-${Date.now()}`;
+        
+        // Calculate initial vacation days
+        const diasVacaciones = calcularDiasVacaciones(formData.fecha_alta);
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from("personal")
+          .insert({
+            nombre: formData.nombre,
+            numero_empleado: formData.numero_empleado,
+            puesto: formData.puesto,
+            departamento: formData.departamento,
+            fecha_alta: formData.fecha_alta,
+            direccion: formData.direccion,
+            telefono: formData.telefono || null,
+            qr_code: qrCode,
+            dias_vacaciones_disponibles: diasVacaciones,
+            dias_vacaciones_tomados: 0,
+            client_id: profile.client_id,
+            created_by: user.id,
+          });
 
-      toast({
-        title: "Éxito",
-        description: "Personal registrado exitosamente",
-      });
+        if (error) throw error;
+
+        toast({
+          title: "Éxito",
+          description: "Personal registrado exitosamente",
+        });
+      }
 
       setFormData({
+        id: "",
         nombre: "",
         numero_empleado: "",
         puesto: "",
@@ -137,11 +177,12 @@ export default function Personal() {
         telefono: "",
       });
       setIsDialogOpen(false);
+      setIsEditMode(false);
     } catch (error) {
       console.error("Error submitting personal:", error);
       toast({
         title: "Error",
-        description: "No se pudo registrar el personal",
+        description: isEditMode ? "No se pudo actualizar el personal" : "No se pudo registrar el personal",
         variant: "destructive",
       });
     } finally {
@@ -152,6 +193,26 @@ export default function Personal() {
   const openDetails = (person: PersonalRecord) => {
     setSelectedPerson(person);
     setDetailsDialogOpen(true);
+  };
+
+  const openEditDialog = (person: PersonalRecord) => {
+    setFormData({
+      id: person.id,
+      nombre: person.nombre,
+      numero_empleado: person.numero_empleado,
+      puesto: person.puesto,
+      departamento: person.departamento,
+      fecha_alta: person.fecha_alta,
+      direccion: person.direccion,
+      telefono: person.telefono || "",
+    });
+    setIsEditMode(true);
+    setIsDialogOpen(true);
+  };
+
+  const openQRDialog = (person: PersonalRecord) => {
+    setSelectedPerson(person);
+    setQrDialogOpen(true);
   };
 
   const handleDeactivate = async () => {
@@ -187,6 +248,25 @@ export default function Personal() {
     setDeactivateDialogOpen(true);
   };
 
+  const downloadQRCode = async (person: PersonalRecord) => {
+    if (!person.qr_code) return;
+
+    try {
+      const dataUrl = await generateQRCodeDataURL(person.qr_code);
+      const link = document.createElement("a");
+      link.download = `QR-${person.numero_empleado}-${person.nombre}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error("Error downloading QR code:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo descargar el código QR",
+        variant: "destructive",
+      });
+    }
+  };
+
   const administrativo = personal.filter(p => p.departamento === "administrativo");
   const taller = personal.filter(p => p.departamento === "taller");
   const activos = personal.filter(p => p.estado === "activo");
@@ -203,7 +283,22 @@ export default function Personal() {
             <p className="text-muted-foreground">Administrativo y de Taller</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setIsEditMode(false);
+            setFormData({
+              id: "",
+              nombre: "",
+              numero_empleado: "",
+              puesto: "",
+              departamento: "administrativo",
+              fecha_alta: "",
+              direccion: "",
+              telefono: "",
+            });
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <Users className="h-4 w-4 mr-2" />
@@ -212,7 +307,7 @@ export default function Personal() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Registrar Personal</DialogTitle>
+              <DialogTitle>{isEditMode ? "Editar Personal" : "Registrar Personal"}</DialogTitle>
               <DialogDescription>Complete la información del empleado</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -396,14 +491,36 @@ export default function Personal() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openDetails(person)}
-                      >
-                        Ver Detalles
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openDetails(person)}
+                        >
+                          Ver Detalles
+                        </Button>
+                        {person.estado === "activo" && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEditDialog(person)}
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openQRDialog(person)}
+                            >
+                              <QrCode className="h-4 w-4 mr-1" />
+                              Ver QR
+                            </Button>
+                          </>
+                        )}
+                      </div>
                       {person.estado === "activo" && (
                         <Button
                           size="sm"
@@ -474,6 +591,44 @@ export default function Personal() {
                   <p className="font-medium text-foreground">{selectedPerson.direccion}</p>
                 </div>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Code Dialog */}
+      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Código QR de Acceso</DialogTitle>
+            <DialogDescription>
+              {selectedPerson?.nombre} - {selectedPerson?.numero_empleado}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPerson && selectedPerson.qr_code ? (
+            <div className="space-y-4">
+              <div className="flex justify-center p-4 bg-white rounded-lg">
+                <QRCodeGenerator value={selectedPerson.qr_code} size={250} />
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Este código QR puede ser escaneado en el sistema de asistencia para registrar entrada y salida.</p>
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="font-medium text-foreground mb-1">Información de Vacaciones:</p>
+                  <p>Días disponibles: <span className="font-semibold">{selectedPerson.dias_vacaciones_disponibles}</span></p>
+                  <p>Días tomados: <span className="font-semibold">{selectedPerson.dias_vacaciones_tomados}</span></p>
+                </div>
+              </div>
+              <Button
+                onClick={() => downloadQRCode(selectedPerson)}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Descargar QR
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No se ha generado un código QR para este empleado
             </div>
           )}
         </DialogContent>

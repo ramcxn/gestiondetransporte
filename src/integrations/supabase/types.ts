@@ -1047,7 +1047,7 @@ export type Database = {
             foreignKeyName: "mantenimientos_equipo_id_fkey"
             columns: ["equipo_id"]
             isOneToOne: false
-            referencedRelation: "inventario_equipos"
+            referencedRelation: "unidades"
             referencedColumns: ["id"]
           },
         ]

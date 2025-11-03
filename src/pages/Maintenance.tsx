@@ -25,6 +25,12 @@ interface Maintenance {
   estado: string;
   created_at: string;
   equipo_id: string | null;
+  unidades?: {
+    numero_economico: string;
+    tipo: string;
+    marca: string;
+    modelo: string;
+  };
 }
 
 export default function Maintenance() {
@@ -80,8 +86,9 @@ export default function Maintenance() {
   const fetchUnidades = async () => {
     try {
       const { data, error } = await supabase
-        .from("inventario_equipos")
-        .select("id, numero_economico, tipo_equipo, marca, modelo, estado")
+        .from("unidades")
+        .select("id, numero_economico, tipo, marca, modelo, estado")
+        .eq("estado", "disponible")
         .order("numero_economico", { ascending: true });
 
       if (error) throw error;
@@ -113,7 +120,15 @@ export default function Maintenance() {
     try {
       const { data, error } = await supabase
         .from("mantenimientos")
-        .select("*")
+        .select(`
+          *,
+          unidades (
+            numero_economico,
+            tipo,
+            marca,
+            modelo
+          )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -308,7 +323,7 @@ export default function Maintenance() {
                       setFormData({ 
                         ...formData, 
                         equipo_id: value,
-                        unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo_equipo}` : ""
+                        unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo}` : ""
                       });
                     }}
                   >
@@ -318,7 +333,7 @@ export default function Maintenance() {
                     <SelectContent>
                       {unidades.map((unidad) => (
                         <SelectItem key={unidad.id} value={unidad.id}>
-                          {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
+                          {unidad.numero_economico} - {unidad.tipo} {unidad.marca} {unidad.modelo}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -579,9 +594,14 @@ export default function Maintenance() {
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
+                  <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold text-foreground">{record.unidad}</h4>
+                        <h4 className="font-semibold text-foreground">
+                          {record.unidades ? 
+                            `${record.unidades.numero_economico} - ${record.unidades.tipo} ${record.unidades.marca}` : 
+                            record.unidad
+                          }
+                        </h4>
                         <Badge variant={record.estado === "completado" ? "default" : "secondary"}>
                           {record.estado === "completado" ? "Completado" : record.estado === "en_proceso" ? "En Proceso" : "Programado"}
                         </Badge>

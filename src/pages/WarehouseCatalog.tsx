@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Package, Edit, AlertCircle, ArrowLeft, Trash2 } from "lucide-react";
+import { Plus, Search, Package, Edit, AlertCircle, ArrowLeft, Trash2, Upload } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export default function WarehouseCatalog() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [importing, setImporting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -117,6 +119,89 @@ export default function WarehouseCatalog() {
     });
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImporting(true);
+      
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No hay usuario autenticado");
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No se encontró el cliente del usuario");
+
+      let imported = 0;
+      // Skip header row (row 0)
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (!row || row.length < 2) continue;
+
+        const codigo = row[0]?.toString().trim();
+        const descripcion = row[1]?.toString().trim();
+        const ubicacion = row[5]?.toString().trim() || '';
+        const categoria = row[6]?.toString().trim() || 'General';
+        const activo = row[8]?.toString().trim().toUpperCase() === 'SI';
+
+        if (!codigo || !descripcion) continue;
+
+        let ubicacionId = null;
+        if (ubicacion && ubicaciones) {
+          const ubicacionMatch = ubicaciones.find(u => 
+            u.descripcion.toLowerCase().includes(ubicacion.toLowerCase()) ||
+            u.codigo.toLowerCase().includes(ubicacion.toLowerCase())
+          );
+          if (ubicacionMatch) ubicacionId = ubicacionMatch.id;
+        }
+
+        const { error } = await supabase
+          .from('refacciones')
+          .insert([{
+            numero_parte: codigo,
+            descripcion: descripcion,
+            categoria: categoria,
+            proveedor: 'Por definir',
+            precio_unitario: 0,
+            unidad_medida: 'PZA',
+            ubicacion_principal: ubicacionId,
+            stock_minimo: 0,
+            stock_maximo: 100,
+            punto_reorden: 10,
+            activa: activo,
+            client_id: profile.client_id,
+            created_by: user.id
+          }]);
+
+        if (!error) imported++;
+      }
+
+      toast({ title: `${imported} refacciones importadas exitosamente` });
+      queryClient.invalidateQueries({ queryKey: ["refacciones"] });
+      setImportDialogOpen(false);
+    } catch (error) {
+      console.error('Error importing Excel:', error);
+      toast({
+        title: "Error al importar archivo",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive"
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const filteredRefacciones = refacciones?.filter((r) =>
     r.numero_parte.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.descripcion.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -152,13 +237,48 @@ export default function WarehouseCatalog() {
           />
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Refacción
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importar Refacciones desde Excel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Archivo Excel (.xls, .xlsx)</Label>
+                  <Input
+                    type="file"
+                    accept=".xls,.xlsx"
+                    onChange={handleImportExcel}
+                    disabled={importing}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    El archivo debe contener las columnas: Codigo, Articulo, Ubicación, Familia, Activo
+                  </p>
+                </div>
+                {importing && (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-2">Importando...</span>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nueva Refacción
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Agregar Refacción</DialogTitle>
@@ -258,6 +378,7 @@ export default function WarehouseCatalog() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

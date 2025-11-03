@@ -108,33 +108,31 @@ export default function Clients() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImporting(true);
     try {
-      // Read the file as text
-      const text = await file.text();
+      setImporting(true);
       
-      // Parse CSV/TSV data (Excel exports as tab-separated)
-      const lines = text.split('\n');
-      const headers = lines[0].split('\t');
-      
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+
       const clientsToImport = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (!row || row.length < 1) continue;
         
-        const values = lines[i].split('\t');
-        const nombreFiscal = values[5]?.trim();
-        const nombreCorto = values[6]?.trim();
-        const rfc = values[3]?.trim();
-        const telefono = values[22]?.trim();
-        const email = values[24]?.trim();
+        const nombreFiscal = row[5]?.toString().trim();
+        const rfc = row[3]?.toString().trim();
+        const telefono = row[22]?.toString().trim();
+        const email = row[24]?.toString().trim();
         
-        // Construir dirección completa
-        const calle = values[13]?.trim() || '';
-        const noExt = values[14]?.trim() || '';
-        const colonia = values[16]?.trim() || '';
-        const municipio = values[18]?.trim() || '';
-        const estado = values[19]?.trim() || '';
-        const cp = values[20]?.trim() || '';
+        const calle = row[13]?.toString().trim() || '';
+        const noExt = row[14]?.toString().trim() || '';
+        const colonia = row[16]?.toString().trim() || '';
+        const municipio = row[18]?.toString().trim() || '';
+        const estado = row[19]?.toString().trim() || '';
+        const cp = row[20]?.toString().trim() || '';
         const direccion = `${calle} ${noExt}, ${colonia}, ${municipio}, ${estado}, CP ${cp}`.replace(/\s+/g, ' ').trim();
         
         if (nombreFiscal && rfc && rfc !== 'XAXX010101000') {
@@ -149,7 +147,6 @@ export default function Clients() {
         }
       }
 
-      // Insert clients in batches
       if (clientsToImport.length > 0) {
         const { error } = await supabase
           .from('clientes')

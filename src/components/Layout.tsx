@@ -40,9 +40,8 @@ interface LayoutProps {
 }
 
 const allNavigationItems = [
-  // Dashboards y Control Principal
+  // Dashboard Principal
   { name: "Dashboard", path: "/", icon: Package, roles: ["admin", "usuario"] },
-  { name: "Dashboard Cumplimiento", path: "/dashboard-cumplimiento", icon: BarChart, roles: ["admin", "usuario"] },
   
   // Operaciones Principales
   { name: "Viajes", path: "/viajes", icon: MapPin, roles: ["admin"] },

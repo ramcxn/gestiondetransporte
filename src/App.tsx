@@ -29,7 +29,6 @@ import UserManagement from "./pages/UserManagement";
 import Clients from "./pages/Clients";
 import OperatorInventory from "./pages/OperatorInventory";
 import DocumentalReview from "./pages/DocumentalReview";
-import ComplianceDashboard from "./pages/ComplianceDashboard";
 import Warehouse from "./pages/Warehouse";
 import WarehouseCatalog from "./pages/WarehouseCatalog";
 import WarehouseLocations from "./pages/WarehouseLocations";
@@ -267,16 +266,6 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <DocumentalReview />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard-cumplimiento"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ComplianceDashboard />
                   </Layout>
                 </ProtectedRoute>
               }

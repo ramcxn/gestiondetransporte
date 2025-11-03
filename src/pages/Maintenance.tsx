@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Wrench, Calendar, AlertTriangle, Plus, X, Package } from "lucide-react";
+import { Wrench, Calendar, AlertTriangle, Plus, X, Package, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -52,7 +53,9 @@ export default function Maintenance() {
   const [unidades, setUnidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [maintenanceToDelete, setMaintenanceToDelete] = useState<Maintenance | null>(null);
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   const [refacciones, setRefacciones] = useState<any[]>([]);
@@ -302,6 +305,34 @@ export default function Maintenance() {
       updated[index] = { ...updated[index], [field]: value };
     }
     setSelectedRefacciones(updated);
+  };
+
+  const handleDelete = async () => {
+    if (!maintenanceToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("mantenimientos")
+        .delete()
+        .eq("id", maintenanceToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Mantenimiento eliminado exitosamente",
+      });
+
+      setDeleteDialogOpen(false);
+      setMaintenanceToDelete(null);
+    } catch (error) {
+      console.error("Error deleting maintenance:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el mantenimiento",
+        variant: "destructive",
+      });
+    }
   };
 
   const thisMonth = maintenances.filter(m => {
@@ -680,6 +711,18 @@ export default function Maintenance() {
                         </div>
                       )}
                     </div>
+                    {userRole === "admin" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setMaintenanceToDelete(record);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -701,6 +744,23 @@ export default function Maintenance() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Mantenimiento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el registro de mantenimiento. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

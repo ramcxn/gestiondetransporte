@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Calendar, Truck, Navigation, Map as MapIcon } from "lucide-react";
+import { MapPin, Calendar, Truck, Navigation, Map as MapIcon, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
@@ -81,7 +82,9 @@ export default function Trips() {
   const [updatingLocation, setUpdatingLocation] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [mapboxToken, setMapboxToken] = useState<string>("");
-  const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -376,6 +379,34 @@ export default function Trips() {
   const openDetails = (trip: Trip) => {
     setSelectedTrip(trip);
     setDetailsDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!tripToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("viajes")
+        .delete()
+        .eq("id", tripToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Viaje eliminado exitosamente",
+      });
+
+      setDeleteDialogOpen(false);
+      setTripToDelete(null);
+    } catch (error) {
+      console.error("Error deleting trip:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el viaje",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRouteChange = (routeId: string) => {
@@ -751,14 +782,26 @@ export default function Trips() {
                         )}
                       </div>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => openDetails(trip)}
-                    >
-                      Ver Detalles
-                    </Button>
-                  </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => openDetails(trip)}
+                      >
+                        Ver Detalles
+                      </Button>
+                      {userRole === "admin" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setTripToDelete(trip);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                 </div>
               ))}
             </div>
@@ -901,6 +944,23 @@ export default function Trips() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Viaje?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el viaje. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

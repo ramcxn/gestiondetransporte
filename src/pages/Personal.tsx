@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Calendar, Phone, MapPin, UserX, QrCode, Edit, Download } from "lucide-react";
+import { Users, Calendar, Phone, MapPin, UserX, QrCode, Edit, Download, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,9 +42,11 @@ export default function Personal() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [personToDeactivate, setPersonToDeactivate] = useState<PersonalRecord | null>(null);
+  const [personToDelete, setPersonToDelete] = useState<PersonalRecord | null>(null);
   const [newDepartmentName, setNewDepartmentName] = useState("");
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -342,6 +344,34 @@ export default function Personal() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!personToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("personal")
+        .delete()
+        .eq("id", personToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Personal eliminado exitosamente",
+      });
+
+      setDeleteDialogOpen(false);
+      setPersonToDelete(null);
+    } catch (error) {
+      console.error("Error deleting personal:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el personal",
+        variant: "destructive",
+      });
+    }
+  };
+
   const administrativo = personal.filter(p => p.departamento === "administrativo");
   const taller = personal.filter(p => p.departamento === "taller");
   const activos = personal.filter(p => p.estado === "activo");
@@ -620,6 +650,19 @@ export default function Personal() {
                           Dar de Baja
                         </Button>
                       )}
+                      {userRole === "admin" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            setPersonToDelete(person);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -777,6 +820,24 @@ export default function Personal() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Personal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente a {personToDelete?.nombre}. 
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

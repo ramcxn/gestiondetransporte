@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { UserCheck, Calendar, FileText, MapPin, AlertTriangle, Download } from "lucide-react";
+import { UserCheck, Calendar, FileText, MapPin, AlertTriangle, Download, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -32,7 +33,9 @@ export default function Operators() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [uploadingPDF, setUploadingPDF] = useState(false);
-  const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [operatorToDelete, setOperatorToDelete] = useState<Operator | null>(null);
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -228,6 +231,34 @@ export default function Operators() {
   const expiredLicenses = operators.filter(op => 
     op.fecha_vencimiento_licencia && isLicenseExpired(op.fecha_vencimiento_licencia)
   );
+
+  const handleDelete = async () => {
+    if (!operatorToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("operadores")
+        .delete()
+        .eq("id", operatorToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Operador eliminado exitosamente",
+      });
+
+      setDeleteDialogOpen(false);
+      setOperatorToDelete(null);
+    } catch (error) {
+      console.error("Error deleting operator:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el operador",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -567,6 +598,18 @@ export default function Operators() {
                             Ver PDF
                           </Button>
                         )}
+                        {userRole === "admin" && (
+                          <Button 
+                            size="sm" 
+                            variant="destructive"
+                            onClick={() => {
+                              setOperatorToDelete(operator);
+                              setDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -576,6 +619,24 @@ export default function Operators() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Operador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente al operador {operatorToDelete?.nombre}. 
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

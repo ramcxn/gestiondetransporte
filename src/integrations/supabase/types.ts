@@ -333,6 +333,36 @@ export type Database = {
         }
         Relationships: []
       }
+      departamentos: {
+        Row: {
+          activo: boolean
+          client_id: string
+          created_at: string
+          created_by: string
+          descripcion: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          client_id: string
+          created_at?: string
+          created_by: string
+          descripcion?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
+      }
       detalle_solicitudes_refacciones: {
         Row: {
           cantidad_entregada: number | null
@@ -913,6 +943,7 @@ export type Database = {
           created_at: string
           created_by: string
           descripcion: string
+          equipo_id: string | null
           estado: string
           fecha_mantenimiento: string
           id: string
@@ -928,6 +959,7 @@ export type Database = {
           created_at?: string
           created_by: string
           descripcion: string
+          equipo_id?: string | null
           estado?: string
           fecha_mantenimiento: string
           id?: string
@@ -943,6 +975,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           descripcion?: string
+          equipo_id?: string | null
           estado?: string
           fecha_mantenimiento?: string
           id?: string
@@ -958,6 +991,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_equipo_id_fkey"
+            columns: ["equipo_id"]
+            isOneToOne: false
+            referencedRelation: "inventario_equipos"
             referencedColumns: ["id"]
           },
         ]

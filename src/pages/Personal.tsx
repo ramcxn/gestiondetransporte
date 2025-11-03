@@ -35,12 +35,15 @@ export default function Personal() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
+  const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonalRecord | null>(null);
   const [personal, setPersonal] = useState<PersonalRecord[]>([]);
+  const [departamentos, setDepartamentos] = useState<Array<{ id: string; nombre: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [personToDeactivate, setPersonToDeactivate] = useState<PersonalRecord | null>(null);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -57,8 +60,9 @@ export default function Personal() {
 
   useEffect(() => {
     fetchPersonal();
+    fetchDepartamentos();
 
-    const channel = supabase
+    const personalChannel = supabase
       .channel('personal-changes')
       .on(
         'postgres_changes',
@@ -73,8 +77,24 @@ export default function Personal() {
       )
       .subscribe();
 
+    const deptChannel = supabase
+      .channel('departamentos-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'departamentos'
+        },
+        () => {
+          fetchDepartamentos();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(personalChannel);
+      supabase.removeChannel(deptChannel);
     };
   }, []);
 
@@ -96,6 +116,61 @@ export default function Personal() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartamentos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("departamentos")
+        .select("id, nombre")
+        .eq("activo", true)
+        .order("nombre", { ascending: true });
+
+      if (error) throw error;
+      setDepartamentos(data || []);
+    } catch (error) {
+      console.error("Error fetching departamentos:", error);
+    }
+  };
+
+  const handleAddDepartment = async () => {
+    if (!user || !newDepartmentName.trim()) return;
+
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
+      const { error } = await supabase
+        .from("departamentos")
+        .insert({
+          nombre: newDepartmentName.trim(),
+          client_id: profile.client_id,
+          created_by: user.id,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Departamento agregado exitosamente",
+      });
+
+      setNewDepartmentName("");
+      setDepartmentDialogOpen(false);
+      fetchDepartamentos();
+    } catch (error: any) {
+      console.error("Error adding department:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo agregar el departamento",
+        variant: "destructive",
+      });
     }
   };
 
@@ -333,17 +408,31 @@ export default function Personal() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="departamento">Departamento</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="departamento">Departamento</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDepartmentDialogOpen(true)}
+                      className="h-auto p-1 text-xs"
+                    >
+                      + Agregar
+                    </Button>
+                  </div>
                   <Select
                     value={formData.departamento}
                     onValueChange={(value) => setFormData({ ...formData, departamento: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Seleccione un departamento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="administrativo">Administrativo</SelectItem>
-                      <SelectItem value="taller">Taller</SelectItem>
+                      {departamentos.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.nombre}>
+                          {dept.nombre}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -652,6 +741,42 @@ export default function Personal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Department Dialog */}
+      <Dialog open={departmentDialogOpen} onOpenChange={setDepartmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agregar Nuevo Departamento</DialogTitle>
+            <DialogDescription>Ingrese el nombre del nuevo departamento</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-department">Nombre del Departamento</Label>
+              <Input
+                id="new-department"
+                placeholder="Ej: Recursos Humanos, Ventas"
+                value={newDepartmentName}
+                onChange={(e) => setNewDepartmentName(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setDepartmentDialogOpen(false);
+                  setNewDepartmentName("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleAddDepartment} disabled={!newDepartmentName.trim()}>
+                Agregar Departamento
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

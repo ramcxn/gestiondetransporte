@@ -14,6 +14,8 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Inventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const { user, clientId } = useAuth();
   const queryClient = useQueryClient();
@@ -297,7 +299,14 @@ export default function Inventory() {
                         </div>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedUnit(unit);
+                        setDetailsDialogOpen(true);
+                      }}
+                    >
                       Ver Detalles
                     </Button>
                   </div>
@@ -328,6 +337,130 @@ export default function Inventory() {
           )}
         </CardContent>
       </Card>
+
+      {/* Unit Details Dialog */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles de la Unidad</DialogTitle>
+            <DialogDescription>Información completa del vehículo</DialogDescription>
+          </DialogHeader>
+          {selectedUnit && (
+            <div className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-muted-foreground">Número Económico</Label>
+                    <p className="font-semibold text-lg text-foreground">{selectedUnit.numero_economico}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Tipo de Unidad</Label>
+                    <p className="font-medium text-foreground">{selectedUnit.tipo}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Marca y Modelo</Label>
+                    <p className="font-medium text-foreground">{selectedUnit.marca} {selectedUnit.modelo}</p>
+                  </div>
+                  {selectedUnit.placas && (
+                    <div>
+                      <Label className="text-muted-foreground">Placas</Label>
+                      <p className="font-medium text-foreground">{selectedUnit.placas}</p>
+                    </div>
+                  )}
+                  {selectedUnit.numero_serie && (
+                    <div>
+                      <Label className="text-muted-foreground">Número de Serie</Label>
+                      <p className="font-medium text-foreground">{selectedUnit.numero_serie}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-muted-foreground">Estado</Label>
+                    <div className="mt-1">
+                      {getStatusBadge(selectedUnit.estado)}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Ubicación Actual</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <p className="font-medium text-foreground">{selectedUnit.ubicacion}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Odómetro</Label>
+                    <p className="font-medium text-foreground">{selectedUnit.odometro?.toLocaleString() ?? 'N/A'} km</p>
+                  </div>
+                  {selectedUnit.capacidad_carga && (
+                    <div>
+                      <Label className="text-muted-foreground">Capacidad de Carga</Label>
+                      <p className="font-medium text-foreground">{selectedUnit.capacidad_carga} kg</p>
+                    </div>
+                  )}
+                  {selectedUnit.año && (
+                    <div>
+                      <Label className="text-muted-foreground">Año</Label>
+                      <p className="font-medium text-foreground">{selectedUnit.año}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedUnit.color && (
+                <div>
+                  <Label className="text-muted-foreground">Color</Label>
+                  <p className="font-medium text-foreground">{selectedUnit.color}</p>
+                </div>
+              )}
+
+              <div className="border-t pt-4">
+                <Label className="text-muted-foreground">Estado de Mantenimiento</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  {selectedUnit.requiere_mantenimiento ? (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-destructive" />
+                      <span className="text-destructive font-medium">Requiere mantenimiento</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="text-green-600 font-medium">Mantenimiento al día</span>
+                    </>
+                  )}
+                </div>
+                {selectedUnit.ultima_inspeccion && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Última inspección: {new Date(selectedUnit.ultima_inspeccion).toLocaleDateString("es-MX")}
+                  </p>
+                )}
+                {selectedUnit.proximo_mantenimiento && (
+                  <p className="text-sm text-muted-foreground">
+                    Próximo mantenimiento: {new Date(selectedUnit.proximo_mantenimiento).toLocaleDateString("es-MX")}
+                  </p>
+                )}
+              </div>
+
+              {selectedUnit.observaciones && (
+                <div>
+                  <Label className="text-muted-foreground">Observaciones</Label>
+                  <p className="text-sm text-foreground mt-1 p-3 bg-muted rounded-lg">
+                    {selectedUnit.observaciones}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-4">
+                <span>Registrado: {new Date(selectedUnit.created_at).toLocaleDateString("es-MX")}</span>
+                {selectedUnit.ultima_entrada && (
+                  <span>Última entrada: {new Date(selectedUnit.ultima_entrada).toLocaleDateString("es-MX")}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

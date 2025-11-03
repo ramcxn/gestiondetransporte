@@ -24,11 +24,13 @@ interface Maintenance {
   proximo_mantenimiento: number | null;
   estado: string;
   created_at: string;
+  equipo_id: string | null;
 }
 
 export default function Maintenance() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [maintenances, setMaintenances] = useState<Maintenance[]>([]);
+  const [unidades, setUnidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
@@ -39,6 +41,7 @@ export default function Maintenance() {
   const [selectedRefacciones, setSelectedRefacciones] = useState<Array<{ inventario_id: string; cantidad: number; costo_unitario: number }>>([]);
 
   const [formData, setFormData] = useState({
+    equipo_id: "",
     unidad: "",
     tipo_mantenimiento: "preventivo",
     fecha_mantenimiento: "",
@@ -52,6 +55,7 @@ export default function Maintenance() {
   useEffect(() => {
     fetchMaintenances();
     fetchInventarioDisponible();
+    fetchUnidades();
 
     const channel = supabase
       .channel('maintenance-changes')
@@ -72,6 +76,20 @@ export default function Maintenance() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const fetchUnidades = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("inventario_equipos")
+        .select("id, numero_economico, tipo_equipo, marca, modelo, estado")
+        .order("numero_economico", { ascending: true });
+
+      if (error) throw error;
+      setUnidades(data || []);
+    } catch (error) {
+      console.error("Error fetching unidades:", error);
+    }
+  };
 
   const fetchInventarioDisponible = async () => {
     try {
@@ -132,6 +150,7 @@ export default function Maintenance() {
         .from("mantenimientos")
         .insert({
           unidad: formData.unidad,
+          equipo_id: formData.equipo_id || null,
           tipo_mantenimiento: formData.tipo_mantenimiento,
           fecha_mantenimiento: formData.fecha_mantenimiento,
           odometro: parseInt(formData.odometro),
@@ -196,6 +215,7 @@ export default function Maintenance() {
       });
 
       setFormData({
+        equipo_id: "",
         unidad: "",
         tipo_mantenimiento: "preventivo",
         fecha_mantenimiento: "",
@@ -280,13 +300,40 @@ export default function Maintenance() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="unit">Unidad</Label>
+                  <Label htmlFor="equipo">Equipo del Inventario</Label>
+                  <Select
+                    value={formData.equipo_id}
+                    onValueChange={(value) => {
+                      const unidad = unidades.find(u => u.id === value);
+                      setFormData({ 
+                        ...formData, 
+                        equipo_id: value,
+                        unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo_equipo}` : ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione una unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unidades.map((unidad) => (
+                        <SelectItem key={unidad.id} value={unidad.id}>
+                          {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    O ingrese manualmente si no está en el inventario
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unit">Unidad (Manual)</Label>
                   <Input
                     id="unit"
                     placeholder="TRC-001"
                     value={formData.unidad}
                     onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
-                    required
                   />
                 </div>
                 <div className="space-y-2">

@@ -695,6 +695,7 @@ export type Database = {
           numero_economico: string
           numero_serie: string | null
           observaciones: string | null
+          operacion: string
           placas: string | null
           proximo_mantenimiento: string | null
           tipo_equipo: string
@@ -717,6 +718,7 @@ export type Database = {
           numero_economico: string
           numero_serie?: string | null
           observaciones?: string | null
+          operacion?: string
           placas?: string | null
           proximo_mantenimiento?: string | null
           tipo_equipo: string
@@ -739,6 +741,7 @@ export type Database = {
           numero_economico?: string
           numero_serie?: string | null
           observaciones?: string | null
+          operacion?: string
           placas?: string | null
           proximo_mantenimiento?: string | null
           tipo_equipo?: string

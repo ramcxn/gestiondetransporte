@@ -93,6 +93,7 @@ export default function EquipmentInventory() {
       capacidad_carga: formData.get("capacidad_carga") ? parseFloat(formData.get("capacidad_carga") as string) : null,
       ubicacion: formData.get("ubicacion"),
       observaciones: formData.get("observaciones"),
+      operacion: formData.get("operacion"),
     });
   };
 
@@ -126,6 +127,16 @@ export default function EquipmentInventory() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2"><Label>Número Económico *</Label><Input name="numero_economico" required /></div>
+                <div className="space-y-2">
+                  <Label>Operación *</Label>
+                  <Select name="operacion" required defaultValue="HH Express">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="HH Express">HH Express</SelectItem>
+                      <SelectItem value="Portecalesa">Portecalesa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label>Tipo de Equipo *</Label>
                   <Select name="tipo_equipo" required>
@@ -185,8 +196,12 @@ export default function EquipmentInventory() {
                       {equipo.tipo_equipo === 'remolque' && <Package className="h-5 w-5 text-accent" />}
                       <h4 className="font-semibold text-lg">{equipo.numero_economico}</h4>
                       <Badge variant={equipo.estado === 'disponible' ? 'default' : 'secondary'}>{equipo.estado}</Badge>
+                      <Badge variant="outline" className={equipo.operacion === 'HH Express' ? 'border-primary text-primary' : 'border-secondary text-secondary'}>
+                        {equipo.operacion}
+                      </Badge>
                     </div>
                     <div className="grid gap-2 text-sm text-muted-foreground">
+                      <p><strong>Operación:</strong> {equipo.operacion}</p>
                       <p><strong>Tipo:</strong> {equipo.tipo_equipo.toUpperCase()}</p>
                       <p><strong>Marca/Modelo:</strong> {equipo.marca} {equipo.modelo}</p>
                       {equipo.placas && <p><strong>Placas:</strong> {equipo.placas}</p>}

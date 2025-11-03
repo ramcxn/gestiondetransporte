@@ -26,9 +26,9 @@ interface Maintenance {
   estado: string;
   created_at: string;
   equipo_id: string | null;
-  unidades?: {
+  inventario_equipos?: {
     numero_economico: string;
-    tipo: string;
+    tipo_equipo: string;
     marca: string;
     modelo: string;
   };
@@ -102,9 +102,8 @@ export default function Maintenance() {
   const fetchUnidades = async () => {
     try {
       const { data, error } = await supabase
-        .from("unidades")
-        .select("id, numero_economico, tipo, marca, modelo, estado")
-        .eq("estado", "disponible")
+        .from("inventario_equipos")
+        .select("id, numero_economico, tipo_equipo, marca, modelo, estado")
         .order("numero_economico", { ascending: true });
 
       if (error) throw error;
@@ -138,9 +137,9 @@ export default function Maintenance() {
         .from("mantenimientos")
         .select(`
           *,
-          unidades (
+          equipo_id (
             numero_economico,
-            tipo,
+            tipo_equipo,
             marca,
             modelo
           ),
@@ -161,7 +160,7 @@ export default function Maintenance() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setMaintenances(data || []);
+      setMaintenances(data as any || []);
     } catch (error) {
       console.error("Error fetching maintenances:", error);
       toast({
@@ -378,23 +377,23 @@ export default function Maintenance() {
                     onValueChange={(value) => {
                       const unidad = unidades.find(u => u.id === value);
                       setFormData({ 
-                        ...formData, 
-                        equipo_id: value,
-                        unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo}` : ""
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione una unidad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unidades.map((unidad) => (
-                        <SelectItem key={unidad.id} value={unidad.id}>
-                          {unidad.numero_economico} - {unidad.tipo} {unidad.marca} {unidad.modelo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      ...formData, 
+                      equipo_id: value,
+                      unidad: unidad ? `${unidad.numero_economico} - ${unidad.tipo_equipo}` : ""
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione una unidad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unidades.map((unidad) => (
+                      <SelectItem key={unidad.id} value={unidad.id}>
+                        {unidad.numero_economico} - {unidad.tipo_equipo} {unidad.marca} {unidad.modelo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                   <p className="text-xs text-muted-foreground">
                     O ingrese manualmente si no está en el inventario
                   </p>
@@ -654,8 +653,8 @@ export default function Maintenance() {
                   <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h4 className="font-semibold text-foreground">
-                          {record.unidades ? 
-                            `${record.unidades.numero_economico} - ${record.unidades.tipo} ${record.unidades.marca}` : 
+                          {(record as any).equipo_id ? 
+                            `${(record as any).equipo_id.numero_economico} - ${(record as any).equipo_id.tipo_equipo} ${(record as any).equipo_id.marca}` : 
                             record.unidad
                           }
                         </h4>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,28 @@ export default function EquipmentInventory() {
       return data;
     },
   });
+
+  // Realtime updates for equipment status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('equipment-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inventario_equipos'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["inventario_equipos"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const createMutation = useMutation({
     mutationFn: async (formData: any) => {

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Building2, Search, Plus, FileText, Shield, Users, MapPin } from "lucide-react";
+import { Building2, Search, Plus, FileText, Shield, Users, MapPin, Upload } from "lucide-react";
 
 interface ClientInvestigation {
   // Datos generales
@@ -58,7 +58,9 @@ interface ClientInvestigation {
 export default function Clients() {
   const { userRole } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [importing, setImporting] = useState(false);
   const [formData, setFormData] = useState<Partial<ClientInvestigation>>({
     referencias_comerciales: [],
     certificaciones: [],
@@ -102,6 +104,74 @@ export default function Clients() {
     createMutation.mutate(formData);
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      // Read the file as text
+      const text = await file.text();
+      
+      // Parse CSV/TSV data (Excel exports as tab-separated)
+      const lines = text.split('\n');
+      const headers = lines[0].split('\t');
+      
+      const clientsToImport = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const values = lines[i].split('\t');
+        const nombreFiscal = values[5]?.trim();
+        const nombreCorto = values[6]?.trim();
+        const rfc = values[3]?.trim();
+        const telefono = values[22]?.trim();
+        const email = values[24]?.trim();
+        
+        // Construir dirección completa
+        const calle = values[13]?.trim() || '';
+        const noExt = values[14]?.trim() || '';
+        const colonia = values[16]?.trim() || '';
+        const municipio = values[18]?.trim() || '';
+        const estado = values[19]?.trim() || '';
+        const cp = values[20]?.trim() || '';
+        const direccion = `${calle} ${noExt}, ${colonia}, ${municipio}, ${estado}, CP ${cp}`.replace(/\s+/g, ' ').trim();
+        
+        if (nombreFiscal && rfc && rfc !== 'XAXX010101000') {
+          clientsToImport.push({
+            nombre: nombreFiscal,
+            rfc: rfc,
+            telefono: telefono || null,
+            email: email || null,
+            direccion: direccion || null,
+            activo: true,
+          });
+        }
+      }
+
+      // Insert clients in batches
+      if (clientsToImport.length > 0) {
+        const { error } = await supabase
+          .from('clientes')
+          .insert(clientsToImport);
+
+        if (error) throw error;
+
+        toast.success(`${clientsToImport.length} clientes importados exitosamente`);
+        setImportDialogOpen(false);
+        refetch();
+      } else {
+        toast.error('No se encontraron clientes válidos para importar');
+      }
+    } catch (error) {
+      console.error('Error importing clients:', error);
+      toast.error('Error al importar clientes');
+    } finally {
+      setImporting(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   const filteredClientes = clientes?.filter(cliente =>
     cliente.nombre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     cliente.rfc?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -131,14 +201,50 @@ export default function Clients() {
             Investigación y validación CTPAT de socios comerciales
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo Cliente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex gap-2">
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Excel
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importar Clientes desde Excel</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="excel-file">Archivo Excel (.xls, .xlsx, .csv)</Label>
+                  <Input
+                    id="excel-file"
+                    type="file"
+                    accept=".xls,.xlsx,.csv,.tsv"
+                    onChange={handleImportExcel}
+                    disabled={importing}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Seleccione el archivo Excel con el catálogo de clientes
+                  </p>
+                </div>
+                {importing && (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <span className="ml-2">Importando clientes...</span>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Investigación de Cliente CTPAT</DialogTitle>
             </DialogHeader>
@@ -359,6 +465,7 @@ export default function Clients() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <Card>

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { FileText, Plus, Search, Camera, Calendar, AlertCircle } from "lucide-react";
@@ -20,6 +21,7 @@ export default function DocumentalReview() {
   const [uploadingPhotos, setUploadingPhotos] = useState<Record<string, File>>({});
   
   const [formData, setFormData] = useState({
+    unidad_id: "",
     numero_economico: "",
     placas: "",
     operador_nombre: "",
@@ -29,6 +31,33 @@ export default function DocumentalReview() {
     vigencia_dictamen_humos: "",
     vigencia_poliza_seguro: "",
     observaciones: "",
+  });
+
+  const { data: unidades } = useQuery({
+    queryKey: ["unidades_documentos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .select("id, numero_economico, placas, tipo, marca, modelo")
+        .order("numero_economico");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: operadores } = useQuery({
+    queryKey: ["operadores_documentos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("operadores")
+        .select("id, nombre")
+        .eq("estado", "activo")
+        .order("nombre");
+      
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: revisiones, isLoading } = useQuery({
@@ -101,6 +130,7 @@ export default function DocumentalReview() {
 
   const resetForm = () => {
     setFormData({
+      unidad_id: "",
       numero_economico: "",
       placas: "",
       operador_nombre: "",
@@ -202,30 +232,60 @@ export default function DocumentalReview() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="numero_economico">Número Económico *</Label>
-                  <Input
-                    id="numero_economico"
-                    required
-                    value={formData.numero_economico}
-                    onChange={(e) => setFormData({ ...formData, numero_economico: e.target.value })}
-                  />
+                  <Label htmlFor="numero_economico">Unidad *</Label>
+                  <Select
+                    value={formData.unidad_id}
+                    onValueChange={(value) => {
+                      const unidad = unidades?.find(u => u.id === value);
+                      setFormData({ 
+                        ...formData, 
+                        unidad_id: value,
+                        numero_economico: unidad?.numero_economico || "",
+                        placas: unidad?.placas || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione una unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unidades?.map((unidad) => (
+                        <SelectItem key={unidad.id} value={unidad.id}>
+                          {unidad.numero_economico} - {unidad.tipo} {unidad.marca} {unidad.modelo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="placas">Placas</Label>
                   <Input
                     id="placas"
                     value={formData.placas}
-                    onChange={(e) => setFormData({ ...formData, placas: e.target.value })}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="operador_nombre">Nombre del Operador *</Label>
-                  <Input
-                    id="operador_nombre"
-                    required
+                  <Label htmlFor="operador_nombre">Operador *</Label>
+                  <Select
                     value={formData.operador_nombre}
-                    onChange={(e) => setFormData({ ...formData, operador_nombre: e.target.value })}
-                  />
+                    onValueChange={(value) => {
+                      const operador = operadores?.find(op => op.nombre === value);
+                      setFormData({ ...formData, operador_nombre: operador?.nombre || value });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione un operador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {operadores?.map((operador) => (
+                        <SelectItem key={operador.id} value={operador.nombre}>
+                          {operador.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="empresa">Empresa *</Label>

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ClipboardCheck, Plus, Search, CheckCircle, XCircle, AlertCircle, PenTool } from "lucide-react";
 import SignatureCanvas from "react-signature-canvas";
@@ -37,6 +38,7 @@ export default function OperatorInventory() {
   const sigSupervisorRef = useRef<SignatureCanvas>(null);
   
   const [formData, setFormData] = useState({
+    operador_id: "",
     operador_nombre: "",
     numero_unidad: "",
     tipo_revision: "ingreso",
@@ -51,6 +53,34 @@ export default function OperatorInventory() {
     lampara: false,
     observaciones: "",
     estado: "pendiente",
+  });
+
+  const { data: operadores } = useQuery({
+    queryKey: ["operadores"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("operadores")
+        .select("id, nombre, numero_empleado")
+        .eq("estado", "activo")
+        .order("nombre");
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: unidades } = useQuery({
+    queryKey: ["unidades"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("unidades")
+        .select("id, numero_economico")
+        .eq("estado", "disponible")
+        .order("numero_economico");
+      
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: revisiones, isLoading } = useQuery({
@@ -120,6 +150,7 @@ export default function OperatorInventory() {
 
   const resetForm = () => {
     setFormData({
+      operador_id: "",
       operador_nombre: "",
       numero_unidad: "",
       tipo_revision: "ingreso",
@@ -188,22 +219,47 @@ export default function OperatorInventory() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="operador_nombre">Nombre del Operador *</Label>
-                  <Input
-                    id="operador_nombre"
-                    required
-                    value={formData.operador_nombre}
-                    onChange={(e) => setFormData({ ...formData, operador_nombre: e.target.value })}
-                  />
+                  <Label htmlFor="operador_nombre">Operador *</Label>
+                  <Select
+                    value={formData.operador_id}
+                    onValueChange={(value) => {
+                      const operador = operadores?.find(op => op.id === value);
+                      setFormData({ 
+                        ...formData, 
+                        operador_id: value,
+                        operador_nombre: operador?.nombre || ""
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione un operador" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {operadores?.map((operador) => (
+                        <SelectItem key={operador.id} value={operador.id}>
+                          {operador.nombre} - {operador.numero_empleado}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="numero_unidad">Número de Unidad *</Label>
-                  <Input
-                    id="numero_unidad"
-                    required
+                  <Select
                     value={formData.numero_unidad}
-                    onChange={(e) => setFormData({ ...formData, numero_unidad: e.target.value })}
-                  />
+                    onValueChange={(value) => setFormData({ ...formData, numero_unidad: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione una unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unidades?.map((unidad) => (
+                        <SelectItem key={unidad.id} value={unidad.numero_economico}>
+                          {unidad.numero_economico}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

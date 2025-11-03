@@ -295,6 +295,15 @@ export default function UnitEntry() {
 
     setSubmitting(true);
     try {
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+
       const { foto1, foto2 } = await uploadImages();
 
       const { error } = await supabase
@@ -317,6 +326,7 @@ export default function UnitEntry() {
           foto_1_url: foto1,
           foto_2_url: foto2,
           puntos_seguridad: checkedPoints,
+          client_id: profile.client_id,
           created_by: user.id,
         });
 

@@ -249,9 +249,24 @@ const UserManagement = () => {
 
       if (error) throw error;
 
+      // Send welcome email
+      try {
+        await supabase.functions.invoke("send-welcome-email", {
+          body: {
+            email: newUser.email,
+            fullName: newUser.full_name,
+            password: newUser.password,
+            role: newUser.role,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending welcome email:", emailError);
+        // Don't fail user creation if email fails
+      }
+
       toast({
         title: "Usuario creado",
-        description: "El usuario ha sido creado exitosamente",
+        description: "El usuario ha sido creado exitosamente y se ha enviado un correo de bienvenida",
       });
 
       setNewUser({

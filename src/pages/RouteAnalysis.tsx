@@ -29,6 +29,8 @@ export default function RouteAnalysis() {
   const { clientId } = useAuth();
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(true);
+  const [clientes, setClientes] = useState<Array<{ id: string; nombre: string }>>([]);
+  const [loadingClientes, setLoadingClientes] = useState(true);
   const [formData, setFormData] = useState({
     cliente: "PEPSI",
     ruta: "APODACA - LAREDO",
@@ -59,7 +61,25 @@ export default function RouteAnalysis() {
 
   useEffect(() => {
     fetchSavedRoutes();
+    fetchClientes();
   }, []);
+
+  const fetchClientes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("id, nombre")
+        .eq("activo", true)
+        .order("nombre");
+      
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (error) {
+      console.error("Error fetching clientes:", error);
+    } finally {
+      setLoadingClientes(false);
+    }
+  };
 
   const fetchSavedRoutes = async () => {
     try {
@@ -214,12 +234,25 @@ export default function RouteAnalysis() {
             <h3 className="text-lg font-semibold text-foreground mb-4">Información General</h3>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="cliente">Cliente</Label>
-                <Input
-                  id="cliente"
-                  value={formData.cliente}
-                  onChange={(e) => handleInputChange("cliente", e.target.value)}
-                />
+                <Label htmlFor="cliente">Cliente CTPAT</Label>
+                <Select value={formData.cliente} onValueChange={(value) => handleInputChange("cliente", value)}>
+                  <SelectTrigger id="cliente">
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingClientes ? (
+                      <SelectItem value="loading" disabled>Cargando...</SelectItem>
+                    ) : clientes.length === 0 ? (
+                      <SelectItem value="empty" disabled>No hay clientes disponibles</SelectItem>
+                    ) : (
+                      clientes.map((cliente) => (
+                        <SelectItem key={cliente.id} value={cliente.nombre}>
+                          {cliente.nombre}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ruta">Ruta</Label>

@@ -320,6 +320,41 @@ export default function Trips() {
     }
   };
 
+  const handleChangeStatus = async (tripId: string, newStatus: string) => {
+    try {
+      const updates: any = {
+        estado: newStatus,
+      };
+
+      // Si se completa el viaje, agregar fecha de llegada real
+      if (newStatus === 'completado') {
+        updates.fecha_llegada_real = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("viajes")
+        .update(updates)
+        .eq('id', tripId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: `Viaje marcado como ${newStatus === 'en_transito' ? 'en tránsito' : newStatus}`,
+      });
+
+      fetchTrips();
+      setDetailsDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating trip status:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del viaje",
+        variant: "destructive",
+      });
+    }
+  };
+
   const openDetails = (trip: Trip) => {
     setSelectedTrip(trip);
     setDetailsDialogOpen(true);
@@ -759,6 +794,46 @@ export default function Trips() {
                 )}
               </div>
               
+              {/* Botones de cambio de estado */}
+              <div className="space-y-3 pt-4 border-t">
+                <Label>Cambiar Estado del Viaje</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {selectedTrip.estado === "programado" && (
+                    <Button
+                      onClick={() => handleChangeStatus(selectedTrip.id, "en_transito")}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Iniciar Viaje (En Tránsito)
+                    </Button>
+                  )}
+                  
+                  {selectedTrip.estado === "en_transito" && (
+                    <Button
+                      onClick={() => handleChangeStatus(selectedTrip.id, "completado")}
+                      className="bg-accent hover:bg-accent/90"
+                    >
+                      Finalizar Viaje (Completado)
+                    </Button>
+                  )}
+
+                  {selectedTrip.estado === "programado" && (
+                    <Button
+                      onClick={() => handleChangeStatus(selectedTrip.id, "cancelado")}
+                      variant="destructive"
+                    >
+                      Cancelar Viaje
+                    </Button>
+                  )}
+                </div>
+                {selectedTrip.estado === "completado" && (
+                  <div className="p-3 bg-accent/10 rounded-lg border border-accent/20">
+                    <p className="text-sm text-accent-foreground font-medium">
+                      ✓ Viaje completado - Disponible para liquidación
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {selectedTrip.estado !== "completado" && selectedTrip.estado !== "cancelado" && (
                 <div className="space-y-2 pt-4 border-t">
                   <Label htmlFor="location">Actualizar Ubicación</Label>

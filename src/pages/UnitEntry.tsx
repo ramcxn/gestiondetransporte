@@ -282,6 +282,34 @@ export default function UnitEntry() {
     e.preventDefault();
     if (!user) return;
 
+    // Validar campos requeridos
+    if (!formData.tracto_id) {
+      toast({
+        title: "Error",
+        description: "Por favor seleccione un tracto",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.operador_id) {
+      toast({
+        title: "Error",
+        description: "Por favor seleccione un operador",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.odometro || parseInt(formData.odometro) <= 0) {
+      toast({
+        title: "Error",
+        description: "Por favor ingrese un odómetro válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const checkedCount = Object.values(checkedPoints).filter(Boolean).length;
     
     if (checkedCount < ctpatPoints.length) {

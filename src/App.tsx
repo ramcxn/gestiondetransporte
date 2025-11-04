@@ -53,7 +53,7 @@ const App = () => (
             <Route
               path="/"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredRole="admin">
                   <Layout>
                     <Dashboard />
                   </Layout>

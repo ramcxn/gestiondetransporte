@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, Users, LogOut, Calendar, QrCode } from "lucide-react";
+import { Clock, Users, LogOut, Calendar, QrCode, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,8 +34,9 @@ export default function PersonalAttendance() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { toast } = useToast();
+  const isAdmin = userRole === 'admin';
 
   useEffect(() => {
     fetchData();
@@ -172,6 +173,35 @@ export default function PersonalAttendance() {
     }
   };
 
+  const handleDelete = async (attendanceId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar este registro de asistencia?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("asistencia_personal")
+        .delete()
+        .eq('id', attendanceId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Registro de asistencia eliminado",
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting attendance:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el registro",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleQRScan = async (qrData: string) => {
     setShowQRScanner(false);
     
@@ -232,49 +262,51 @@ export default function PersonalAttendance() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Asistencias Hoy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{todayAttendances.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Registros del día</p>
-          </CardContent>
-        </Card>
+      {isAdmin && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Asistencias Hoy</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">{todayAttendances.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Registros del día</p>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Presentes Ahora</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-accent">{presentNow.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">En instalaciones</p>
-          </CardContent>
-        </Card>
+          <Card className="shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Presentes Ahora</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-accent">{presentNow.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">En instalaciones</p>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Llegadas a Tiempo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{onTimeToday.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Antes de 9:00 AM</p>
-          </CardContent>
-        </Card>
+          <Card className="shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Llegadas a Tiempo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-foreground">{onTimeToday.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">Antes de 9:00 AM</p>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Puntualidad</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-accent">
-              {todayAttendances.length > 0 ? Math.round((onTimeToday.length / todayAttendances.length) * 100) : 0}%
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Hoy</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card className="shadow-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Puntualidad</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-accent">
+                {todayAttendances.length > 0 ? Math.round((onTimeToday.length / todayAttendances.length) * 100) : 0}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Hoy</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className="shadow-card">
         <CardHeader>
@@ -455,6 +487,15 @@ export default function PersonalAttendance() {
                         </div>
                       </div>
                     </div>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(attendance.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

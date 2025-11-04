@@ -106,11 +106,21 @@ export default function PersonalAttendance() {
 
     setSubmitting(true);
     try {
+      // Get user's client_id from profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       const { error } = await supabase
         .from("asistencia_personal")
         .insert({
           personal_id: selectedPersonal,
           created_by: user.id,
+          client_id: profile.client_id,
         });
 
       if (error) throw error;

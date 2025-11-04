@@ -375,9 +375,9 @@ export default function PersonalAttendance() {
                   key={attendance.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">
                           {attendance.personal?.nombre}
                         </h4>
@@ -389,7 +389,7 @@ export default function PersonalAttendance() {
                           • {attendance.personal?.numero_empleado}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
                           <span>
@@ -399,7 +399,7 @@ export default function PersonalAttendance() {
                             })}
                           </span>
                         </div>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>Puesto: {attendance.personal?.puesto}</span>
                       </div>
                     </div>
@@ -407,6 +407,7 @@ export default function PersonalAttendance() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleExit(attendance.id)}
+                      className="w-full sm:w-auto"
                     >
                       <LogOut className="h-4 w-4 mr-1" />
                       Registrar Salida

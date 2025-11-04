@@ -123,7 +123,7 @@ const App = () => (
             <Route
               path="/asistencia"
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Layout>
                     <PersonalAttendance />
                   </Layout>

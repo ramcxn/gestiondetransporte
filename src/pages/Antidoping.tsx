@@ -460,7 +460,7 @@ export default function Antidoping() {
                   key={test.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{test.nombre}</h4>
@@ -503,12 +503,13 @@ export default function Antidoping() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       {test.archivo_url && (
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => window.open(test.archivo_url!, '_blank')}
+                          className="w-full sm:w-auto"
                         >
                           <Download className="h-4 w-4 mr-1" />
                           Archivo
@@ -518,6 +519,7 @@ export default function Antidoping() {
                         size="sm" 
                         variant="outline"
                         onClick={() => openDetails(test)}
+                        className="w-full sm:w-auto"
                       >
                         Ver Detalles
                       </Button>

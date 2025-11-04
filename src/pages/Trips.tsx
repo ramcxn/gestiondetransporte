@@ -734,7 +734,7 @@ export default function Trips() {
                   key={trip.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{trip.unidad}</h4>
@@ -782,10 +782,12 @@ export default function Trips() {
                         )}
                       </div>
                     </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button 
                         size="sm" 
                         variant="outline"
                         onClick={() => openDetails(trip)}
+                        className="w-full sm:w-auto"
                       >
                         Ver Detalles
                       </Button>
@@ -797,11 +799,14 @@ export default function Trips() {
                             setTripToDelete(trip);
                             setDeleteDialogOpen(true);
                           }}
+                          className="w-full sm:w-auto"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
                         </Button>
                       )}
                     </div>
+                  </div>
                 </div>
               ))}
             </div>

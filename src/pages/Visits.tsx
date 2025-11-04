@@ -459,9 +459,9 @@ export default function Visits() {
                   key={visit.id}
                   className="p-3 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{visit.nombre}</h4>
                         <Badge variant={visit.tipo === "visitante" ? "default" : "secondary"}>
                           {visit.tipo}
@@ -492,7 +492,7 @@ export default function Visits() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleExit(visit.id)}
-                        className="flex-shrink-0"
+                        className="w-full sm:w-auto"
                       >
                         <LogOut className="h-4 w-4 mr-1" />
                         Salida

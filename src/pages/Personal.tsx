@@ -650,7 +650,7 @@ export default function Personal() {
                   key={person.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{person.nombre}</h4>
@@ -680,11 +680,12 @@ export default function Personal() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => openDetails(person)}
+                          className="w-full sm:w-auto"
                         >
                           Ver Detalles
                         </Button>
@@ -694,6 +695,7 @@ export default function Personal() {
                               size="sm"
                               variant="outline"
                               onClick={() => openEditDialog(person)}
+                              className="w-full sm:w-auto"
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Editar
@@ -702,6 +704,7 @@ export default function Personal() {
                               size="sm"
                               variant="outline"
                               onClick={() => openQRDialog(person)}
+                              className="w-full sm:w-auto"
                             >
                               <QrCode className="h-4 w-4 mr-1" />
                               Ver QR
@@ -714,6 +717,7 @@ export default function Personal() {
                           size="sm"
                           variant="destructive"
                           onClick={() => openDeactivateDialog(person)}
+                          className="w-full sm:w-auto"
                         >
                           <UserX className="h-4 w-4 mr-1" />
                           Dar de Baja
@@ -727,6 +731,7 @@ export default function Personal() {
                             setPersonToDelete(person);
                             setDeleteDialogOpen(true);
                           }}
+                          className="w-full sm:w-auto"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Eliminar

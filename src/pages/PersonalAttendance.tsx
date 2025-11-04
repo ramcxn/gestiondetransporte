@@ -441,9 +441,9 @@ export default function PersonalAttendance() {
                   key={attendance.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">
                           {attendance.personal?.nombre}
                         </h4>
@@ -464,7 +464,7 @@ export default function PersonalAttendance() {
                             {new Date(attendance.fecha_entrada).toLocaleDateString("es-MX")}
                           </span>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span>
@@ -476,7 +476,7 @@ export default function PersonalAttendance() {
                           </div>
                           {attendance.fecha_salida && (
                             <>
-                              <span>•</span>
+                              <span className="hidden sm:inline">•</span>
                               <span>
                                 Salida: {new Date(attendance.fecha_salida).toLocaleTimeString("es-MX", {
                                   hour: "2-digit",
@@ -493,8 +493,10 @@ export default function PersonalAttendance() {
                         size="sm"
                         variant="destructive"
                         onClick={() => handleDelete(attendance.id)}
+                        className="w-full sm:w-auto"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
                       </Button>
                     )}
                   </div>

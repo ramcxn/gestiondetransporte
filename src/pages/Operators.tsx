@@ -570,7 +570,7 @@ export default function Operators() {
                     key={operator.id}
                     className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                   >
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex flex-col gap-3 mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <h4 className="font-semibold text-foreground">{operator.nombre}</h4>
@@ -615,10 +615,10 @@ export default function Operators() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="w-full sm:w-auto">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button size="sm" variant="outline">
+                            <Button size="sm" variant="outline" className="w-full sm:w-auto">
                               Ver Detalles
                             </Button>
                           </DialogTrigger>

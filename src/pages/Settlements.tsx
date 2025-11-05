@@ -75,9 +75,9 @@ export default function Settlements() {
   const [filters, setFilters] = useState({
     fechaInicio: "",
     fechaFin: "",
-    operador: "",
-    cliente: "",
-    ruta: "",
+    operador: "all",
+    cliente: "all",
+    ruta: "all",
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -324,15 +324,15 @@ export default function Settlements() {
       if (fechaLiq > fechaFin) return false;
     }
     
-    if (filters.operador && settlement.viaje?.operador !== filters.operador) {
+    if (filters.operador !== "all" && settlement.viaje?.operador !== filters.operador) {
       return false;
     }
     
-    if (filters.cliente && settlement.viaje?.cliente !== filters.cliente) {
+    if (filters.cliente !== "all" && settlement.viaje?.cliente !== filters.cliente) {
       return false;
     }
     
-    if (filters.ruta && settlement.viaje) {
+    if (filters.ruta !== "all" && settlement.viaje) {
       const ruta = `${settlement.viaje.origen} → ${settlement.viaje.destino}`;
       if (ruta !== filters.ruta) return false;
     }
@@ -344,13 +344,14 @@ export default function Settlements() {
     setFilters({
       fechaInicio: "",
       fechaFin: "",
-      operador: "",
-      cliente: "",
-      ruta: "",
+      operador: "all",
+      cliente: "all",
+      ruta: "all",
     });
   };
 
-  const hasActiveFilters = Object.values(filters).some(v => v !== "");
+  const hasActiveFilters = filters.fechaInicio !== "" || filters.fechaFin !== "" || 
+    filters.operador !== "all" || filters.cliente !== "all" || filters.ruta !== "all";
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -640,7 +641,7 @@ export default function Settlements() {
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {uniqueOperadores.map((op) => (
                         <SelectItem key={op} value={op as string}>
                           {op}
@@ -660,7 +661,7 @@ export default function Settlements() {
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       {uniqueClientes.map((cliente) => (
                         <SelectItem key={cliente} value={cliente as string}>
                           {cliente}
@@ -680,7 +681,7 @@ export default function Settlements() {
                       <SelectValue placeholder="Todas" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todas</SelectItem>
+                      <SelectItem value="all">Todas</SelectItem>
                       {uniqueRutas.map((ruta) => (
                         <SelectItem key={ruta} value={ruta as string}>
                           {ruta}

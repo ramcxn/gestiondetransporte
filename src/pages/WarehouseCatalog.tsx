@@ -155,19 +155,24 @@ export default function WarehouseCatalog() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No hay usuario autenticado");
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('client_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.client_id) throw new Error("No se encontró el cliente del usuario");
-
-      // Obtener el client_id basado en el dominio del email
+      // Obtener el client_id usando la misma lógica que createMutation
       const { data: clientIdByDomain } = await supabase.rpc('get_client_id_by_email_domain');
-      const clientId = clientIdByDomain || profile.client_id;
+      
+      let clientId = clientIdByDomain;
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .single();
+        clientId = profile?.client_id;
+      }
 
-      let imported = 0;
+      if (!clientId) throw new Error("No se encontró el cliente del usuario");
+
+      // Preparar todas las refacciones para inserción en batch
+      const refaccionesToInsert = [];
+      
       // Skip header row (row 0)
       for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
@@ -190,28 +195,35 @@ export default function WarehouseCatalog() {
           if (ubicacionMatch) ubicacionId = ubicacionMatch.id;
         }
 
-        const { error } = await supabase
-          .from('refacciones')
-          .insert([{
-            numero_parte: codigo,
-            descripcion: descripcion,
-            categoria: categoria,
-            proveedor: 'Por definir',
-            precio_unitario: 0,
-            unidad_medida: 'PZA',
-            ubicacion_principal: ubicacionId,
-            stock_minimo: 0,
-            stock_maximo: 100,
-            punto_reorden: 10,
-            activa: activo,
-            client_id: clientId,
-            created_by: user.id
-          }]);
-
-        if (!error) imported++;
+        refaccionesToInsert.push({
+          numero_parte: codigo,
+          descripcion: descripcion,
+          categoria: categoria,
+          proveedor: 'Por definir',
+          precio_unitario: 0,
+          unidad_medida: 'PZA',
+          ubicacion_principal: ubicacionId,
+          stock_minimo: 0,
+          stock_maximo: 100,
+          punto_reorden: 10,
+          activa: activo,
+          client_id: clientId,
+          created_by: user.id
+        });
       }
 
-      toast({ title: `${imported} refacciones importadas exitosamente` });
+      if (refaccionesToInsert.length === 0) {
+        throw new Error("No se encontraron refacciones válidas en el archivo");
+      }
+
+      // Insertar todas las refacciones en batch
+      const { error } = await supabase
+        .from('refacciones')
+        .insert(refaccionesToInsert);
+
+      if (error) throw error;
+
+      toast({ title: `${refaccionesToInsert.length} refacciones importadas exitosamente` });
       queryClient.invalidateQueries({ queryKey: ["refacciones"] });
       setImportDialogOpen(false);
     } catch (error) {

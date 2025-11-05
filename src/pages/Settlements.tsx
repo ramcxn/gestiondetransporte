@@ -302,13 +302,19 @@ export default function Settlements() {
             <p className="text-muted-foreground">Pagos a operadores por viajes completados</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90" disabled={trips.length === 0}>
-              <FileText className="h-4 w-4 mr-2" />
-              Nueva Liquidación
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-col items-end gap-2">
+          {trips.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No hay viajes completados disponibles para liquidar
+            </p>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90" disabled={trips.length === 0}>
+                <FileText className="h-4 w-4 mr-2" />
+                Nueva Liquidación
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nueva Liquidación</DialogTitle>
@@ -463,6 +469,7 @@ export default function Settlements() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">

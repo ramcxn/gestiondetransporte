@@ -2073,6 +2073,70 @@ export type Database = {
         }
         Relationships: []
       }
+      vales_salida: {
+        Row: {
+          autorizado_por: string
+          client_id: string | null
+          created_at: string
+          created_by: string
+          estado: string
+          fecha_vale: string
+          hora_salida_autorizada: string
+          id: string
+          motivo: string
+          observaciones: string | null
+          personal_id: string
+        }
+        Insert: {
+          autorizado_por: string
+          client_id?: string | null
+          created_at?: string
+          created_by: string
+          estado?: string
+          fecha_vale?: string
+          hora_salida_autorizada: string
+          id?: string
+          motivo: string
+          observaciones?: string | null
+          personal_id: string
+        }
+        Update: {
+          autorizado_por?: string
+          client_id?: string | null
+          created_at?: string
+          created_by?: string
+          estado?: string
+          fecha_vale?: string
+          hora_salida_autorizada?: string
+          id?: string
+          motivo?: string
+          observaciones?: string | null
+          personal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vales_salida_autorizado_por_fkey"
+            columns: ["autorizado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vales_salida_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vales_salida_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       viajes: {
         Row: {
           client_id: string

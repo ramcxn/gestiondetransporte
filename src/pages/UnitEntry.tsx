@@ -112,6 +112,7 @@ export default function UnitEntry() {
   const [operadores, setOperadores] = useState<any[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [scanningFor, setScanningFor] = useState<"equipo" | "operador">("equipo");
+  const [tractoSearchQuery, setTractoSearchQuery] = useState("");
   
   useEffect(() => {
     fetchEquipos();
@@ -125,6 +126,33 @@ export default function UnitEntry() {
       .order("numero_economico");
     
     if (data) setEquipos(data);
+  };
+
+  const handleTractoSearch = async (numeroEconomico: string) => {
+    setTractoSearchQuery(numeroEconomico);
+    
+    if (numeroEconomico.length < 2) return;
+
+    // Buscar tracto por número económico
+    const equipo = equipos.find(
+      e => e.tipo_equipo?.toLowerCase() === 'tracto' && 
+      e.numero_economico.toLowerCase().includes(numeroEconomico.toLowerCase())
+    );
+
+    if (equipo) {
+      // Autocompletar información del tracto
+      setFormData({ 
+        ...formData, 
+        tracto_id: equipo.id,
+        numero_economico: equipo.numero_economico,
+        numero_unidad: equipo.numero_economico
+      });
+      
+      toast({
+        title: "Tracto encontrado",
+        description: `${equipo.numero_economico} - ${equipo.marca} ${equipo.modelo}`,
+      });
+    }
   };
 
   const handleQRScan = async (qrData: string) => {
@@ -431,14 +459,10 @@ export default function UnitEntry() {
 
     setSubmitting(true);
     try {
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id basado en el dominio del email
+      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!clientId) throw new Error("No se pudo determinar el cliente");
 
       const { foto1, foto2 } = await uploadImages();
 
@@ -462,7 +486,7 @@ export default function UnitEntry() {
           foto_1_url: foto1,
           foto_2_url: foto2,
           puntos_seguridad: checkedPoints,
-          client_id: profile.client_id,
+          client_id: clientId,
           created_by: user.id,
         });
 
@@ -834,31 +858,48 @@ export default function UnitEntry() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="numero_economico">Tracto (Número Económico) *</Label>
-                    <Select
-                      value={formData.tracto_id}
-                      onValueChange={(value) => {
-                        const equipo = equipos.find(e => e.id === value);
-                        setFormData({ 
-                          ...formData, 
-                          tracto_id: value,
-                          numero_economico: equipo?.numero_economico || '',
-                          numero_unidad: equipo?.numero_economico || ''
-                        });
-                      }}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar tracto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo?.toLowerCase() === 'tracto').map((equipo) => (
-                          <SelectItem key={equipo.id} value={equipo.id}>
-                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
-                            {equipo.estado !== 'disponible' && ` (${equipo.estado})`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Escribe el número de tracto..."
+                        value={tractoSearchQuery}
+                        onChange={(e) => handleTractoSearch(e.target.value)}
+                        className="mb-2"
+                      />
+                      <Select
+                        value={formData.tracto_id}
+                        onValueChange={(value) => {
+                          const equipo = equipos.find(e => e.id === value);
+                          setFormData({ 
+                            ...formData, 
+                            tracto_id: value,
+                            numero_economico: equipo?.numero_economico || '',
+                            numero_unidad: equipo?.numero_economico || ''
+                          });
+                          setTractoSearchQuery(equipo?.numero_economico || '');
+                        }}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="O seleccionar de la lista" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipos
+                            .filter(e => e.tipo_equipo?.toLowerCase() === 'tracto')
+                            .filter(e => tractoSearchQuery === '' || e.numero_economico.toLowerCase().includes(tractoSearchQuery.toLowerCase()))
+                            .map((equipo) => (
+                            <SelectItem key={equipo.id} value={equipo.id}>
+                              {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
+                              {equipo.estado !== 'disponible' && ` (${equipo.estado})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.numero_economico && (
+                        <p className="text-sm text-muted-foreground">
+                          Seleccionado: <span className="font-semibold">{formData.numero_economico}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="operador">Operador *</Label>

@@ -40,7 +40,7 @@ export default function Operators() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
   const [generatingQRs, setGeneratingQRs] = useState(false);
-  const { user, userRole } = useAuth();
+  const { user, userRole, clientIdByDomain } = useAuth();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -159,14 +159,10 @@ export default function Operators() {
         }
       }
 
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id basado en el dominio del email
+      const clientId = clientIdByDomain;
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!clientId) throw new Error("No se pudo determinar el cliente");
 
       // Insert operator first to get the ID
       const { data: newOperator, error: insertError } = await supabase
@@ -180,7 +176,7 @@ export default function Operators() {
           numero_licencia: formData.numero_licencia || null,
           fecha_vencimiento_licencia: formData.fecha_vencimiento_licencia || null,
           pdf_url: pdfUrl,
-          client_id: profile.client_id,
+          client_id: clientId,
           created_by: user.id,
         })
         .select()

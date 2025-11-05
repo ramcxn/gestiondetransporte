@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { BusinessUnitBanner } from "@/components/BusinessUnitBanner";
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -381,6 +382,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Banner de Unidad de Negocio */}
+      <BusinessUnitBanner />
+      
       {/* Hero Section */}
       <div className="rounded-lg bg-gradient-to-br from-primary via-primary/90 to-accent p-8 text-primary-foreground shadow-elevated">
         <div className="flex items-start justify-between">

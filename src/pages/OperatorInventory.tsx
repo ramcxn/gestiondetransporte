@@ -55,13 +55,19 @@ export default function OperatorInventory() {
   });
 
   const { data: operadores } = useQuery({
-    queryKey: ["operadores"],
+    queryKey: ["operadores", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("operadores")
         .select("id, nombre, numero_empleado")
         .eq("estado", "activo")
         .order("nombre");
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;
@@ -69,13 +75,19 @@ export default function OperatorInventory() {
   });
 
   const { data: unidades } = useQuery({
-    queryKey: ["unidades"],
+    queryKey: ["inventario_equipos", clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("unidades")
+      let query = supabase
+        .from("inventario_equipos")
         .select("id, numero_economico")
         .eq("estado", "disponible")
         .order("numero_economico");
+      
+      if (clientId) {
+        query = query.eq("client_id", clientId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data;

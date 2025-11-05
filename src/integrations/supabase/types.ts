@@ -2318,8 +2318,10 @@ export type Database = {
         Args: { fecha_alta: string }
         Returns: number
       }
+      can_view_all_data: { Args: never; Returns: boolean }
       generate_accion_correctiva_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
+      get_client_id_by_email_domain: { Args: never; Returns: string }
       get_user_client_id: { Args: never; Returns: string }
       has_module_permission: {
         Args: { _module_name: string; _user_id: string }
@@ -2333,6 +2335,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      matches_user_client: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "usuario"

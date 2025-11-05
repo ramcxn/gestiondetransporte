@@ -102,10 +102,17 @@ export default function Dashboard() {
       thisMonth.setDate(1);
       const firstDayOfMonth = thisMonth.toISOString().split('T')[0];
 
+      // Obtener el client_id del usuario basado en su email
+      // La función get_client_id_by_email_domain() retorna NULL si el usuario puede ver todo
+      const { data: clientData } = await supabase.rpc('get_client_id_by_email_domain');
+      const userClientId = clientData;
+
       // INVENTARIO EQUIPOS
-      const { data: equipos } = await supabase
-        .from("inventario_equipos")
-        .select("*");
+      let equiposQuery = supabase.from("inventario_equipos").select("*");
+      if (userClientId) {
+        equiposQuery = equiposQuery.or(`client_id.eq.${userClientId},client_id.is.null`);
+      }
+      const { data: equipos } = await equiposQuery;
       
       const equiposDisponibles = equipos?.filter(e => e.estado === 'disponible').length || 0;
       const equiposEnUso = equipos?.filter(e => e.estado === 'en_uso').length || 0;
@@ -114,12 +121,21 @@ export default function Dashboard() {
       const equiposPortecalesa = equipos?.filter(e => e.operacion === 'Portecalesa').length || 0;
 
       // VIAJES
-      const { data: viajes } = await supabase.from("viajes").select("*");
-      const { data: viajesMes } = await supabase
+      let viajesQuery = supabase.from("viajes").select("*");
+      if (userClientId) {
+        viajesQuery = viajesQuery.eq("client_id", userClientId);
+      }
+      const { data: viajes } = await viajesQuery;
+      
+      let viajesMesQuery = supabase
         .from("viajes")
         .select("flete")
         .eq("estado", "completado")
         .gte("fecha_llegada_real", firstDayOfMonth);
+      if (userClientId) {
+        viajesMesQuery = viajesMesQuery.eq("client_id", userClientId);
+      }
+      const { data: viajesMes } = await viajesMesQuery;
       
       const viajesActivos = viajes?.filter(v => v.estado === 'en_transito').length || 0;
       const viajesCompletados = viajes?.filter(v => v.estado === 'completado').length || 0;
@@ -127,24 +143,36 @@ export default function Dashboard() {
       const ingresosMesActual = viajesMes?.reduce((sum, v) => sum + (v.flete || 0), 0) || 0;
 
       // MANTENIMIENTO
-      const { data: mantenimientos } = await supabase
+      let mantenimientosQuery = supabase
         .from("mantenimientos")
         .select("*")
         .gte("fecha_mantenimiento", firstDayOfMonth);
+      if (userClientId) {
+        mantenimientosQuery = mantenimientosQuery.eq("client_id", userClientId);
+      }
+      const { data: mantenimientos } = await mantenimientosQuery;
       
       const mantenimientosEnProceso = mantenimientos?.filter(m => m.estado === 'en_proceso').length || 0;
       const costoMantenimientoMes = mantenimientos?.reduce((sum, m) => sum + (m.costo || 0), 0) || 0;
       
-      const { data: proximosMantenimientos } = await supabase
+      let proximosMantenimientosQuery = supabase
         .from("mantenimientos")
         .select("*", { count: 'exact' })
         .eq("estado", "programado");
+      if (userClientId) {
+        proximosMantenimientosQuery = proximosMantenimientosQuery.eq("client_id", userClientId);
+      }
+      const { data: proximosMantenimientos } = await proximosMantenimientosQuery;
 
       // ALMACÉN REFACCIONES
-      const { data: refacciones } = await supabase
+      let refaccionesQuery = supabase
         .from("refacciones")
         .select("*, inventario_refacciones(*)")
         .eq("activa", true);
+      if (userClientId) {
+        refaccionesQuery = refaccionesQuery.eq("client_id", userClientId);
+      }
+      const { data: refacciones } = await refaccionesQuery;
       
       let refaccionesCriticas = 0;
       let valorInventario = 0;
@@ -155,84 +183,140 @@ export default function Dashboard() {
         valorInventario += stockTotal * (ref.precio_unitario || 0);
       });
 
-      const { data: solicitudesPendientes } = await supabase
+      let solicitudesPendientesQuery = supabase
         .from("solicitudes_refacciones")
         .select("*", { count: 'exact' })
         .in("estado", ["pendiente", "aprobado"]);
+      if (userClientId) {
+        solicitudesPendientesQuery = solicitudesPendientesQuery.eq("client_id", userClientId);
+      }
+      const { data: solicitudesPendientes } = await solicitudesPendientesQuery;
 
       // PERSONAL Y OPERADORES
-      const { data: operadores } = await supabase
+      let operadoresQuery = supabase
         .from("operadores")
         .select("*", { count: 'exact' })
         .eq("estado", "activo");
+      if (userClientId) {
+        operadoresQuery = operadoresQuery.eq("client_id", userClientId);
+      }
+      const { data: operadores } = await operadoresQuery;
 
-      const { data: personal } = await supabase
+      let personalQuery = supabase
         .from("personal")
         .select("*", { count: 'exact' })
         .eq("estado", "activo");
+      if (userClientId) {
+        personalQuery = personalQuery.eq("client_id", userClientId);
+      }
+      const { data: personal } = await personalQuery;
 
-      const { data: asistenciaHoy } = await supabase
+      let asistenciaHoyQuery = supabase
         .from("asistencia_personal")
         .select("*", { count: 'exact' })
         .gte("fecha_entrada", today)
         .eq("estado", "presente");
+      if (userClientId) {
+        asistenciaHoyQuery = asistenciaHoyQuery.eq("client_id", userClientId);
+      }
+      const { data: asistenciaHoy } = await asistenciaHoyQuery;
 
-      const { data: vacaciones } = await supabase
+      let vacacionesQuery = supabase
         .from("vacaciones")
         .select("*", { count: 'exact' })
         .eq("estado", "pendiente");
+      if (userClientId) {
+        vacacionesQuery = vacacionesQuery.eq("client_id", userClientId);
+      }
+      const { data: vacaciones } = await vacacionesQuery;
 
       // SEGURIDAD CTPAT
-      const { data: rondinesHoy } = await supabase
+      let rondinesHoyQuery = supabase
         .from("rondines")
         .select("*")
         .gte("created_at", today);
+      if (userClientId) {
+        rondinesHoyQuery = rondinesHoyQuery.eq("client_id", userClientId);
+      }
+      const { data: rondinesHoy } = await rondinesHoyQuery;
 
       const rondinesIncidentes = rondinesHoy?.filter(r => r.incidente).length || 0;
 
-      const { data: revisionesDoc } = await supabase
+      let revisionesDocQuery = supabase
         .from("revision_documental")
         .select("*");
+      if (userClientId) {
+        revisionesDocQuery = revisionesDocQuery.eq("client_id", userClientId);
+      }
+      const { data: revisionesDoc } = await revisionesDocQuery;
       
       const documentosVencidos = revisionesDoc?.filter(r => r.estado_general === 'vencido').length || 0;
 
-      const { data: inventarioOperador } = await supabase
+      let inventarioOperadorQuery = supabase
         .from("inventario_operador")
         .select("*");
+      if (userClientId) {
+        inventarioOperadorQuery = inventarioOperadorQuery.eq("client_id", userClientId);
+      }
+      const { data: inventarioOperador } = await inventarioOperadorQuery;
       
       const inventarioOperadorAprobados = inventarioOperador?.filter(i => i.estado === 'aprobado').length || 0;
 
       // RIESGOS Y CUMPLIMIENTO
-      const { data: riesgos } = await supabase
+      let riesgosQuery = supabase
         .from("analisis_riesgos")
         .select("*", { count: 'exact' })
         .in("nivel_riesgo", ["alto", "critico"])
         .eq("estado", "abierto");
+      if (userClientId) {
+        riesgosQuery = riesgosQuery.eq("client_id", userClientId);
+      }
+      const { data: riesgos } = await riesgosQuery;
 
-      const { data: acciones } = await supabase
+      let accionesQuery = supabase
         .from("acciones_correctivas")
         .select("*", { count: 'exact' })
         .eq("estado", "abierto");
+      if (userClientId) {
+        accionesQuery = accionesQuery.eq("client_id", userClientId);
+      }
+      const { data: acciones } = await accionesQuery;
 
-      const { data: incidentes } = await supabase
+      let incidentesQuery = supabase
         .from("incidentes")
         .select("*", { count: 'exact' })
         .in("estado", ["reportado", "en_investigacion"]);
+      if (userClientId) {
+        incidentesQuery = incidentesQuery.eq("client_id", userClientId);
+      }
+      const { data: incidentes } = await incidentesQuery;
 
-      const { data: alcoholimetro } = await supabase
+      let alcoholimetroQuery = supabase
         .from("pruebas_alcoholimetro")
         .select("*", { count: 'exact' })
         .eq("resultado", "positivo");
+      if (userClientId) {
+        alcoholimetroQuery = alcoholimetroQuery.eq("client_id", userClientId);
+      }
+      const { data: alcoholimetro } = await alcoholimetroQuery;
 
       // GENERAL
-      const { data: unidadesIngresadas } = await supabase
+      let unidadesIngresadasQuery = supabase
         .from("ingreso_unidades")
         .select("*", { count: 'exact' });
+      if (userClientId) {
+        unidadesIngresadasQuery = unidadesIngresadasQuery.eq("client_id", userClientId);
+      }
+      const { data: unidadesIngresadas } = await unidadesIngresadasQuery;
 
-      const { data: visitasActivas } = await supabase
+      let visitasActivasQuery = supabase
         .from("visitas")
         .select("*", { count: 'exact' })
         .eq("estado", "en_instalaciones");
+      if (userClientId) {
+        visitasActivasQuery = visitasActivasQuery.eq("client_id", userClientId);
+      }
+      const { data: visitasActivas } = await visitasActivasQuery;
 
       setStats({
         equiposTotal: equipos?.length || 0,

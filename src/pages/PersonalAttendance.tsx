@@ -29,6 +29,10 @@ interface Attendance {
   fecha_salida: string | null;
   estado: string;
   personal?: Personal;
+  vale_usado?: {
+    motivo: string;
+    hora_salida_autorizada: string;
+  };
 }
 
 interface ValeSalida {
@@ -117,6 +121,35 @@ export default function PersonalAttendance() {
 
       if (attendanceError) throw attendanceError;
 
+      // Obtener vales usados para correlacionar con asistencias
+      const { data: valesUsadosData } = await supabase
+        .from("vales_salida")
+        .select("*")
+        .eq("estado", "usado");
+
+      // Correlacionar vales con asistencias
+      const attendanceWithVales = (attendanceData || []).map(attendance => {
+        if (attendance.fecha_salida) {
+          const fechaSalida = new Date(attendance.fecha_salida).toISOString().split('T')[0];
+          const valeUsado = (valesUsadosData || []).find(
+            vale => vale.personal_id === attendance.personal_id && 
+                   vale.fecha_vale === fechaSalida &&
+                   vale.estado === 'usado'
+          );
+          
+          if (valeUsado) {
+            return {
+              ...attendance,
+              vale_usado: {
+                motivo: valeUsado.motivo,
+                hora_salida_autorizada: valeUsado.hora_salida_autorizada
+              }
+            };
+          }
+        }
+        return attendance;
+      });
+
       const { data: valesData, error: valesError } = await supabase
         .from("vales_salida")
         .select(`
@@ -150,7 +183,7 @@ export default function PersonalAttendance() {
       if (valesHistorialError) throw valesHistorialError;
 
       setPersonal(personalData || []);
-      setAttendances(attendanceData || []);
+      setAttendances(attendanceWithVales);
       setVales(valesData || []);
       setValesHistorial(valesHistorialData || []);
     } catch (error) {
@@ -375,6 +408,35 @@ export default function PersonalAttendance() {
       toast({
         title: "Error",
         description: "No se pudo eliminar el registro",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteVale = async (valeId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar este vale de salida?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("vales_salida")
+        .delete()
+        .eq('id', valeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Vale de salida eliminado",
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting vale:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el vale",
         variant: "destructive",
       });
     }
@@ -720,13 +782,19 @@ export default function PersonalAttendance() {
                 >
                   <div className="flex flex-col gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">
                           {attendance.personal?.nombre}
                         </h4>
                         <Badge variant={attendance.estado === "presente" ? "default" : "outline"}>
                           {attendance.estado === "presente" ? "Presente" : "Salió"}
                         </Badge>
+                        {attendance.vale_usado && (
+                          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            <FileText className="h-3 w-3 mr-1" />
+                            Salida con Vale
+                          </Badge>
+                        )}
                         <Badge variant="outline">
                           {attendance.personal?.departamento}
                         </Badge>
@@ -764,6 +832,16 @@ export default function PersonalAttendance() {
                           )}
                         </div>
                       </div>
+                      {attendance.vale_usado && (
+                        <div className="mt-2 p-2 bg-blue-500/5 rounded text-sm">
+                          <p className="text-blue-600 dark:text-blue-400">
+                            <strong>Motivo de salida anticipada:</strong> {attendance.vale_usado.motivo}
+                          </p>
+                          <p className="text-blue-600 dark:text-blue-400 text-xs mt-1">
+                            Hora autorizada: {attendance.vale_usado.hora_salida_autorizada}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     {isAdmin && (
                       <Button
@@ -848,6 +926,15 @@ export default function PersonalAttendance() {
                             </div>
                           </div>
                         </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteVale(vale.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar
+                        </Button>
                       </div>
                       <div className="p-3 bg-muted/50 rounded-lg">
                         <p className="text-sm">

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Clock, Users, LogOut, Calendar, QrCode, Trash2, FileText, Plus } from "lucide-react";
+import { Clock, Users, LogOut, Calendar, QrCode, Trash2, FileText, Plus, History } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRScanner from "@/components/QRScanner";
+import { differenceInMinutes } from "date-fns";
 
 interface Personal {
   id: string;
@@ -50,6 +51,7 @@ export default function PersonalAttendance() {
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [attendances, setAttendances] = useState<Attendance[]>([]);
   const [vales, setVales] = useState<ValeSalida[]>([]);
+  const [valesHistorial, setValesHistorial] = useState<ValeSalida[]>([]);
   const [selectedPersonal, setSelectedPersonal] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -131,9 +133,26 @@ export default function PersonalAttendance() {
 
       if (valesError) throw valesError;
 
+      // Obtener historial completo de vales para administradores
+      const { data: valesHistorialData, error: valesHistorialError } = await supabase
+        .from("vales_salida")
+        .select(`
+          *,
+          personal:personal_id (
+            id,
+            nombre,
+            numero_empleado
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (valesHistorialError) throw valesHistorialError;
+
       setPersonal(personalData || []);
       setAttendances(attendanceData || []);
       setVales(valesData || []);
+      setValesHistorial(valesHistorialData || []);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -218,6 +237,29 @@ export default function PersonalAttendance() {
 
   const handleExit = async (attendanceId: string, personalId: string) => {
     try {
+      // Obtener la asistencia actual para verificar las horas trabajadas
+      const attendance = attendances.find(a => a.id === attendanceId);
+      if (!attendance) throw new Error("Asistencia no encontrada");
+
+      const entryTime = new Date(attendance.fecha_entrada);
+      const currentTime = new Date();
+      const minutesWorked = differenceInMinutes(currentTime, entryTime);
+      const hoursWorked = minutesWorked / 60;
+
+      // Verificar si hay un vale activo
+      const valeActivo = vales.find(v => v.personal_id === personalId && v.estado === 'activo');
+
+      // Si no han pasado 8 horas y no hay vale, bloquear la salida
+      if (hoursWorked < 8 && !valeActivo) {
+        const hoursRemaining = (8 - hoursWorked).toFixed(1);
+        toast({
+          title: "Salida no autorizada",
+          description: `Faltan ${hoursRemaining} horas para completar la jornada laboral de 8 horas. Se requiere un vale de salida para salir anticipadamente.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Registrar salida
       const { error } = await supabase
         .from("asistencia_personal")
@@ -230,7 +272,6 @@ export default function PersonalAttendance() {
       if (error) throw error;
 
       // Marcar vale como usado si existe
-      const valeActivo = vales.find(v => v.personal_id === personalId && v.estado === 'activo');
       if (valeActivo) {
         await supabase
           .from("vales_salida")
@@ -240,7 +281,7 @@ export default function PersonalAttendance() {
 
       toast({
         title: "Éxito",
-        description: valeActivo ? "Salida registrada con vale" : "Salida registrada exitosamente",
+        description: valeActivo ? "Salida registrada con vale anticipado" : "Salida registrada exitosamente",
       });
 
       fetchData();
@@ -742,6 +783,92 @@ export default function PersonalAttendance() {
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Historial de Vales de Salida</CardTitle>
+                <CardDescription>Registro de salidas anticipadas autorizadas</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : valesHistorial.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay vales de salida registrados
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {valesHistorial.map((vale) => (
+                  <div
+                    key={vale.id}
+                    className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <h4 className="font-semibold text-foreground">
+                              {vale.personal?.nombre}
+                            </h4>
+                            <Badge 
+                              variant={
+                                vale.estado === 'activo' ? 'default' : 
+                                vale.estado === 'usado' ? 'secondary' : 
+                                'outline'
+                              }
+                            >
+                              {vale.estado === 'activo' ? 'Activo' : 
+                               vale.estado === 'usado' ? 'Usado' : 
+                               'Cancelado'}
+                            </Badge>
+                            <span className="text-sm text-muted-foreground">
+                              • {vale.personal?.numero_empleado}
+                            </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4" />
+                              <span>
+                                Fecha: {new Date(vale.fecha_vale).toLocaleDateString("es-MX")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span>
+                                Hora autorizada: {vale.hora_salida_autorizada}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm">
+                          <strong className="text-foreground">Motivo:</strong>
+                          <span className="text-muted-foreground ml-2">{vale.motivo}</span>
+                        </p>
+                        {vale.observaciones && (
+                          <p className="text-sm mt-2">
+                            <strong className="text-foreground">Observaciones:</strong>
+                            <span className="text-muted-foreground ml-2">{vale.observaciones}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {showQRScanner && (
         <QRScanner

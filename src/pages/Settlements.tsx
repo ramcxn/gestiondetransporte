@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, FileText, CheckCircle, XCircle, Calendar, Truck } from "lucide-react";
+import { DollarSign, FileText, CheckCircle, XCircle, Calendar, Truck, Filter, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -71,6 +71,15 @@ export default function Settlements() {
     deduccion: "0",
     observaciones: "",
   });
+
+  const [filters, setFilters] = useState({
+    fechaInicio: "",
+    fechaFin: "",
+    operador: "",
+    cliente: "",
+    ruta: "",
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchTrips();
@@ -289,6 +298,59 @@ export default function Settlements() {
   const pendingSettlements = settlements.filter(s => s.estado === 'pendiente');
   const paidSettlements = settlements.filter(s => s.estado === 'pagada');
   const totalPending = pendingSettlements.reduce((sum, s) => sum + s.monto_neto, 0);
+
+  // Get unique values for filters
+  const uniqueOperadores = Array.from(new Set(settlements.map(s => s.viaje?.operador).filter(Boolean)));
+  const uniqueClientes = Array.from(new Set(settlements.map(s => s.viaje?.cliente).filter(Boolean)));
+  const uniqueRutas = Array.from(new Set(settlements.map(s => {
+    if (s.viaje) {
+      return `${s.viaje.origen} → ${s.viaje.destino}`;
+    }
+    return null;
+  }).filter(Boolean)));
+
+  // Apply filters
+  const filteredSettlements = settlements.filter(settlement => {
+    if (filters.fechaInicio && settlement.fecha_liquidacion) {
+      const fechaLiq = new Date(settlement.fecha_liquidacion);
+      const fechaInicio = new Date(filters.fechaInicio);
+      if (fechaLiq < fechaInicio) return false;
+    }
+    
+    if (filters.fechaFin && settlement.fecha_liquidacion) {
+      const fechaLiq = new Date(settlement.fecha_liquidacion);
+      const fechaFin = new Date(filters.fechaFin);
+      fechaFin.setHours(23, 59, 59, 999);
+      if (fechaLiq > fechaFin) return false;
+    }
+    
+    if (filters.operador && settlement.viaje?.operador !== filters.operador) {
+      return false;
+    }
+    
+    if (filters.cliente && settlement.viaje?.cliente !== filters.cliente) {
+      return false;
+    }
+    
+    if (filters.ruta && settlement.viaje) {
+      const ruta = `${settlement.viaje.origen} → ${settlement.viaje.destino}`;
+      if (ruta !== filters.ruta) return false;
+    }
+    
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilters({
+      fechaInicio: "",
+      fechaFin: "",
+      operador: "",
+      cliente: "",
+      ruta: "",
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== "");
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -516,8 +578,126 @@ export default function Settlements() {
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Liquidaciones Registradas</CardTitle>
-          <CardDescription>Historial de pagos por viajes completados ({trips.length} viajes pendientes)</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Liquidaciones Registradas</CardTitle>
+              <CardDescription>Historial de pagos por viajes completados ({trips.length} viajes pendientes)</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? "Ocultar Filtros" : "Filtrar"}
+            </Button>
+          </div>
+          
+          {showFilters && (
+            <div className="mt-4 p-4 border rounded-lg space-y-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm">Filtros de Búsqueda</h4>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="fechaInicio">Fecha Inicio</Label>
+                  <Input
+                    id="fechaInicio"
+                    type="date"
+                    value={filters.fechaInicio}
+                    onChange={(e) => setFilters({ ...filters, fechaInicio: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="fechaFin">Fecha Fin</Label>
+                  <Input
+                    id="fechaFin"
+                    type="date"
+                    value={filters.fechaFin}
+                    onChange={(e) => setFilters({ ...filters, fechaFin: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="operador">Operador</Label>
+                  <Select
+                    value={filters.operador}
+                    onValueChange={(value) => setFilters({ ...filters, operador: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos</SelectItem>
+                      {uniqueOperadores.map((op) => (
+                        <SelectItem key={op} value={op as string}>
+                          {op}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Cliente</Label>
+                  <Select
+                    value={filters.cliente}
+                    onValueChange={(value) => setFilters({ ...filters, cliente: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos</SelectItem>
+                      {uniqueClientes.map((cliente) => (
+                        <SelectItem key={cliente} value={cliente as string}>
+                          {cliente}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2 lg:col-span-2">
+                  <Label htmlFor="ruta">Ruta</Label>
+                  <Select
+                    value={filters.ruta}
+                    onValueChange={(value) => setFilters({ ...filters, ruta: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todas</SelectItem>
+                      {uniqueRutas.map((ruta) => (
+                        <SelectItem key={ruta} value={ruta as string}>
+                          {ruta}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {hasActiveFilters && (
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {filteredSettlements.length} de {settlements.length} liquidaciones
+                </div>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -528,9 +708,13 @@ export default function Settlements() {
             <div className="text-center py-8 text-muted-foreground">
               No hay liquidaciones registradas
             </div>
+          ) : filteredSettlements.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron liquidaciones con los filtros aplicados
+            </div>
           ) : (
             <div className="space-y-3">
-              {settlements.map((settlement) => (
+              {filteredSettlements.map((settlement) => (
                 <div
                   key={settlement.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"

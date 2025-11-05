@@ -9,9 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Truck, AlertCircle, Clock, User, CheckCircle } from "lucide-react";
+import { Truck, AlertCircle, Clock, User, CheckCircle, QrCode } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import QRScanner from "@/components/QRScanner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const ctpatPoints = [
   "1. Puertas y cerraduras de caja",
@@ -108,6 +110,7 @@ export default function UnitEntry() {
 
   const [equipos, setEquipos] = useState<any[]>([]);
   const [operadores, setOperadores] = useState<any[]>([]);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   
   useEffect(() => {
     fetchEquipos();
@@ -118,10 +121,73 @@ export default function UnitEntry() {
     const { data } = await supabase
       .from("inventario_equipos")
       .select("*")
-      .eq("estado", "disponible")
       .order("numero_economico");
     
     if (data) setEquipos(data);
+  };
+
+  const handleQRScan = async (qrData: string) => {
+    try {
+      // Extract equipment ID from QR code (format: EQUIPO-{id})
+      const equipmentId = qrData.replace('EQUIPO-', '');
+      
+      // Fetch equipment data
+      const { data: equipo, error } = await supabase
+        .from("inventario_equipos")
+        .select("*")
+        .eq("id", equipmentId)
+        .single();
+
+      if (error || !equipo) {
+        toast({
+          title: "Error",
+          description: "No se encontró el equipo con este código QR",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Auto-fill form based on equipment type
+      if (equipo.tipo_equipo?.toLowerCase() === 'tracto') {
+        setFormData({
+          ...formData,
+          tracto_id: equipo.id,
+          numero_economico: equipo.numero_economico,
+          numero_unidad: equipo.numero_economico
+        });
+      } else if (equipo.tipo_equipo?.toLowerCase() === 'dolly') {
+        setFormData({
+          ...formData,
+          dolly_id: equipo.id
+        });
+      } else if (equipo.tipo_equipo?.toLowerCase() === 'remolque') {
+        if (!formData.remolque_1_id) {
+          setFormData({
+            ...formData,
+            remolque_1_id: equipo.id
+          });
+        } else {
+          setFormData({
+            ...formData,
+            remolque_2_id: equipo.id
+          });
+        }
+      }
+
+      toast({
+        title: "Éxito",
+        description: `Equipo ${equipo.numero_economico} escaneado correctamente`,
+      });
+
+      setShowQRScanner(false);
+    } catch (error) {
+      console.error("Error processing QR:", error);
+      toast({
+        title: "Error",
+        description: "Error al procesar el código QR",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchOperadores = async () => {
@@ -694,6 +760,17 @@ export default function UnitEntry() {
               </TabsList>
 
               <TabsContent value="basico" className="space-y-4">
+                <div className="flex justify-end mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowQRScanner(true)}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Escanear QR de Equipo
+                  </Button>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="numero_economico">Tracto (Número Económico) *</Label>
@@ -717,6 +794,7 @@ export default function UnitEntry() {
                         {equipos.filter(e => e.tipo_equipo?.toLowerCase() === 'tracto').map((equipo) => (
                           <SelectItem key={equipo.id} value={equipo.id}>
                             {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
+                            {equipo.estado !== 'disponible' && ` (${equipo.estado})`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -974,6 +1052,18 @@ export default function UnitEntry() {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Escanear Código QR del Equipo</DialogTitle>
+          </DialogHeader>
+          <QRScanner
+            onScan={handleQRScan}
+            onClose={() => setShowQRScanner(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

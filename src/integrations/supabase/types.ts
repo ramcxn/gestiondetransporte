@@ -698,6 +698,7 @@ export type Database = {
           operacion: string
           placas: string | null
           proximo_mantenimiento: string | null
+          qr_code: string | null
           tipo_equipo: string
           ubicacion: string | null
           ultima_inspeccion: string | null
@@ -721,6 +722,7 @@ export type Database = {
           operacion?: string
           placas?: string | null
           proximo_mantenimiento?: string | null
+          qr_code?: string | null
           tipo_equipo: string
           ubicacion?: string | null
           ultima_inspeccion?: string | null
@@ -744,6 +746,7 @@ export type Database = {
           operacion?: string
           placas?: string | null
           proximo_mantenimiento?: string | null
+          qr_code?: string | null
           tipo_equipo?: string
           ubicacion?: string | null
           ultima_inspeccion?: string | null

@@ -9,11 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Search, Truck, Package, Trash2, Edit, Plane, List } from "lucide-react";
+import { Plus, Search, Truck, Package, Trash2, Edit, Plane, List, QrCode, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QRCodeGenerator, generateQRCodeDataURL } from "@/components/QRCodeGenerator";
 
 export default function EquipmentInventory() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -69,11 +70,25 @@ export default function EquipmentInventory() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
-      const { error } = await supabase.from("inventario_equipos").insert([
-        { ...formData, created_by: user.id },
-      ]);
+      // Insert equipment and get the generated ID
+      const { data: newEquipment, error } = await supabase
+        .from("inventario_equipos")
+        .insert([{ ...formData, created_by: user.id }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Generate QR code with equipment ID
+      const qrCode = `EQUIPO-${newEquipment.id}`;
+      
+      // Update with QR code
+      const { error: updateError } = await supabase
+        .from("inventario_equipos")
+        .update({ qr_code: qrCode })
+        .eq("id", newEquipment.id);
+
+      if (updateError) throw updateError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventario_equipos"] });
@@ -349,6 +364,31 @@ export default function EquipmentInventory() {
                       {equipo.placas && <p className="text-muted-foreground">Placas: {equipo.placas}</p>}
                       {equipo.ubicacion && <p className="text-muted-foreground">📍 {equipo.ubicacion}</p>}
                     </div>
+                    {equipo.qr_code && (
+                      <div className="flex flex-col items-center gap-2 p-3 bg-muted rounded-lg">
+                        <QRCodeGenerator value={equipo.qr_code} size={120} />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={async () => {
+                            try {
+                              const dataUrl = await generateQRCodeDataURL(equipo.qr_code);
+                              const link = document.createElement('a');
+                              link.download = `QR-${equipo.numero_economico}.png`;
+                              link.href = dataUrl;
+                              link.click();
+                              toast({ title: "Éxito", description: "Código QR descargado" });
+                            } catch (error) {
+                              toast({ title: "Error", description: "No se pudo descargar el QR", variant: "destructive" });
+                            }
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Descargar QR
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" variant="outline" className="flex-1" onClick={() => quickStatusUpdateMutation.mutate({ id: equipo.id, estado: 'disponible' })}>
                         Disponible

@@ -37,8 +37,23 @@ export default function WarehouseLocations() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
+      // Obtener el client_id basado en el dominio del email
+      const { data: clientIdByDomain } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let clientId = clientIdByDomain;
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        clientId = profile?.client_id;
+      }
+
+      if (!clientId) throw new Error("No se encontró el cliente del usuario");
+
       const { error } = await supabase.from("ubicaciones_almacen").insert([
-        { ...formData, created_by: user.id },
+        { ...formData, created_by: user.id, client_id: clientId },
       ]);
 
       if (error) throw error;

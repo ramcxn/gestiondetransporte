@@ -63,6 +63,7 @@ const UserManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
@@ -117,6 +118,7 @@ const UserManagement = () => {
 
   const fetchUserPermissions = async (userId: string) => {
     try {
+      setLoadingPermissions(true);
       const { data, error } = await supabase
         .from("user_module_permissions")
         .select("*")
@@ -133,13 +135,16 @@ const UserManagement = () => {
       setUserPermissions(permissions);
     } catch (error) {
       console.error("Error fetching permissions:", error);
+    } finally {
+      setLoadingPermissions(false);
     }
   };
 
   const handleOpenPermissions = async (user: UserWithRole) => {
     setSelectedUser(user);
-    await fetchUserPermissions(user.id);
     setIsPermissionsDialogOpen(true);
+    // Cargar permisos después de abrir el diálogo para forzar re-render
+    await fetchUserPermissions(user.id);
   };
 
   const handleSavePermissions = async () => {
@@ -542,7 +547,14 @@ const UserManagement = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
+      <Dialog open={isPermissionsDialogOpen} onOpenChange={(open) => {
+        setIsPermissionsDialogOpen(open);
+        if (!open) {
+          // Limpiar permisos al cerrar el diálogo
+          setUserPermissions({});
+          setSelectedUser(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Permisos de Módulos - {selectedUser?.full_name}</DialogTitle>
@@ -551,7 +563,11 @@ const UserManagement = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            {selectedUser?.role === "admin" ? (
+            {loadingPermissions ? (
+              <div className="flex justify-center items-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : selectedUser?.role === "admin" ? (
               <div className="p-4 bg-primary/10 rounded-lg">
                 <p className="text-sm">
                   Los administradores tienen acceso a todos los módulos por defecto

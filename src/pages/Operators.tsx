@@ -168,10 +168,8 @@ export default function Operators() {
 
       if (!profile?.client_id) throw new Error("No client_id found");
 
-      // Generate unique QR code
-      const qrCode = `OPERADOR-${formData.numero_empleado}-${Date.now()}`;
-
-      const { error } = await supabase
+      // Insert operator first to get the ID
+      const { data: newOperator, error: insertError } = await supabase
         .from("operadores")
         .insert({
           nombre: formData.nombre,
@@ -182,12 +180,24 @@ export default function Operators() {
           numero_licencia: formData.numero_licencia || null,
           fecha_vencimiento_licencia: formData.fecha_vencimiento_licencia || null,
           pdf_url: pdfUrl,
-          qr_code: qrCode,
           client_id: profile.client_id,
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
+
+      // Generate QR code with operator ID
+      const qrCode = `OPERADOR-${newOperator.id}`;
+      
+      // Update with QR code
+      const { error: updateError } = await supabase
+        .from("operadores")
+        .update({ qr_code: qrCode })
+        .eq("id", newOperator.id);
+
+      if (updateError) throw updateError;
 
       toast({
         title: "Éxito",

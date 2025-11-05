@@ -213,13 +213,11 @@ export default function Personal() {
           description: "Personal actualizado exitosamente",
         });
       } else {
-        // Generate unique QR code
-        const qrCode = `PERSONAL-${formData.numero_empleado}-${Date.now()}`;
-        
         // Calculate initial vacation days
         const diasVacaciones = calcularDiasVacaciones(formData.fecha_alta);
 
-        const { error } = await supabase
+        // Insert new personal record
+        const { data: newPersonal, error: insertError } = await supabase
           .from("personal")
           .insert({
             nombre: formData.nombre,
@@ -229,14 +227,26 @@ export default function Personal() {
             fecha_alta: formData.fecha_alta,
             direccion: formData.direccion,
             telefono: formData.telefono || null,
-            qr_code: qrCode,
             dias_vacaciones_disponibles: diasVacaciones,
             dias_vacaciones_tomados: 0,
             client_id: profile.client_id,
             created_by: user.id,
-          });
+          })
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (insertError) throw insertError;
+
+        // Generate QR code with personal ID
+        const qrCode = `PERSONAL-${newPersonal.id}`;
+        
+        // Update with QR code
+        const { error: updateError } = await supabase
+          .from("personal")
+          .update({ qr_code: qrCode })
+          .eq("id", newPersonal.id);
+
+        if (updateError) throw updateError;
 
         toast({
           title: "Éxito",

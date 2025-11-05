@@ -111,6 +111,7 @@ export default function UnitEntry() {
   const [equipos, setEquipos] = useState<any[]>([]);
   const [operadores, setOperadores] = useState<any[]>([]);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scanningFor, setScanningFor] = useState<"equipo" | "operador">("equipo");
   
   useEffect(() => {
     fetchEquipos();
@@ -128,56 +129,97 @@ export default function UnitEntry() {
 
   const handleQRScan = async (qrData: string) => {
     try {
-      // Extract equipment ID from QR code (format: EQUIPO-{id})
-      const equipmentId = qrData.replace('EQUIPO-', '');
-      
-      // Fetch equipment data
-      const { data: equipo, error } = await supabase
-        .from("inventario_equipos")
-        .select("*")
-        .eq("id", equipmentId)
-        .single();
+      // Check if scanning equipment or operator
+      if (qrData.startsWith('EQUIPO-')) {
+        // Extract equipment ID from QR code (format: EQUIPO-{id})
+        const equipmentId = qrData.replace('EQUIPO-', '');
+        
+        // Fetch equipment data
+        const { data: equipo, error } = await supabase
+          .from("inventario_equipos")
+          .select("*")
+          .eq("id", equipmentId)
+          .single();
 
-      if (error || !equipo) {
+        if (error || !equipo) {
+          toast({
+            title: "Error",
+            description: "No se encontró el equipo con este código QR",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Auto-fill form based on equipment type
+        if (equipo.tipo_equipo?.toLowerCase() === 'tracto') {
+          setFormData({
+            ...formData,
+            tracto_id: equipo.id,
+            numero_economico: equipo.numero_economico,
+            numero_unidad: equipo.numero_economico
+          });
+        } else if (equipo.tipo_equipo?.toLowerCase() === 'dolly') {
+          setFormData({
+            ...formData,
+            dolly_id: equipo.id
+          });
+        } else if (equipo.tipo_equipo?.toLowerCase() === 'remolque') {
+          if (!formData.remolque_1_id) {
+            setFormData({
+              ...formData,
+              remolque_1_id: equipo.id
+            });
+          } else {
+            setFormData({
+              ...formData,
+              remolque_2_id: equipo.id
+            });
+          }
+        }
+
+        toast({
+          title: "Éxito",
+          description: `Equipo ${equipo.numero_economico} escaneado correctamente`,
+        });
+      } else if (qrData.startsWith('OPERADOR-')) {
+        // Extract operator ID from QR code (format: OPERADOR-{id})
+        const operatorId = qrData.replace('OPERADOR-', '');
+        
+        // Fetch operator data
+        const { data: operador, error } = await supabase
+          .from("operadores")
+          .select("*")
+          .eq("id", operatorId)
+          .single();
+
+        if (error || !operador) {
+          toast({
+            title: "Error",
+            description: "No se encontró el operador con este código QR",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Auto-fill operator data
+        setFormData({
+          ...formData,
+          operador_id: operador.id,
+          operador: operador.nombre
+        });
+
+        toast({
+          title: "Éxito",
+          description: `Operador ${operador.nombre} escaneado correctamente`,
+        });
+      } else {
         toast({
           title: "Error",
-          description: "No se encontró el equipo con este código QR",
+          description: "Código QR no reconocido",
           variant: "destructive",
         });
         return;
       }
-
-      // Auto-fill form based on equipment type
-      if (equipo.tipo_equipo?.toLowerCase() === 'tracto') {
-        setFormData({
-          ...formData,
-          tracto_id: equipo.id,
-          numero_economico: equipo.numero_economico,
-          numero_unidad: equipo.numero_economico
-        });
-      } else if (equipo.tipo_equipo?.toLowerCase() === 'dolly') {
-        setFormData({
-          ...formData,
-          dolly_id: equipo.id
-        });
-      } else if (equipo.tipo_equipo?.toLowerCase() === 'remolque') {
-        if (!formData.remolque_1_id) {
-          setFormData({
-            ...formData,
-            remolque_1_id: equipo.id
-          });
-        } else {
-          setFormData({
-            ...formData,
-            remolque_2_id: equipo.id
-          });
-        }
-      }
-
-      toast({
-        title: "Éxito",
-        description: `Equipo ${equipo.numero_economico} escaneado correctamente`,
-      });
 
       setShowQRScanner(false);
     } catch (error) {
@@ -760,14 +802,30 @@ export default function UnitEntry() {
               </TabsList>
 
               <TabsContent value="basico" className="space-y-4">
-                <div className="flex justify-end mb-4">
+                <div className="flex gap-2 mb-4">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowQRScanner(true)}
+                    onClick={() => {
+                      setScanningFor("equipo");
+                      setShowQRScanner(true);
+                    }}
+                    className="flex-1"
                   >
                     <QrCode className="h-4 w-4 mr-2" />
                     Escanear QR de Equipo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setScanningFor("operador");
+                      setShowQRScanner(true);
+                    }}
+                    className="flex-1"
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Escanear QR de Operador
                   </Button>
                 </div>
 
@@ -1056,7 +1114,9 @@ export default function UnitEntry() {
       <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Escanear Código QR del Equipo</DialogTitle>
+            <DialogTitle>
+              Escanear Código QR {scanningFor === "equipo" ? "del Equipo" : "del Operador"}
+            </DialogTitle>
           </DialogHeader>
           <QRScanner
             onScan={handleQRScan}

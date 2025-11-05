@@ -8,6 +8,7 @@ interface AuthContextType {
   session: Session | null;
   userRole: "admin" | "usuario" | null;
   clientId: string | null;
+  clientIdByDomain: string | null; // Client ID basado en el dominio del email
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
@@ -21,6 +22,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<"admin" | "usuario" | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [clientIdByDomain, setClientIdByDomain] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -56,6 +58,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const fetchClientIdByDomain = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_client_id_by_email_domain');
+      if (error) throw error;
+      setClientIdByDomain(data || null);
+    } catch (error) {
+      console.error("Error fetching client_id by domain:", error);
+      setClientIdByDomain(null);
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -67,10 +80,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setTimeout(() => {
             fetchUserRole(session.user.id);
             fetchClientId(session.user.id);
+            fetchClientIdByDomain();
           }, 0);
         } else {
           setUserRole(null);
           setClientId(null);
+          setClientIdByDomain(null);
         }
         setLoading(false);
       }
@@ -84,6 +99,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         fetchUserRole(session.user.id);
         fetchClientId(session.user.id);
+        fetchClientIdByDomain();
       }
       setLoading(false);
     });
@@ -128,6 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSession(null);
     setUserRole(null);
     setClientId(null);
+    setClientIdByDomain(null);
     navigate("/auth");
   };
 
@@ -138,6 +155,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         session,
         userRole,
         clientId,
+        clientIdByDomain,
         loading,
         signIn,
         signUp,

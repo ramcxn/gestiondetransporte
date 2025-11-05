@@ -143,6 +143,10 @@ export default function WarehouseCatalog() {
 
       if (!profile?.client_id) throw new Error("No se encontró el cliente del usuario");
 
+      // Obtener el client_id basado en el dominio del email
+      const { data: clientIdByDomain } = await supabase.rpc('get_client_id_by_email_domain');
+      const clientId = clientIdByDomain || profile.client_id;
+
       let imported = 0;
       // Skip header row (row 0)
       for (let i = 1; i < jsonData.length; i++) {
@@ -180,7 +184,7 @@ export default function WarehouseCatalog() {
             stock_maximo: 100,
             punto_reorden: 10,
             activa: activo,
-            client_id: profile.client_id,
+            client_id: clientId,
             created_by: user.id
           }]);
 

@@ -71,14 +71,10 @@ export default function WarehouseRequests() {
       // Generar folio
       const { data: folioData } = await supabase.rpc("generate_solicitud_folio");
       
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id basado en el dominio del email
+      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!clientId) throw new Error("No se pudo determinar el cliente");
 
       const { data: solicitud, error: solicitudError } = await supabase
         .from("solicitudes_refacciones")
@@ -91,7 +87,7 @@ export default function WarehouseRequests() {
             fecha_requerida: formData.fecha_requerida || null,
             observaciones: formData.observaciones,
             solicitante: user.id,
-            client_id: profile.client_id,
+            client_id: clientId,
             created_by: user.id,
           },
         ])
@@ -107,6 +103,7 @@ export default function WarehouseRequests() {
           solicitud_id: solicitud.id,
           refaccion_id: r.refaccion_id,
           cantidad_solicitada: r.cantidad,
+          client_id: clientId,
         }));
 
       if (detalles.length > 0) {

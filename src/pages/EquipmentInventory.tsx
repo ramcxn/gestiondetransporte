@@ -70,10 +70,17 @@ export default function EquipmentInventory() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
+      // Obtener el client_id basado en el dominio del email
+      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
+
       // Insert equipment and get the generated ID
       const { data: newEquipment, error } = await supabase
         .from("inventario_equipos")
-        .insert([{ ...formData, created_by: user.id }])
+        .insert([{ 
+          ...formData, 
+          created_by: user.id,
+          client_id: clientId || formData.client_id // Usar el client_id del dominio o el proporcionado
+        }])
         .select()
         .single();
 

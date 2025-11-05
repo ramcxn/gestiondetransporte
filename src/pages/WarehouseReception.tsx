@@ -72,6 +72,9 @@ export default function WarehouseReception() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
+      // Obtener el client_id basado en el dominio del email
+      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
+
       // Insertar en inventario
       const { data: inventario, error: inventarioError } = await supabase
         .from("inventario_refacciones")
@@ -86,6 +89,7 @@ export default function WarehouseReception() {
             costo_unitario: formData.costo_unitario,
             proveedor: formData.proveedor,
             documento_recepcion: formData.documento_recepcion,
+            client_id: clientId,
             created_by: user.id,
           },
         ])
@@ -107,6 +111,7 @@ export default function WarehouseReception() {
             costo_unitario: formData.costo_unitario,
             costo_total: formData.costo_unitario,
             documento_referencia: formData.documento_recepcion,
+            client_id: clientId,
             created_by: user.id,
           },
         ]);

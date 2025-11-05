@@ -449,6 +449,7 @@ export default function Trips() {
         description: "Viaje eliminado exitosamente",
       });
 
+      fetchTrips();
       setDeleteDialogOpen(false);
       setTripToDelete(null);
     } catch (error) {

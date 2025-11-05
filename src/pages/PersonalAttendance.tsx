@@ -116,6 +116,33 @@ export default function PersonalAttendance() {
 
       if (profileError) throw profileError;
 
+      // Verificar si hay una entrada reciente (últimos 10 minutos)
+      const { data: recentEntry, error: recentError } = await supabase
+        .from("asistencia_personal")
+        .select("fecha_entrada")
+        .eq("personal_id", selectedPersonal)
+        .order("fecha_entrada", { ascending: false })
+        .limit(1);
+
+      if (recentError) throw recentError;
+
+      if (recentEntry && recentEntry.length > 0) {
+        const lastEntryTime = new Date(recentEntry[0].fecha_entrada);
+        const currentTime = new Date();
+        const timeDiffMinutes = (currentTime.getTime() - lastEntryTime.getTime()) / (1000 * 60);
+
+        if (timeDiffMinutes < 10) {
+          const minutesRemaining = Math.ceil(10 - timeDiffMinutes);
+          toast({
+            title: "Entrada bloqueada",
+            description: `Esta persona ya registró su entrada recientemente. Debe esperar ${minutesRemaining} minuto${minutesRemaining !== 1 ? 's' : ''} más.`,
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from("asistencia_personal")
         .insert({

@@ -2158,6 +2158,7 @@ export type Database = {
           ubicacion_actual: string | null
           ultima_actualizacion_ubicacion: string | null
           unidad: string
+          unidad_negocio: string
         }
         Insert: {
           client_id: string
@@ -2179,6 +2180,7 @@ export type Database = {
           ubicacion_actual?: string | null
           ultima_actualizacion_ubicacion?: string | null
           unidad: string
+          unidad_negocio?: string
         }
         Update: {
           client_id?: string
@@ -2200,6 +2202,7 @@ export type Database = {
           ubicacion_actual?: string | null
           ultima_actualizacion_ubicacion?: string | null
           unidad?: string
+          unidad_negocio?: string
         }
         Relationships: [
           {

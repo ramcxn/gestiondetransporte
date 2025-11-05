@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Calendar, Truck, Navigation, Map as MapIcon, Trash2 } from "lucide-react";
+import { MapPin, Calendar, Truck, Navigation, Map as MapIcon, Trash2, Filter, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,7 @@ interface Trip {
   ultima_actualizacion_ubicacion: string | null;
   ruta_id: string | null;
   created_at: string;
+  unidad_negocio: string;
 }
 
 interface Route {
@@ -99,9 +100,20 @@ export default function Trips() {
     cliente: "",
     sucursal: "",
     ruta_id: "",
+    unidad_negocio: "HH Express",
   });
 
   const [locationUpdate, setLocationUpdate] = useState("");
+
+  const [filters, setFilters] = useState({
+    fechaInicio: "",
+    fechaFin: "",
+    cliente: "all",
+    operador: "all",
+    ruta: "all",
+    unidad_negocio: "all",
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchRoutes();
@@ -260,6 +272,7 @@ export default function Trips() {
           flete: parseFloat(formData.flete),
           cliente: formData.cliente,
           sucursal: formData.sucursal,
+          unidad_negocio: formData.unidad_negocio,
           client_id: profile.client_id,
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
@@ -285,6 +298,7 @@ export default function Trips() {
         cliente: "",
         sucursal: "",
         ruta_id: "",
+        unidad_negocio: "HH Express",
       });
       setIsDialogOpen(false);
     } catch (error) {
@@ -432,6 +446,61 @@ export default function Trips() {
   const scheduledTrips = trips.filter(t => t.estado === "programado");
   const completedTrips = monthTrips.filter(t => t.estado === "completado");
   const totalKmMonth = completedTrips.reduce((sum, t) => sum + t.distancia_km, 0);
+
+  // Get unique values for filters
+  const uniqueClientes = Array.from(new Set(trips.map(t => t.cliente).filter(Boolean)));
+  const uniqueOperadores = Array.from(new Set(trips.map(t => t.operador).filter(Boolean)));
+  const uniqueRutas = Array.from(new Set(trips.map(t => `${t.origen} → ${t.destino}`).filter(Boolean)));
+
+  // Apply filters
+  const filteredTrips = trips.filter(trip => {
+    if (filters.fechaInicio) {
+      const fechaSalida = new Date(trip.fecha_salida);
+      const fechaInicio = new Date(filters.fechaInicio);
+      if (fechaSalida < fechaInicio) return false;
+    }
+    
+    if (filters.fechaFin) {
+      const fechaSalida = new Date(trip.fecha_salida);
+      const fechaFin = new Date(filters.fechaFin);
+      fechaFin.setHours(23, 59, 59, 999);
+      if (fechaSalida > fechaFin) return false;
+    }
+    
+    if (filters.cliente !== "all" && trip.cliente !== filters.cliente) {
+      return false;
+    }
+    
+    if (filters.operador !== "all" && trip.operador !== filters.operador) {
+      return false;
+    }
+    
+    if (filters.ruta !== "all") {
+      const ruta = `${trip.origen} → ${trip.destino}`;
+      if (ruta !== filters.ruta) return false;
+    }
+
+    if (filters.unidad_negocio !== "all" && trip.unidad_negocio !== filters.unidad_negocio) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilters({
+      fechaInicio: "",
+      fechaFin: "",
+      cliente: "all",
+      operador: "all",
+      ruta: "all",
+      unidad_negocio: "all",
+    });
+  };
+
+  const hasActiveFilters = filters.fechaInicio !== "" || filters.fechaFin !== "" || 
+    filters.cliente !== "all" || filters.operador !== "all" || filters.ruta !== "all" || 
+    filters.unidad_negocio !== "all";
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -620,7 +689,7 @@ export default function Trips() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                 <div className="space-y-2">
                   <Label htmlFor="sucursal">Sucursal</Label>
                   <Input
                     id="sucursal"
@@ -629,6 +698,21 @@ export default function Trips() {
                     onChange={(e) => setFormData({ ...formData, sucursal: e.target.value })}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unidad-negocio">Unidad de Negocio</Label>
+                  <Select
+                    value={formData.unidad_negocio}
+                    onValueChange={(value) => setFormData({ ...formData, unidad_negocio: value })}
+                  >
+                    <SelectTrigger id="unidad-negocio">
+                      <SelectValue placeholder="Seleccionar unidad de negocio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="HH Express">HH Express</SelectItem>
+                      <SelectItem value="PORTECALESA">PORTECALESA</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
@@ -715,8 +799,143 @@ export default function Trips() {
 
       <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Viajes Recientes</CardTitle>
-          <CardDescription>Estado actual de las operaciones</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Viajes Recientes</CardTitle>
+              <CardDescription>Estado actual de las operaciones</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? "Ocultar Filtros" : "Filtrar"}
+            </Button>
+          </div>
+          
+          {showFilters && (
+            <div className="mt-4 p-4 border rounded-lg space-y-4 bg-muted/30">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm">Filtros de Búsqueda</h4>
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Limpiar
+                  </Button>
+                )}
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="fechaInicio">Fecha Inicio</Label>
+                  <Input
+                    id="fechaInicio"
+                    type="date"
+                    value={filters.fechaInicio}
+                    onChange={(e) => setFilters({ ...filters, fechaInicio: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="fechaFin">Fecha Fin</Label>
+                  <Input
+                    id="fechaFin"
+                    type="date"
+                    value={filters.fechaFin}
+                    onChange={(e) => setFilters({ ...filters, fechaFin: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="filterCliente">Cliente</Label>
+                  <Select
+                    value={filters.cliente}
+                    onValueChange={(value) => setFilters({ ...filters, cliente: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {uniqueClientes.map((cliente) => (
+                        <SelectItem key={cliente} value={cliente}>
+                          {cliente}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="filterOperador">Operador</Label>
+                  <Select
+                    value={filters.operador}
+                    onValueChange={(value) => setFilters({ ...filters, operador: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {uniqueOperadores.map((operador) => (
+                        <SelectItem key={operador} value={operador}>
+                          {operador}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="filterRuta">Ruta</Label>
+                  <Select
+                    value={filters.ruta}
+                    onValueChange={(value) => setFilters({ ...filters, ruta: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {uniqueRutas.map((ruta) => (
+                        <SelectItem key={ruta} value={ruta}>
+                          {ruta}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="filterUnidadNegocio">Unidad de Negocio</Label>
+                  <Select
+                    value={filters.unidad_negocio}
+                    onValueChange={(value) => setFilters({ ...filters, unidad_negocio: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      <SelectItem value="HH Express">HH Express</SelectItem>
+                      <SelectItem value="PORTECALESA">PORTECALESA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              {hasActiveFilters && (
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {filteredTrips.length} de {trips.length} viajes
+                </div>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -727,9 +946,13 @@ export default function Trips() {
             <div className="text-center py-8 text-muted-foreground">
               No hay viajes registrados
             </div>
+          ) : filteredTrips.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron viajes con los filtros aplicados
+            </div>
           ) : (
             <div className="space-y-3">
-              {trips.map((trip) => (
+              {filteredTrips.map((trip) => (
                 <div
                   key={trip.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
@@ -738,6 +961,9 @@ export default function Trips() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold text-foreground">{trip.unidad}</h4>
+                        <Badge variant="outline" className="text-xs">
+                          {trip.unidad_negocio}
+                        </Badge>
                         {trip.estado === "completado" && (
                           <Badge className="bg-accent text-accent-foreground">Completado</Badge>
                         )}

@@ -354,10 +354,10 @@ export default function RiskAnalysis() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total Riesgos</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{riesgos.length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Riesgo Alto</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-destructive">{highRisks.length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Peritajes</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{peritajes.length}</div></CardContent></Card>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total Riesgos</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold">{riesgos.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Riesgo Alto</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-destructive">{highRisks.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Peritajes</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-primary">{peritajes.length}</div></CardContent></Card>
         <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Incidentes</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-secondary">{incidents.length}</div></CardContent></Card>
       </div>
 

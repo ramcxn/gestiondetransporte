@@ -228,11 +228,11 @@ export default function SecuritySeals() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{seals.length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{available.length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Asignados</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{assigned.length}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{assigned.length}</div></CardContent></Card>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold">{seals.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-accent">{available.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Asignados</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-primary">{assigned.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold">{assigned.length}</div></CardContent></Card>
       </div>
 
       <Card>

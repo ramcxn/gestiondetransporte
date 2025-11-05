@@ -579,13 +579,13 @@ export default function Maintenance() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Este Mes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{thisMonth.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{thisMonth.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {thisMonth.filter(m => m.tipo_mantenimiento === "preventivo").length} preventivos
             </p>

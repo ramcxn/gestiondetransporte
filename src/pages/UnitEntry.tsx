@@ -527,7 +527,7 @@ export default function UnitEntry() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary rounded-lg">
             <Truck className="h-6 w-6 text-primary-foreground" />
@@ -537,16 +537,18 @@ export default function UnitEntry() {
             <p className="text-muted-foreground">Registro basado en 17 puntos de seguridad CTPAT</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Button
             variant="outline"
             onClick={() => setShowMonthlyReport(!showMonthlyReport)}
+            className="w-full sm:w-auto"
           >
             {showMonthlyReport ? "Ocultar Reporte Mensual" : "Ver Reporte Mensual"}
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowHistory(!showHistory)}
+            className="w-full sm:w-auto"
           >
             {showHistory ? "Ocultar Historial" : "Ver Historial"}
           </Button>
@@ -627,13 +629,13 @@ export default function UnitEntry() {
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Registros Hoy</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{todayEntries.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{todayEntries.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {todayEntries.filter((e) => e.tipo_movimiento === "entrada").length} entradas
             </p>
@@ -776,13 +778,13 @@ export default function UnitEntry() {
 
       <Card className="shadow-card">
         <CardHeader>
-          <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
               <CardTitle>Nueva Inspección de Unidad</CardTitle>
               <CardDescription>Complete todos los campos requeridos y los 17 puntos CTPAT</CardDescription>
             </div>
             <Select value={entryType} onValueChange={(value: "entrada" | "salida") => setEntryType(value)}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full sm:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -795,14 +797,14 @@ export default function UnitEntry() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Tabs defaultValue="basico" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="basico">Datos Básicos</TabsTrigger>
-                <TabsTrigger value="inspeccion">Inspección CTPAT</TabsTrigger>
-                <TabsTrigger value="adicional">Información Adicional</TabsTrigger>
+              <TabsList className="w-full grid grid-cols-3 h-auto">
+                <TabsTrigger value="basico" className="text-xs sm:text-sm px-2 py-2">Datos Básicos</TabsTrigger>
+                <TabsTrigger value="inspeccion" className="text-xs sm:text-sm px-2 py-2">Inspección CTPAT</TabsTrigger>
+                <TabsTrigger value="adicional" className="text-xs sm:text-sm px-2 py-2">Info Adicional</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basico" className="space-y-4">
-                <div className="flex gap-2 mb-4">
+                <div className="flex flex-col sm:flex-row gap-2 mb-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -810,7 +812,7 @@ export default function UnitEntry() {
                       setScanningFor("equipo");
                       setShowQRScanner(true);
                     }}
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                   >
                     <QrCode className="h-4 w-4 mr-2" />
                     Escanear QR de Equipo
@@ -822,7 +824,7 @@ export default function UnitEntry() {
                       setScanningFor("operador");
                       setShowQRScanner(true);
                     }}
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                   >
                     <QrCode className="h-4 w-4 mr-2" />
                     Escanear QR de Operador
@@ -995,7 +997,7 @@ export default function UnitEntry() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Fotografías de la Unidad</Label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="photo1" className="text-sm">Foto 1 - Vista Frontal</Label>
                         <Input

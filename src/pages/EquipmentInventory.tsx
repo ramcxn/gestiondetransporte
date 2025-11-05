@@ -223,15 +223,15 @@ export default function EquipmentInventory() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Inventario de Equipos</h1>
           <p className="text-muted-foreground">Tractos, Dollies y Remolques</p>
         </div>
-        <div className="flex gap-2">
+        <div className="w-full sm:w-auto">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />Nuevo Equipo</Button>
+              <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" />Nuevo Equipo</Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Registrar Nuevo Equipo</DialogTitle></DialogHeader>
@@ -281,11 +281,11 @@ export default function EquipmentInventory() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total Equipos</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{equipos?.length || 0}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-accent">{disponibles}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-primary">{enUso}</div></CardContent></Card>
-        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Mantenimiento</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold text-secondary">{mantenimiento}</div></CardContent></Card>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Total Equipos</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold">{equipos?.length || 0}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Disponibles</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-accent">{disponibles}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">En Uso</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-primary">{enUso}</div></CardContent></Card>
+        <Card><CardHeader className="pb-3"><CardTitle className="text-sm">Mantenimiento</CardTitle></CardHeader><CardContent><div className="text-2xl sm:text-3xl font-bold text-secondary">{mantenimiento}</div></CardContent></Card>
       </div>
 
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "airport")} className="space-y-4">
@@ -294,32 +294,34 @@ export default function EquipmentInventory() {
           <TabsTrigger value="list" className="gap-2"><List className="h-4 w-4" />Vista Lista</TabsTrigger>
         </TabsList>
 
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-3">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar equipos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
-          <Select value={operacionFilter} onValueChange={setOperacionFilter}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Filtrar por operación" />
-            </SelectTrigger>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Select value={operacionFilter} onValueChange={setOperacionFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filtrar por operación" />
+              </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las operaciones</SelectItem>
               <SelectItem value="HH Express">HH Express</SelectItem>
               <SelectItem value="Portecalesa">Portecalesa</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Filtrar por estado" />
-            </SelectTrigger>
+            <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los estados</SelectItem>
               <SelectItem value="disponible">Disponible</SelectItem>
               <SelectItem value="en_uso">En Uso</SelectItem>
               <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
             </SelectContent>
-          </Select>
+            </Select>
+          </div>
         </div>
 
         <TabsContent value="airport" className="space-y-4">

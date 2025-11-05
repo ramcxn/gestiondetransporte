@@ -513,13 +513,13 @@ export default function Breathalyzer() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Pruebas Hoy</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{todayTests.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{todayTests.length}</div>
             <p className="text-xs text-muted-foreground mt-1">{passedTests.length} aprobadas</p>
           </CardContent>
         </Card>

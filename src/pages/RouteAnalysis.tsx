@@ -554,13 +554,13 @@ export default function RouteAnalysis() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card className="shadow-card">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">Rutas Guardadas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-foreground">{savedRoutes.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">{savedRoutes.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Total registradas</p>
           </CardContent>
         </Card>

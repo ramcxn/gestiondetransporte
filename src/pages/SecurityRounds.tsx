@@ -201,6 +201,15 @@ export default function SecurityRounds() {
 
       const selectedZone = zones.find(z => z.id === formData.zona_id);
       
+      // Get client_id
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("client_id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.client_id) throw new Error("No client_id found");
+      
       const { error } = await supabase
         .from("rondines")
         .insert({
@@ -209,6 +218,7 @@ export default function SecurityRounds() {
           incidente: formData.incidente,
           descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
           foto_url: fotoUrl,
+          client_id: profile.client_id,
           created_by: user.id,
         });
 

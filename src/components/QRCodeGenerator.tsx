@@ -29,7 +29,7 @@ export function QRCodeGenerator({ value, size = 200 }: QRCodeGeneratorProps) {
     }
   }, [value, size]);
 
-  return <canvas ref={canvasRef} />;
+  return <canvas ref={canvasRef} data-qr={value} />;
 }
 
 export async function generateQRCodeDataURL(value: string): Promise<string> {

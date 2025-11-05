@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import UnitEntry from "./pages/UnitEntry";
 import SecurityRounds from "./pages/SecurityRounds";
+import SecurityZones from "./pages/SecurityZones";
 import Visits from "./pages/Visits";
 import EquipmentInventory from "./pages/EquipmentInventory";
 import Operators from "./pages/Operators";
@@ -76,6 +77,16 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <SecurityRounds />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/zonas-seguridad"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <Layout>
+                    <SecurityZones />
                   </Layout>
                 </ProtectedRoute>
               }

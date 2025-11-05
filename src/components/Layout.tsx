@@ -50,6 +50,7 @@ const allNavigationItems = [
   
   // Seguridad CTPAT
   { name: "Rondines de Seguridad", path: "/rondines", icon: Shield, roles: ["admin", "usuario"] },
+  { name: "Zonas de Seguridad", path: "/zonas-seguridad", icon: MapPin, roles: ["admin"] },
   { name: "Revisión Documental", path: "/revision-documental", icon: Camera, roles: ["admin", "usuario"] },
   { name: "Inventario Operador", path: "/inventario-operador", icon: ClipboardCheck, roles: ["admin", "usuario"] },
   { name: "Sellos de Seguridad", path: "/sellos", icon: Tag, roles: ["admin"] },

@@ -447,13 +447,13 @@ export default function SecurityRounds() {
                 <DialogHeader>
                   <DialogTitle>Gestión de Zonas de Seguridad</DialogTitle>
                   <DialogDescription>
-                    Para agregar nuevas zonas de seguridad, contacte al administrador del sistema
+                    Las zonas se gestionan desde el módulo de Zonas de Seguridad (solo administradores)
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Las zonas de seguridad deben ser configuradas por un administrador para garantizar
-                    la correcta generación de códigos QR y la asignación de ubicaciones.
+                    Los administradores pueden crear, editar y generar códigos QR automáticamente para
+                    cada zona desde el módulo dedicado en el menú principal.
                   </p>
                   <div className="space-y-2">
                     <h4 className="font-semibold text-sm">Zonas Activas:</h4>

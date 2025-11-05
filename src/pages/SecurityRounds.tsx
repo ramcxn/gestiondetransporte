@@ -13,6 +13,21 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { z } from "zod";
+
+const securityRoundSchema = z.object({
+  zona_id: z.string().min(1, "Debes seleccionar una zona"),
+  incidente: z.boolean(),
+  descripcion_incidente: z.string().max(1000, "Máximo 1000 caracteres").optional(),
+}).refine((data) => {
+  if (data.incidente && (!data.descripcion_incidente || data.descripcion_incidente.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "La descripción del incidente es requerida cuando hay un incidente",
+  path: ["descripcion_incidente"],
+});
 
 interface SecurityRound {
   id: string;
@@ -182,24 +197,18 @@ export default function SecurityRounds() {
     e.preventDefault();
     if (!user) return;
 
-    if (!formData.zona_id) {
-      toast({
-        title: "Error",
-        description: "Por favor seleccione una zona",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setSubmitting(true);
     try {
+      // Validate form data
+      const validatedData = securityRoundSchema.parse(formData);
+      
       let fotoUrl = null;
       
       if (selectedImage) {
         fotoUrl = await uploadImage();
       }
 
-      const selectedZone = zones.find(z => z.id === formData.zona_id);
+      const selectedZone = zones.find(z => z.id === validatedData.zona_id);
       
       // Get client_id
       const { data: profile } = await supabase
@@ -215,8 +224,8 @@ export default function SecurityRounds() {
         .insert({
           ubicacion: selectedZone?.ubicacion || "",
           codigo_qr: selectedZone?.codigo_qr || "",
-          incidente: formData.incidente,
-          descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
+          incidente: validatedData.incidente,
+          descripcion_incidente: validatedData.incidente ? validatedData.descripcion_incidente : null,
           foto_url: fotoUrl,
           client_id: profile.client_id,
           created_by: user.id,
@@ -239,11 +248,19 @@ export default function SecurityRounds() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error submitting round:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo registrar el rondín",
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Error de validación",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo registrar el rondín",
+          variant: "destructive",
+        });
+      }
     } finally {
       setSubmitting(false);
     }

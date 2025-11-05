@@ -300,14 +300,19 @@ const UserManagement = () => {
 
       if (error) throw error;
 
-      // Send welcome email
+      // Send welcome email with authentication
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
         await supabase.functions.invoke("send-welcome-email", {
           body: {
             email: newUser.email,
             fullName: newUser.full_name,
             password: newUser.password,
             role: newUser.role,
+          },
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
           },
         });
       } catch (emailError) {

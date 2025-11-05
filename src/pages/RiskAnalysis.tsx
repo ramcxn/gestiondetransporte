@@ -13,6 +13,32 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { z } from "zod";
+
+const riskSchema = z.object({
+  titulo: z.string().min(1, "El título es requerido").max(200, "Máximo 200 caracteres"),
+  descripcion: z.string().min(1, "La descripción es requerida").max(1000, "Máximo 1000 caracteres"),
+  tipo_riesgo: z.enum(["operativo", "financiero", "seguridad", "ambiental", "legal"], { required_error: "Selecciona un tipo de riesgo" }),
+  nivel_riesgo: z.enum(["bajo", "medio", "alto", "critico"], { required_error: "Selecciona un nivel de riesgo" }),
+  probabilidad: z.enum(["baja", "media", "alta"], { required_error: "Selecciona una probabilidad" }),
+  impacto: z.enum(["bajo", "medio", "alto", "critico"], { required_error: "Selecciona un impacto" }),
+  medidas_mitigacion: z.string().max(1000, "Máximo 1000 caracteres").optional(),
+  responsable: z.string().max(100, "Máximo 100 caracteres").optional(),
+  fecha_identificacion: z.string().min(1, "La fecha es requerida"),
+});
+
+const incidentSchema = z.object({
+  titulo: z.string().min(1, "El título es requerido").max(200, "Máximo 200 caracteres"),
+  descripcion: z.string().min(1, "La descripción es requerida").max(1000, "Máximo 1000 caracteres"),
+  tipo_incidente: z.enum(["accidente", "robo", "daño_equipo", "incumplimiento", "otro"], { required_error: "Selecciona un tipo de incidente" }),
+  gravedad: z.enum(["baja", "media", "alta", "critica"], { required_error: "Selecciona una gravedad" }),
+  ubicacion: z.string().max(255, "Máximo 255 caracteres"),
+  unidad: z.string().max(50, "Máximo 50 caracteres"),
+  operador: z.string().max(100, "Máximo 100 caracteres"),
+  fecha_incidente: z.string().min(1, "La fecha es requerida"),
+  acciones_tomadas: z.string().max(1000, "Máximo 1000 caracteres"),
+  costo_estimado: z.string().transform((val) => val === "" ? undefined : val).pipe(z.coerce.number().min(0, "El costo debe ser mayor a 0").max(9999999, "Costo máximo 9,999,999").optional()),
+});
 
 export default function RiskAnalysis() {
   const [risks, setRisks] = useState<any[]>([]);
@@ -105,8 +131,11 @@ export default function RiskAnalysis() {
     e.preventDefault();
     if (!user) return;
     try {
+      // Validate form data
+      const validatedData = riskSchema.parse(riskForm);
+      
       await supabase.from("analisis_riesgos").insert({ 
-        ...riskForm, 
+        ...validatedData, 
         tipo_analisis: 'riesgo' as any,
         created_by: user.id 
       } as any);
@@ -114,7 +143,15 @@ export default function RiskAnalysis() {
       setIsRiskDialogOpen(false);
       fetchData();
     } catch (error) {
-      toast({ title: "Error", variant: "destructive" });
+      if (error instanceof z.ZodError) {
+        toast({ 
+          title: "Error de validación", 
+          description: error.errors[0].message,
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Error", variant: "destructive" });
+      }
     }
   };
 
@@ -160,27 +197,58 @@ export default function RiskAnalysis() {
     e.preventDefault();
     if (!user) return;
     try {
+      // Validate form data
+      const validatedData = incidentSchema.parse(incidentForm);
+      
       let fotoUrl = null;
       if (selectedImage) {
-        const fileName = `${user.id}-${Date.now()}.${selectedImage.name.split('.').pop()}`;
-        await supabase.storage.from('fotos-incidentes').upload(fileName, selectedImage);
-        const { data } = supabase.storage.from('fotos-incidentes').getPublicUrl(fileName);
-        fotoUrl = data.publicUrl;
+        const fileExt = selectedImage.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('fotos-incidentes')
+          .upload(fileName, selectedImage);
+        
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('fotos-incidentes')
+            .getPublicUrl(fileName);
+          fotoUrl = publicUrl;
+        }
       }
-      await supabase.from("incidentes").insert({ 
-        ...incidentForm, 
-        costo_estimado: incidentForm.costo_estimado ? parseFloat(incidentForm.costo_estimado) : null,
+
+      const insertData: any = {
+        titulo: validatedData.titulo,
+        descripcion: validatedData.descripcion,
+        tipo_incidente: validatedData.tipo_incidente,
+        gravedad: validatedData.gravedad,
+        ubicacion: validatedData.ubicacion || null,
+        unidad: validatedData.unidad || null,
+        operador: validatedData.operador || null,
+        fecha_incidente: validatedData.fecha_incidente,
+        acciones_tomadas: validatedData.acciones_tomadas || null,
+        costo_estimado: validatedData.costo_estimado || null,
         foto_url: fotoUrl,
-        created_by: user.id 
-      });
+        created_by: user.id,
+      };
+
+      await supabase.from("incidentes").insert([insertData]);
       toast({ title: "Éxito", description: "Incidente registrado" });
       setIsIncidentDialogOpen(false);
+      setSelectedImage(null);
       fetchData();
     } catch (error) {
-      toast({ title: "Error", variant: "destructive" });
+      if (error instanceof z.ZodError) {
+        toast({ 
+          title: "Error de validación", 
+          description: error.errors[0].message,
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Error", variant: "destructive" });
+      }
     }
   };
-
   const downloadPeritajePDF = (peritaje: any) => {
     const doc = generateRiskAnalysisPDF(peritaje);
     doc.save(`Peritaje_${peritaje.titulo.replace(/\s+/g, '_')}.pdf`);

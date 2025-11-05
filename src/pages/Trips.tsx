@@ -12,6 +12,21 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
+import { z } from "zod";
+
+const tripSchema = z.object({
+  operador: z.string().min(1, "El operador es requerido").max(100, "Máximo 100 caracteres"),
+  unidad: z.string().min(1, "La unidad es requerida").max(50, "Máximo 50 caracteres"),
+  origen: z.string().min(1, "El origen es requerido").max(255, "Máximo 255 caracteres"),
+  destino: z.string().min(1, "El destino es requerido").max(255, "Máximo 255 caracteres"),
+  fecha_salida: z.string().min(1, "La fecha de salida es requerida"),
+  fecha_llegada_estimada: z.string().min(1, "La fecha de llegada estimada es requerida"),
+  distancia_km: z.coerce.number().min(0, "La distancia debe ser mayor a 0").max(10000, "Distancia máxima 10,000 km"),
+  flete: z.coerce.number().min(0, "El flete debe ser mayor a 0").max(9999999, "Flete máximo 9,999,999"),
+  cliente: z.string().min(1, "El cliente es requerido").max(100, "Máximo 100 caracteres"),
+  sucursal: z.string().min(1, "La sucursal es requerida").max(100, "Máximo 100 caracteres"),
+  unidad_negocio: z.enum(["HH Express", "PORTECALESA"], { required_error: "Selecciona una unidad de negocio" }),
+});
 
 interface Trip {
   id: string;
@@ -250,6 +265,21 @@ export default function Trips() {
 
     setSubmitting(true);
     try {
+      // Validate form data with zod
+      const validatedData = tripSchema.parse({
+        operador: formData.operador,
+        unidad: formData.unidad,
+        origen: formData.origen,
+        destino: formData.destino,
+        fecha_salida: formData.fecha_salida,
+        fecha_llegada_estimada: formData.fecha_llegada_estimada,
+        distancia_km: formData.distancia_km,
+        flete: formData.flete,
+        cliente: formData.cliente,
+        sucursal: formData.sucursal,
+        unidad_negocio: formData.unidad_negocio,
+      });
+
       // Get client_id
       const { data: profile } = await supabase
         .from("profiles")
@@ -262,17 +292,17 @@ export default function Trips() {
       const { error } = await supabase
         .from("viajes")
         .insert({
-          operador: formData.operador,
-          unidad: formData.unidad,
-          origen: formData.origen,
-          destino: formData.destino,
-          fecha_salida: formData.fecha_salida,
-          fecha_llegada_estimada: formData.fecha_llegada_estimada || null,
-          distancia_km: parseInt(formData.distancia_km),
-          flete: parseFloat(formData.flete),
-          cliente: formData.cliente,
-          sucursal: formData.sucursal,
-          unidad_negocio: formData.unidad_negocio,
+          operador: validatedData.operador,
+          unidad: validatedData.unidad,
+          origen: validatedData.origen,
+          destino: validatedData.destino,
+          fecha_salida: validatedData.fecha_salida,
+          fecha_llegada_estimada: validatedData.fecha_llegada_estimada || null,
+          distancia_km: validatedData.distancia_km,
+          flete: validatedData.flete,
+          cliente: validatedData.cliente,
+          sucursal: validatedData.sucursal,
+          unidad_negocio: validatedData.unidad_negocio,
           client_id: profile.client_id,
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
@@ -303,11 +333,19 @@ export default function Trips() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error submitting trip:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo registrar el viaje",
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Error de validación",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudo registrar el viaje",
+          variant: "destructive",
+        });
+      }
     } finally {
       setSubmitting(false);
     }

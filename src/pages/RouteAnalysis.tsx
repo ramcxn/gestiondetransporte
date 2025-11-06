@@ -106,7 +106,22 @@ export default function RouteAnalysis() {
         return;
       }
 
-      if (!clientId) {
+      // Get client_id using RPC function
+      const { data: rpcClientId, error: rpcError } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) {
         toast.error("No se pudo obtener el ID del cliente");
         return;
       }
@@ -122,7 +137,7 @@ export default function RouteAnalysis() {
         costo_casetas: parseFloat(formData.casetas) || 0,
         rentabilidad: parseFloat(formData.porcentajeUtilidad) > 20 ? 'alta' : parseFloat(formData.porcentajeUtilidad) > 10 ? 'media' : 'baja',
         created_by: user.id,
-        client_id: clientId,
+        client_id: finalClientId,
       });
 
       if (error) throw error;

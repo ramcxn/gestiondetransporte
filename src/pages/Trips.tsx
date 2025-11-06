@@ -280,14 +280,22 @@ export default function Trips() {
         unidad_negocio: formData.unidad_negocio,
       });
 
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
 
       const { error } = await supabase
         .from("viajes")
@@ -303,7 +311,7 @@ export default function Trips() {
           cliente: validatedData.cliente,
           sucursal: validatedData.sucursal,
           unidad_negocio: validatedData.unidad_negocio,
-          client_id: profile.client_id,
+          client_id: finalClientId,
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
           created_by: user.id,

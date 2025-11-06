@@ -209,14 +209,22 @@ export default function Settlements() {
       const count = settlements.length + 1;
       const folio = `LIQ-${new Date().getFullYear()}-${String(count).padStart(6, '0')}`;
 
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
 
       const { error } = await supabase
         .from("liquidaciones")
@@ -231,7 +239,7 @@ export default function Settlements() {
           deduccion: deduccion,
           monto_neto: montoNeto,
           observaciones: formData.observaciones || null,
-          client_id: profile.client_id,
+          client_id: finalClientId,
           created_by: user.id,
         });
 

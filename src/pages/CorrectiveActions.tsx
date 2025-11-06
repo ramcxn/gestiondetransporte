@@ -128,6 +128,23 @@ export default function CorrectiveActions() {
 
       if (folioError) throw folioError;
 
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+
       const { error } = await supabase
         .from("acciones_correctivas")
         .insert({
@@ -149,6 +166,7 @@ export default function CorrectiveActions() {
           fecha_compromiso: formData.fecha_compromiso,
           acciones_preventivas: formData.acciones_preventivas || null,
           prioridad: formData.prioridad,
+          client_id: finalClientId,
           created_by: user.id,
         });
 

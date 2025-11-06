@@ -193,6 +193,23 @@ export default function Antidoping() {
         archivoUrl = await uploadFile();
       }
 
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+
       const { error } = await supabase
         .from("pruebas_alcoholimetro")
         .insert({
@@ -202,6 +219,7 @@ export default function Antidoping() {
           nivel: formData.nivel ? parseFloat(formData.nivel) : null,
           observaciones: formData.observaciones || null,
           archivo_url: archivoUrl,
+          client_id: finalClientId,
           created_by: user.id,
         });
 

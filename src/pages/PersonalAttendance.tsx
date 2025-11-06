@@ -203,14 +203,22 @@ export default function PersonalAttendance() {
 
     setSubmitting(true);
     try {
-      // Get user's client_id from profiles
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (profileError) throw profileError;
+      if (!finalClientId) throw new Error("No client_id found");
 
       // Verificar si hay una entrada reciente (últimos 10 minutos)
       const { data: recentEntry, error: recentError } = await supabase
@@ -244,7 +252,7 @@ export default function PersonalAttendance() {
         .insert({
           personal_id: selectedPersonal,
           created_by: user.id,
-          client_id: profile.client_id,
+          client_id: finalClientId,
         });
 
       if (error) throw error;

@@ -210,14 +210,22 @@ export default function SecurityRounds() {
 
       const selectedZone = zones.find(z => z.id === validatedData.zona_id);
       
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
       
       const { error } = await supabase
         .from("rondines")
@@ -227,7 +235,7 @@ export default function SecurityRounds() {
           incidente: validatedData.incidente,
           descripcion_incidente: validatedData.incidente ? validatedData.descripcion_incidente : null,
           foto_url: fotoUrl,
-          client_id: profile.client_id,
+          client_id: finalClientId,
           created_by: user.id,
         });
 

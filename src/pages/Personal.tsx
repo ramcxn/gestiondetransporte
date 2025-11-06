@@ -141,19 +141,28 @@ export default function Personal() {
     if (!user || !newDepartmentName.trim()) return;
 
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
 
       const { error } = await supabase
         .from("departamentos")
         .insert({
           nombre: newDepartmentName.trim(),
-          client_id: profile.client_id,
+          client_id: finalClientId,
           created_by: user.id,
         });
 
@@ -183,13 +192,22 @@ export default function Personal() {
 
     setSubmitting(true);
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
 
       if (isEditMode && formData.id) {
         // Update existing record
@@ -229,7 +247,7 @@ export default function Personal() {
             telefono: formData.telefono || null,
             dias_vacaciones_disponibles: diasVacaciones,
             dias_vacaciones_tomados: 0,
-            client_id: profile.client_id,
+            client_id: finalClientId,
             created_by: user.id,
           })
           .select()

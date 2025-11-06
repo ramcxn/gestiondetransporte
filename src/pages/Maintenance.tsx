@@ -167,14 +167,22 @@ export default function Maintenance() {
 
     setSubmitting(true);
     try {
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
+      if (!finalClientId) throw new Error("No client_id found");
 
       // Insertar mantenimiento
       const mantenimientoData: any = {
@@ -186,7 +194,7 @@ export default function Maintenance() {
         proveedor: formData.proveedor,
         descripcion: formData.descripcion,
         proximo_mantenimiento: formData.proximo_mantenimiento ? parseInt(formData.proximo_mantenimiento) : null,
-        client_id: profile.client_id,
+        client_id: finalClientId,
         created_by: user.id,
       };
 
@@ -211,7 +219,7 @@ export default function Maintenance() {
           cantidad: ref.cantidad,
           costo_unitario: ref.costo_unitario,
           costo_total: ref.cantidad * ref.costo_unitario,
-          client_id: profile.client_id,
+          client_id: finalClientId,
           created_by: user.id,
         }));
 
@@ -242,7 +250,7 @@ export default function Maintenance() {
               mantenimiento_id: mantenimiento.id,
               costo_unitario: ref.costo_unitario,
               costo_total: ref.cantidad * ref.costo_unitario,
-              client_id: profile.client_id,
+              client_id: finalClientId,
               created_by: user.id,
             });
         }

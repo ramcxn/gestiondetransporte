@@ -134,9 +134,27 @@ export default function RiskAnalysis() {
       // Validate form data
       const validatedData = riskSchema.parse(riskForm);
       
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+      
       await supabase.from("analisis_riesgos").insert({ 
         ...validatedData, 
         tipo_analisis: 'riesgo' as any,
+        client_id: finalClientId,
         created_by: user.id 
       } as any);
       toast({ title: "Éxito", description: "Riesgo registrado" });
@@ -161,6 +179,23 @@ export default function RiskAnalysis() {
     try {
       const uploadedFiles = await uploadPeritajeFiles(user.id);
       
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+      
       await supabase.from("analisis_riesgos").insert({ 
         tipo_analisis: 'peritaje' as any,
         titulo: peritajeForm.titulo,
@@ -182,6 +217,7 @@ export default function RiskAnalysis() {
         factores_externos: peritajeForm.factores_externos,
         declaraciones: peritajeForm.declaraciones,
         archivos_adjuntos: uploadedFiles,
+        client_id: finalClientId,
         created_by: user.id 
       } as any);
       toast({ title: "Éxito", description: "Peritaje registrado exitosamente" });
@@ -217,6 +253,23 @@ export default function RiskAnalysis() {
         }
       }
 
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+
       const insertData: any = {
         titulo: validatedData.titulo,
         descripcion: validatedData.descripcion,
@@ -229,6 +282,7 @@ export default function RiskAnalysis() {
         acciones_tomadas: validatedData.acciones_tomadas || null,
         costo_estimado: validatedData.costo_estimado || null,
         foto_url: fotoUrl,
+        client_id: finalClientId,
         created_by: user.id,
       };
 

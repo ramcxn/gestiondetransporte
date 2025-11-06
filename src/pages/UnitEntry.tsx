@@ -459,10 +459,22 @@ export default function UnitEntry() {
 
     setSubmitting(true);
     try {
-      // Get client_id basado en el dominio del email
-      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
 
-      if (!clientId) throw new Error("No se pudo determinar el cliente");
+      let finalClientId = rpcClientId;
+
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No se pudo determinar el cliente");
 
       const { foto1, foto2 } = await uploadImages();
 
@@ -486,7 +498,7 @@ export default function UnitEntry() {
           foto_1_url: foto1,
           foto_2_url: foto2,
           puntos_seguridad: checkedPoints,
-          client_id: clientId,
+          client_id: finalClientId,
           created_by: user.id,
         });
 

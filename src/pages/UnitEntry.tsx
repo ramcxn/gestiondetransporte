@@ -502,7 +502,10 @@ export default function UnitEntry() {
           created_by: user.id,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting unit:", error);
+        throw error;
+      }
 
       toast({
         title: "Éxito",
@@ -530,11 +533,11 @@ export default function UnitEntry() {
       setSelectedImage2(null);
       setImagePreview1(null);
       setImagePreview2(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting entry:", error);
       toast({
         title: "Error",
-        description: "No se pudo registrar la unidad",
+        description: error.message || "No se pudo registrar la unidad",
         variant: "destructive",
       });
     } finally {
@@ -812,7 +815,7 @@ export default function UnitEntry() {
         </Card>
       )}
 
-      <Card className="shadow-card">
+      <Card className="shadow-card min-h-[800px]">
         <CardHeader>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
@@ -839,7 +842,7 @@ export default function UnitEntry() {
                 <TabsTrigger value="adicional" className="text-xs sm:text-sm px-2 py-2">Info Adicional</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="basico" className="space-y-4">
+              <TabsContent value="basico" className="space-y-4 min-h-[600px]">
                 <div className="flex flex-col sm:flex-row gap-2 mb-4">
                   <Button
                     type="button"
@@ -867,7 +870,7 @@ export default function UnitEntry() {
                   </Button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 mb-6">
                   <div className="space-y-2">
                     <Label htmlFor="numero_economico">Tracto (Número Económico) *</Label>
                     <div className="space-y-2">
@@ -1007,7 +1010,7 @@ export default function UnitEntry() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="inspeccion" className="space-y-4">
+              <TabsContent value="inspeccion" className="space-y-4 min-h-[600px]">
                 <div className="p-4 bg-muted rounded-lg flex items-start gap-3">
                   <AlertCircle className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
                   <div className="text-sm">
@@ -1046,7 +1049,7 @@ export default function UnitEntry() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="adicional" className="space-y-4">
+              <TabsContent value="adicional" className="space-y-4 min-h-[600px]">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Fotografías de la Unidad</Label>

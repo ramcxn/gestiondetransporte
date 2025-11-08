@@ -2,6 +2,10 @@
   "appId": "app.lovable.b5e0a12e54e642a7ae92fcceb6ba3934",
   "appName": "gestiondetransporte",
   "webDir": "dist",
+  "server": {
+    "url": "https://hh.gestiondetransporte.com",
+    "cleartext": true
+  },
   "plugins": {
     "Camera": {
       "permissions": ["camera", "photos"]

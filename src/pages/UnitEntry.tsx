@@ -14,27 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Capacitor, registerPlugin } from "@capacitor/core";
-
-// Definir la interfaz del plugin OfflineSync
-interface OfflineSyncPlugin {
-  saveUnidad(data: {
-    tractoNumeroEconomico: string;
-    dolly: string;
-    operador: string;
-    remolque1: string;
-    remolque2: string;
-    puntosInspeccion: string;
-    odometro: number;
-    fotoVistaFrontalPath: string;
-    fotoVistaLateralPath: string;
-    requiereMantenimiento: boolean;
-    reportarAccidente: boolean;
-  }): Promise<{ message: string }>;
-}
-
-// Registrar el plugin personalizado OfflineSync
-const OfflineSync = registerPlugin<OfflineSyncPlugin>('OfflineSync');
+import { Capacitor } from "@capacitor/core";
 
 const ctpatPoints = [
   "1. Puertas y cerraduras de caja",
@@ -501,8 +481,9 @@ export default function UnitEntry() {
         const fotoFrontal = imagePreview1 || "";
         const fotoLateral = imagePreview2 || "";
 
-        // Preparar datos para el plugin nativo
-        const datosParaPlugin = {
+        // Guardar datos offline en localStorage
+        const datosOffline = {
+          id: Date.now().toString(),
           tractoNumeroEconomico: tracto?.numero_economico || "",
           dolly: dolly?.numero_economico || "",
           operador: formData.operador,
@@ -514,12 +495,17 @@ export default function UnitEntry() {
           fotoVistaLateralPath: fotoLateral,
           requiereMantenimiento: formData.requiere_mantenimiento,
           reportarAccidente: formData.incidente,
+          timestamp: new Date().toISOString(),
+          formData: formData // Guardar todos los datos del formulario
         };
 
-        // Llamar al plugin nativo OfflineSync
-        const resultado = await OfflineSync.saveUnidad(datosParaPlugin);
+        // Obtener datos offline existentes
+        const offlineData = localStorage.getItem('unidades_offline');
+        const unidadesOffline = offlineData ? JSON.parse(offlineData) : [];
+        unidadesOffline.push(datosOffline);
+        localStorage.setItem('unidades_offline', JSON.stringify(unidadesOffline));
 
-        console.log('Respuesta del plugin OfflineSync:', resultado.message);
+        console.log('Unidad guardada offline:', datosOffline);
 
         toast({
           title: "Guardado Localmente",

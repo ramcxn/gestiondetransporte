@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: 'auto',
       includeAssets: ["favicon.png", "robots.txt"],
       manifest: {
         name: "Gestión de Transporte CTPAT",

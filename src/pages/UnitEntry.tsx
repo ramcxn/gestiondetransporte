@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Capacitor } from "@capacitor/core";
 
 const ctpatPoints = [
   "1. Puertas y cerraduras de caja",
@@ -459,60 +460,110 @@ export default function UnitEntry() {
 
     setSubmitting(true);
     try {
-      // Get client_id using RPC function
-      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      // Verificar si estamos en una plataforma nativa (Android/iOS)
+      const isNative = Capacitor.isNativePlatform();
 
-      let finalClientId = rpcClientId;
+      if (isNative) {
+        // ===== MODO OFFLINE - Guardar localmente con plugin nativo =====
+        
+        // Obtener los números económicos de los equipos
+        const tracto = equipos.find(e => e.id === formData.tracto_id);
+        const dolly = equipos.find(e => e.id === formData.dolly_id);
+        const remolque1 = equipos.find(e => e.id === formData.remolque_1_id);
+        const remolque2 = equipos.find(e => e.id === formData.remolque_2_id);
 
-      // Fallback to profile client_id if RPC returns null
-      if (!finalClientId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        finalClientId = profile?.client_id;
-      }
+        // Construir resumen de puntos de inspección
+        const puntosInspeccionTexto = `${checkedCount}/${ctpatPoints.length} OK`;
 
-      if (!finalClientId) throw new Error("No se pudo determinar el cliente");
+        // Obtener las rutas de las imágenes (si existen)
+        // En Capacitor, las imágenes deben ser capturadas con el plugin de Camera
+        // y ya tendrás las rutas locales. Por ahora usamos las previsualizaciones.
+        const fotoFrontal = imagePreview1 || "";
+        const fotoLateral = imagePreview2 || "";
 
-      const { foto1, foto2 } = await uploadImages();
-
-      const { error } = await supabase
-        .from("ingreso_unidades")
-        .insert({
-          tipo_movimiento: entryType,
-          numero_unidad: formData.numero_unidad,
+        // Preparar datos para el plugin nativo
+        const datosParaPlugin = {
+          tractoNumeroEconomico: tracto?.numero_economico || "",
+          dolly: dolly?.numero_economico || "",
           operador: formData.operador,
-          operador_id: formData.operador_id || null,
-          tipo_unidad: formData.tipo_unidad,
-          numero_economico: formData.numero_economico,
-          tracto_id: formData.tracto_id || null,
-          dolly_id: formData.dolly_id || null,
-          remolque_1_id: formData.remolque_1_id || null,
-          remolque_2_id: formData.remolque_2_id || null,
+          remolque1: remolque1?.numero_economico || "",
+          remolque2: remolque2?.numero_economico || "",
+          puntosInspeccion: puntosInspeccionTexto,
           odometro: parseInt(formData.odometro),
-          requiere_mantenimiento: formData.requiere_mantenimiento,
-          incidente: formData.incidente,
-          descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
-          foto_1_url: foto1,
-          foto_2_url: foto2,
-          puntos_seguridad: checkedPoints,
-          client_id: finalClientId,
-          created_by: user.id,
+          fotoVistaFrontalPath: fotoFrontal,
+          fotoVistaLateralPath: fotoLateral,
+          requiereMantenimiento: formData.requiere_mantenimiento,
+          reportarAccidente: formData.incidente,
+        };
+
+        // Llamar al plugin nativo OfflineSync
+        const resultado = await (Capacitor as any).Plugins.OfflineSync.saveUnidad(datosParaPlugin);
+
+        console.log('Respuesta del plugin OfflineSync:', resultado.message);
+
+        toast({
+          title: "Guardado Localmente",
+          description: "Unidad guardada en el dispositivo. Se sincronizará cuando haya conexión.",
         });
 
-      if (error) {
-        console.error("Error inserting unit:", error);
-        throw error;
+      } else {
+        // ===== MODO ONLINE - Guardar en Supabase directamente =====
+        
+        // Get client_id using RPC function
+        const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+
+        let finalClientId = rpcClientId;
+
+        // Fallback to profile client_id if RPC returns null
+        if (!finalClientId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("client_id")
+            .eq("id", user.id)
+            .single();
+          finalClientId = profile?.client_id;
+        }
+
+        if (!finalClientId) throw new Error("No se pudo determinar el cliente");
+
+        const { foto1, foto2 } = await uploadImages();
+
+        const { error } = await supabase
+          .from("ingreso_unidades")
+          .insert({
+            tipo_movimiento: entryType,
+            numero_unidad: formData.numero_unidad,
+            operador: formData.operador,
+            operador_id: formData.operador_id || null,
+            tipo_unidad: formData.tipo_unidad,
+            numero_economico: formData.numero_economico,
+            tracto_id: formData.tracto_id || null,
+            dolly_id: formData.dolly_id || null,
+            remolque_1_id: formData.remolque_1_id || null,
+            remolque_2_id: formData.remolque_2_id || null,
+            odometro: parseInt(formData.odometro),
+            requiere_mantenimiento: formData.requiere_mantenimiento,
+            incidente: formData.incidente,
+            descripcion_incidente: formData.incidente ? formData.descripcion_incidente : null,
+            foto_1_url: foto1,
+            foto_2_url: foto2,
+            puntos_seguridad: checkedPoints,
+            client_id: finalClientId,
+            created_by: user.id,
+          });
+
+        if (error) {
+          console.error("Error inserting unit:", error);
+          throw error;
+        }
+
+        toast({
+          title: "Éxito",
+          description: `Unidad registrada exitosamente (${entryType})`,
+        });
       }
 
-      toast({
-        title: "Éxito",
-        description: `Unidad registrada exitosamente (${entryType})`,
-      });
-
-      // Reset form
+      // Reset form (común para ambos modos)
       setFormData({
         numero_unidad: "",
         operador: "",
@@ -533,6 +584,7 @@ export default function UnitEntry() {
       setSelectedImage2(null);
       setImagePreview1(null);
       setImagePreview2(null);
+      
     } catch (error: any) {
       console.error("Error submitting entry:", error);
       toast({

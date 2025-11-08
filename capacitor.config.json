@@ -2,10 +2,6 @@
   "appId": "app.lovable.b5e0a12e54e642a7ae92fcceb6ba3934",
   "appName": "gestiondetransporte",
   "webDir": "dist",
-  "server": {
-    "url": "https://b5e0a12e-54e6-42a7-ae92-fcceb6ba3934.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  },
   "plugins": {
     "Camera": {
       "permissions": ["camera", "photos"]

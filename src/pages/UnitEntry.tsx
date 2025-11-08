@@ -14,7 +14,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+// Definir la interfaz del plugin OfflineSync
+interface OfflineSyncPlugin {
+  saveUnidad(data: {
+    tractoNumeroEconomico: string;
+    dolly: string;
+    operador: string;
+    remolque1: string;
+    remolque2: string;
+    puntosInspeccion: string;
+    odometro: number;
+    fotoVistaFrontalPath: string;
+    fotoVistaLateralPath: string;
+    requiereMantenimiento: boolean;
+    reportarAccidente: boolean;
+  }): Promise<{ message: string }>;
+}
+
+// Registrar el plugin personalizado OfflineSync
+const OfflineSync = registerPlugin<OfflineSyncPlugin>('OfflineSync');
 
 const ctpatPoints = [
   "1. Puertas y cerraduras de caja",
@@ -497,7 +517,7 @@ export default function UnitEntry() {
         };
 
         // Llamar al plugin nativo OfflineSync
-        const resultado = await (Capacitor as any).Plugins.OfflineSync.saveUnidad(datosParaPlugin);
+        const resultado = await OfflineSync.saveUnidad(datosParaPlugin);
 
         console.log('Respuesta del plugin OfflineSync:', resultado.message);
 

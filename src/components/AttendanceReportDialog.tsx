@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 import { 
-  calcularDiasTrabajados, 
+  calcularDiasTrabajados,
+  calcularHorasTrabajadas,
   calcularDiasLlegadaTarde, 
   calcularDiasSalidaAnticipada,
   calcularTiempoSalidaAnticipada,
@@ -57,14 +58,20 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
 
       if (personalError) throw personalError;
 
+      // Ajustar fechas para incluir todo el día
+      const startDateTime = `${startDate}T00:00:00`;
+      const endDateTime = `${endDate}T23:59:59`;
+
       // Obtener todas las asistencias en el rango de fechas
       const { data: attendanceData, error: attendanceError } = await supabase
         .from("asistencia_personal")
         .select("*")
-        .gte("fecha_entrada", startDate)
-        .lte("fecha_entrada", `${endDate}T23:59:59`);
+        .gte("fecha_entrada", startDateTime)
+        .lte("fecha_entrada", endDateTime);
 
       if (attendanceError) throw attendanceError;
+
+      console.log("Asistencias encontradas:", attendanceData?.length);
 
       // Obtener todos los vales en el rango de fechas
       const { data: valesData, error: valesError } = await supabase
@@ -84,11 +91,14 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
           (v) => v.personal_id === person.id && v.estado === "usado"
         );
 
+        console.log(`${person.nombre}: ${personAttendances.length} asistencias`);
+
         const diasTrabajados = calcularDiasTrabajados(personAttendances);
         const diasLlegadaTarde = calcularDiasLlegadaTarde(personAttendances);
         const diasSalidaAnticipada = calcularDiasSalidaAnticipada(personAttendances);
         const tiempoSalidaAnticipada = calcularTiempoSalidaAnticipada(personAttendances);
         const permisosUsados = calcularPermisosUsados(personVales);
+        const horasTrabajadas = calcularHorasTrabajadas(personAttendances);
         
         // Calcular tiempo extra solo para monitoreo y taller
         let tiempoExtra = { horas: 0, minutos: 0, formateado: "0h 0m" };
@@ -103,6 +113,7 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
           Departamento: person.departamento,
           Puesto: person.puesto,
           "Días Trabajados": diasTrabajados,
+          "Horas Laboradas": horasTrabajadas.horasFormateadas,
           "Días Llegada Tarde": diasLlegadaTarde,
           "Permisos de Salida": permisosUsados,
           "Días Salida Anticipada": diasSalidaAnticipada,
@@ -123,6 +134,7 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
         { wch: 20 }, // Departamento
         { wch: 25 }, // Puesto
         { wch: 15 }, // Días Trabajados
+        { wch: 18 }, // Horas Laboradas
         { wch: 18 }, // Días Llegada Tarde
         { wch: 18 }, // Permisos de Salida
         { wch: 20 }, // Días Salida Anticipada
@@ -191,6 +203,7 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
             <p className="font-medium">El reporte incluirá:</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Días trabajados</li>
+              <li>Total de horas laboradas</li>
               <li>Días de llegada tarde (después de 9:00 AM)</li>
               <li>Permisos de salida utilizados</li>
               <li>Días con salida anticipada</li>

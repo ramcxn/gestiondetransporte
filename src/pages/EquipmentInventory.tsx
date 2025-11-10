@@ -26,6 +26,8 @@ export default function EquipmentInventory() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [equipmentToDelete, setEquipmentToDelete] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "airport">("airport");
+  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [selectedEquipmentForQR, setSelectedEquipmentForQR] = useState<any | null>(null);
   const { toast } = useToast();
   const { userRole } = useAuth();
   const queryClient = useQueryClient();
@@ -449,6 +451,12 @@ export default function EquipmentInventory() {
                         {userRole === "admin" && (
                           <div className="flex gap-2">
                             <Button size="sm" variant="outline" onClick={() => {
+                              setSelectedEquipmentForQR(equipo);
+                              setShowQRDialog(true);
+                            }} title="Ver código QR">
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => {
                               setEditingEquipment(equipo);
                               setIsEditDialogOpen(true);
                             }}>
@@ -550,6 +558,62 @@ export default function EquipmentInventory() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog para mostrar código QR */}
+      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Código QR - {selectedEquipmentForQR?.numero_economico}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg text-center">
+              <p className="text-sm text-muted-foreground mb-3">
+                <strong>Tipo:</strong> {selectedEquipmentForQR?.tipo_equipo?.toUpperCase()}
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                <strong>Marca:</strong> {selectedEquipmentForQR?.marca} {selectedEquipmentForQR?.modelo}
+              </p>
+              {selectedEquipmentForQR?.qr_code && (
+                <div className="flex flex-col items-center gap-3">
+                  <QRCodeGenerator 
+                    value={selectedEquipmentForQR.qr_code} 
+                    size={256}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Escanee este código en el módulo de ingreso de unidades
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const qrDataUrl = await generateQRCodeDataURL(selectedEquipmentForQR.qr_code);
+                        const link = document.createElement('a');
+                        link.download = `QR-${selectedEquipmentForQR.numero_economico}.png`;
+                        link.href = qrDataUrl;
+                        link.click();
+                        toast({
+                          title: "Éxito",
+                          description: "Código QR descargado",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "No se pudo descargar el QR",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Descargar QR
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

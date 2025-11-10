@@ -234,21 +234,21 @@ export default function UnitEntry() {
         return;
       }
 
-      // No se encontró ningún match
+      // Solo mostrar error si realmente no se encontró nada
+      setShowQRScanner(false);
       toast({
         title: "No encontrado",
-        description: "No se encontró equipo u operador con este código QR",
+        description: "Código QR no reconocido",
         variant: "destructive",
       });
-      setShowQRScanner(false);
     } catch (error) {
-      console.error("Error processing QR:", error);
+      setShowQRScanner(false);
+      // No mostrar detalles técnicos del error
       toast({
         title: "Error",
-        description: "Error al procesar el código QR",
+        description: "No se pudo leer el código QR",
         variant: "destructive",
       });
-      setShowQRScanner(false);
     }
   };
 

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRScanner from "@/components/QRScanner";
+import AttendanceReportDialog from "@/components/AttendanceReportDialog";
 import { differenceInMinutes } from "date-fns";
 
 interface Personal {
@@ -500,14 +501,17 @@ export default function PersonalAttendance() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-primary rounded-lg">
-          <Clock className="h-6 w-6 text-primary-foreground" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary rounded-lg">
+            <Clock className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Control de Asistencia</h1>
+            <p className="text-muted-foreground">Registro de entrada y salida del personal</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Control de Asistencia</h1>
-          <p className="text-muted-foreground">Registro de entrada y salida del personal</p>
-        </div>
+        <AttendanceReportDialog isAdmin={isAdmin} />
       </div>
 
       {isAdmin && (

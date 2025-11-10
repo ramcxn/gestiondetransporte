@@ -158,28 +158,15 @@ export default function UnitEntry() {
 
   const handleQRScan = async (qrData: string) => {
     try {
-      // Check if scanning equipment or operator
-      if (qrData.startsWith('EQUIPO-')) {
-        // Extract equipment ID from QR code (format: EQUIPO-{id})
-        const equipmentId = qrData.replace('EQUIPO-', '');
-        
-        // Fetch equipment data
-        const { data: equipo, error } = await supabase
-          .from("inventario_equipos")
-          .select("*")
-          .eq("id", equipmentId)
-          .single();
+      // Buscar en equipos por qr_code
+      const { data: equipo, error: equipoError } = await supabase
+        .from("inventario_equipos")
+        .select("*")
+        .eq("qr_code", qrData)
+        .single();
 
-        if (error || !equipo) {
-          toast({
-            title: "Error",
-            description: "No se encontró el equipo con este código QR",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Auto-fill form based on equipment type
+      if (!equipoError && equipo) {
+        // Auto-rellenar según el tipo de equipo
         if (equipo.tipo_equipo?.toLowerCase() === 'tracto') {
           setFormData({
             ...formData,
@@ -187,10 +174,18 @@ export default function UnitEntry() {
             numero_economico: equipo.numero_economico,
             numero_unidad: equipo.numero_economico
           });
+          toast({
+            title: "Tracto escaneado",
+            description: `${equipo.numero_economico} - ${equipo.marca} ${equipo.modelo}`,
+          });
         } else if (equipo.tipo_equipo?.toLowerCase() === 'dolly') {
           setFormData({
             ...formData,
             dolly_id: equipo.id
+          });
+          toast({
+            title: "Dolly escaneado",
+            description: `${equipo.numero_economico}`,
           });
         } else if (equipo.tipo_equipo?.toLowerCase() === 'remolque') {
           if (!formData.remolque_1_id) {
@@ -198,58 +193,53 @@ export default function UnitEntry() {
               ...formData,
               remolque_1_id: equipo.id
             });
+            toast({
+              title: "Remolque 1 escaneado",
+              description: `${equipo.numero_economico}`,
+            });
           } else {
             setFormData({
               ...formData,
               remolque_2_id: equipo.id
             });
+            toast({
+              title: "Remolque 2 escaneado",
+              description: `${equipo.numero_economico}`,
+            });
           }
         }
+        setShowQRScanner(false);
+        return;
+      }
 
-        toast({
-          title: "Éxito",
-          description: `Equipo ${equipo.numero_economico} escaneado correctamente`,
-        });
-      } else if (qrData.startsWith('OPERADOR-')) {
-        // Extract operator ID from QR code (format: OPERADOR-{id})
-        const operatorId = qrData.replace('OPERADOR-', '');
-        
-        // Fetch operator data
-        const { data: operador, error } = await supabase
-          .from("operadores")
-          .select("*")
-          .eq("id", operatorId)
-          .single();
+      // Buscar en operadores por qr_code
+      const { data: operador, error: operadorError } = await supabase
+        .from("operadores")
+        .select("*")
+        .eq("qr_code", qrData)
+        .eq("estado", "activo")
+        .single();
 
-        if (error || !operador) {
-          toast({
-            title: "Error",
-            description: "No se encontró el operador con este código QR",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // Auto-fill operator data
+      if (!operadorError && operador) {
         setFormData({
           ...formData,
           operador_id: operador.id,
           operador: operador.nombre
         });
-
         toast({
-          title: "Éxito",
-          description: `Operador ${operador.nombre} escaneado correctamente`,
+          title: "Operador escaneado",
+          description: `${operador.nombre} - ${operador.numero_empleado}`,
         });
-      } else {
-        toast({
-          title: "Error",
-          description: "Código QR no reconocido",
-          variant: "destructive",
-        });
+        setShowQRScanner(false);
         return;
       }
 
+      // No se encontró ningún match
+      toast({
+        title: "No encontrado",
+        description: "No se encontró equipo u operador con este código QR",
+        variant: "destructive",
+      });
       setShowQRScanner(false);
     } catch (error) {
       console.error("Error processing QR:", error);
@@ -258,6 +248,7 @@ export default function UnitEntry() {
         description: "Error al procesar el código QR",
         variant: "destructive",
       });
+      setShowQRScanner(false);
     }
   };
 
@@ -901,170 +892,112 @@ export default function UnitEntry() {
               </TabsList>
 
               <TabsContent value="basico" className="space-y-4 min-h-[600px]">
-                <div className="flex flex-col sm:flex-row gap-2 mb-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setScanningFor("equipo");
-                      setShowQRScanner(true);
-                    }}
-                    className="w-full sm:flex-1"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Escanear QR de Equipo
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setScanningFor("operador");
-                      setShowQRScanner(true);
-                    }}
-                    className="w-full sm:flex-1"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Escanear QR de Operador
-                  </Button>
+                <div className="bg-muted p-4 rounded-lg space-y-3">
+                  <p className="text-sm text-muted-foreground font-medium">
+                    Escanee los códigos QR para registrar la unidad
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setScanningFor("equipo");
+                        setShowQRScanner(true);
+                      }}
+                      className="w-full sm:flex-1"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Escanear QR de Tracto
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setScanningFor("operador");
+                        setShowQRScanner(true);
+                      }}
+                      className="w-full sm:flex-1"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Escanear QR de Operador
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 mb-6">
+                  {/* Tracto Info - Solo lectura */}
                   <div className="space-y-2">
-                    <Label htmlFor="numero_economico">Tracto (Número Económico) *</Label>
-                    <div className="space-y-2">
-                      <Input
-                        placeholder="Escribe el número de tracto..."
-                        value={tractoSearchQuery}
-                        onChange={(e) => handleTractoSearch(e.target.value)}
-                        className="mb-2"
-                      />
-                      <Select
-                        value={formData.tracto_id}
-                        onValueChange={(value) => {
-                          const equipo = equipos.find(e => e.id === value);
-                          setFormData({ 
-                            ...formData, 
-                            tracto_id: value,
-                            numero_economico: equipo?.numero_economico || '',
-                            numero_unidad: equipo?.numero_economico || ''
-                          });
-                          setTractoSearchQuery(equipo?.numero_economico || '');
-                        }}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="O seleccionar de la lista" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {equipos
-                            .filter(e => e.tipo_equipo?.toLowerCase() === 'tracto')
-                            .filter(e => tractoSearchQuery === '' || e.numero_economico.toLowerCase().includes(tractoSearchQuery.toLowerCase()))
-                            .map((equipo) => (
-                            <SelectItem key={equipo.id} value={equipo.id}>
-                              {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
-                              {equipo.estado !== 'disponible' && ` (${equipo.estado})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {formData.numero_economico && (
-                        <p className="text-sm text-muted-foreground">
-                          Seleccionado: <span className="font-semibold">{formData.numero_economico}</span>
+                    <Label>Tracto (Número Económico) *</Label>
+                    {formData.tracto_id ? (
+                      <div className="p-3 bg-accent/50 rounded-lg border border-accent">
+                        <p className="font-semibold text-foreground">
+                          {formData.numero_economico}
                         </p>
-                      )}
-                    </div>
+                        <p className="text-xs text-muted-foreground">
+                          {equipos.find(e => e.id === formData.tracto_id)?.marca} {equipos.find(e => e.id === formData.tracto_id)?.modelo}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic p-3 border rounded-lg">
+                        Escanee el QR del tracto para continuar
+                      </p>
+                    )}
                   </div>
+
+                  {/* Operador Info - Solo lectura */}
                   <div className="space-y-2">
-                    <Label htmlFor="operador">Operador *</Label>
-                    <Select
-                      value={formData.operador_id}
-                      onValueChange={(value) => {
-                        const operador = operadores.find(o => o.id === value);
-                        setFormData({ 
-                          ...formData, 
-                          operador_id: value,
-                          operador: operador?.nombre || ''
-                        });
-                      }}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar operador" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {operadores.map((operador) => (
-                          <SelectItem key={operador.id} value={operador.id}>
-                            {operador.nombre} - {operador.numero_empleado}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Operador *</Label>
+                    {formData.operador_id ? (
+                      <div className="p-3 bg-accent/50 rounded-lg border border-accent">
+                        <p className="font-semibold text-foreground">
+                          {formData.operador}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {operadores.find(o => o.id === formData.operador_id)?.numero_empleado}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic p-3 border rounded-lg">
+                        Escanee el QR del operador para continuar
+                      </p>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dolly">Dolly (Número Económico)</Label>
-                    <Select
-                      value={formData.dolly_id || undefined}
-                      onValueChange={(value) => setFormData({ ...formData, dolly_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin dolly (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo?.toLowerCase() === 'dolly').map((equipo) => (
-                          <SelectItem key={equipo.id} value={equipo.id}>
-                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                </div>
+
+                {/* Equipos adicionales opcionales */}
+                <div className="border-t pt-4">
+                  <Label className="text-sm text-muted-foreground">Equipos Adicionales (Opcional)</Label>
+                  <p className="text-xs text-muted-foreground mb-3">Escanee los QR de dolly y remolques si aplica</p>
+                  <div className="space-y-3">
+                    {formData.dolly_id && (
+                      <div className="p-2 bg-secondary/20 rounded text-sm">
+                        <span className="font-medium">Dolly:</span> {equipos.find(e => e.id === formData.dolly_id)?.numero_economico}
+                      </div>
+                    )}
+                    {formData.remolque_1_id && (
+                      <div className="p-2 bg-secondary/20 rounded text-sm">
+                        <span className="font-medium">Remolque 1:</span> {equipos.find(e => e.id === formData.remolque_1_id)?.numero_economico}
+                      </div>
+                    )}
+                    {formData.remolque_2_id && (
+                      <div className="p-2 bg-secondary/20 rounded text-sm">
+                        <span className="font-medium">Remolque 2:</span> {equipos.find(e => e.id === formData.remolque_2_id)?.numero_economico}
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="remolque_1">Remolque 1 (Número Económico)</Label>
-                    <Select
-                      value={formData.remolque_1_id || undefined}
-                      onValueChange={(value) => setFormData({ ...formData, remolque_1_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin remolque (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo?.toLowerCase() === 'remolque').map((equipo) => (
-                          <SelectItem key={equipo.id} value={equipo.id}>
-                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="remolque_2">Remolque 2 (Número Económico)</Label>
-                    <Select
-                      value={formData.remolque_2_id || undefined}
-                      onValueChange={(value) => setFormData({ ...formData, remolque_2_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin remolque (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipos.filter(e => e.tipo_equipo?.toLowerCase() === 'remolque').map((equipo) => (
-                          <SelectItem key={equipo.id} value={equipo.id}>
-                            {equipo.numero_economico} - {equipo.marca} {equipo.modelo}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="odometro">Odómetro (km)</Label>
-                    <Input
-                      id="odometro"
-                      type="number"
-                      placeholder="150000"
-                      value={formData.odometro}
-                      onChange={(e) => setFormData({ ...formData, odometro: e.target.value })}
-                      required
-                    />
-                  </div>
+                </div>
+
+                {/* Odómetro */}
+                <div className="space-y-2">
+                  <Label htmlFor="odometro">Odómetro (km) *</Label>
+                  <Input
+                    id="odometro"
+                    type="number"
+                    placeholder="150000"
+                    value={formData.odometro}
+                    onChange={(e) => setFormData({ ...formData, odometro: e.target.value })}
+                    required
+                  />
                 </div>
               </TabsContent>
 

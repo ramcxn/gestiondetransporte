@@ -454,6 +454,8 @@ export default function PersonalAttendance() {
   const handleQRScan = async (qrData: string) => {
     setShowQRScanner(false);
     
+    if (!user) return;
+    
     try {
       // Buscar en personal por qr_code
       const { data: personalData, error: personalError } = await supabase
@@ -467,20 +469,75 @@ export default function PersonalAttendance() {
         throw personalError;
       }
 
-      if (personalData) {
-        setSelectedPersonal(personalData.id);
+      if (!personalData) {
         toast({
-          title: "Personal identificado",
-          description: `${personalData.nombre} - ${personalData.numero_empleado}`,
+          title: "No encontrado",
+          description: "No se encontró personal con este código QR",
+          variant: "destructive",
         });
         return;
       }
 
+      // Get client_id using RPC function
+      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
+      
+      let finalClientId = rpcClientId;
+      
+      // Fallback to profile client_id if RPC returns null
+      if (!finalClientId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        finalClientId = profile?.client_id;
+      }
+
+      if (!finalClientId) throw new Error("No client_id found");
+
+      // Verificar si hay una entrada reciente (últimos 10 minutos)
+      const { data: recentEntry, error: recentError } = await supabase
+        .from("asistencia_personal")
+        .select("fecha_entrada")
+        .eq("personal_id", personalData.id)
+        .order("fecha_entrada", { ascending: false })
+        .limit(1);
+
+      if (recentError) throw recentError;
+
+      if (recentEntry && recentEntry.length > 0) {
+        const lastEntryTime = new Date(recentEntry[0].fecha_entrada);
+        const currentTime = new Date();
+        const timeDiffMinutes = (currentTime.getTime() - lastEntryTime.getTime()) / (1000 * 60);
+
+        if (timeDiffMinutes < 10) {
+          const minutesRemaining = Math.ceil(10 - timeDiffMinutes);
+          toast({
+            title: "Entrada bloqueada",
+            description: `Esta persona ya registró su entrada recientemente. Debe esperar ${minutesRemaining} minuto${minutesRemaining !== 1 ? 's' : ''} más.`,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Registrar entrada
+      const { error } = await supabase
+        .from("asistencia_personal")
+        .insert({
+          personal_id: personalData.id,
+          created_by: user.id,
+          client_id: finalClientId,
+        });
+
+      if (error) throw error;
+
       toast({
-        title: "No encontrado",
-        description: "No se encontró personal con este código QR",
-        variant: "destructive",
+        title: "Entrada registrada",
+        description: `${personalData.nombre} - ${personalData.numero_empleado}`,
       });
+
+      fetchData();
     } catch (error) {
       console.error("Error scanning QR:", error);
       toast({
@@ -650,41 +707,41 @@ export default function PersonalAttendance() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex gap-2">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm text-muted-foreground mb-3">
+                Presione el botón para escanear el código QR del personal
+              </p>
               <Button
-                variant="outline"
                 onClick={() => setShowQRScanner(true)}
-                className="flex items-center gap-2"
+                className="w-full gap-2"
+                size="lg"
               >
-                <QrCode className="h-4 w-4" />
-                Escanear QR
+                <QrCode className="h-5 w-5" />
+                Escanear QR para Registrar Entrada
               </Button>
             </div>
             
-            <div className="flex gap-4">
-              <div className="flex-1 space-y-2">
-                <Label>Personal</Label>
-                <Select value={selectedPersonal} onValueChange={setSelectedPersonal}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar personal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {personal.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nombre} - {p.numero_empleado} ({p.departamento})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {selectedPersonal && (
+              <div className="p-4 bg-accent/50 rounded-lg border border-accent">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Personal identificado:</p>
+                    <p className="font-semibold text-foreground">
+                      {personal.find(p => p.id === selectedPersonal)?.nombre}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {personal.find(p => p.id === selectedPersonal)?.numero_empleado} - {personal.find(p => p.id === selectedPersonal)?.departamento}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleEntry}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Registrando..." : "Confirmar Entrada"}
+                  </Button>
+                </div>
               </div>
-              <Button
-                onClick={handleEntry}
-                disabled={!selectedPersonal || submitting}
-                className="mt-8"
-              >
-                {submitting ? "Registrando..." : "Registrar Entrada"}
-              </Button>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

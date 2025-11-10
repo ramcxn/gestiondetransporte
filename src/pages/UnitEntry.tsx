@@ -896,7 +896,7 @@ export default function UnitEntry() {
                   <p className="text-sm text-muted-foreground font-medium">
                     Escanee los códigos QR para registrar la unidad
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <Button
                       type="button"
                       variant="outline"
@@ -904,10 +904,10 @@ export default function UnitEntry() {
                         setScanningFor("equipo");
                         setShowQRScanner(true);
                       }}
-                      className="w-full sm:flex-1"
+                      className="w-full"
                     >
                       <QrCode className="h-4 w-4 mr-2" />
-                      Escanear QR de Tracto
+                      Escanear Tracto
                     </Button>
                     <Button
                       type="button"
@@ -916,12 +916,39 @@ export default function UnitEntry() {
                         setScanningFor("operador");
                         setShowQRScanner(true);
                       }}
-                      className="w-full sm:flex-1"
+                      className="w-full"
                     >
                       <QrCode className="h-4 w-4 mr-2" />
-                      Escanear QR de Operador
+                      Escanear Operador
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setScanningFor("equipo");
+                        setShowQRScanner(true);
+                      }}
+                      className="w-full"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Escanear Dolly
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setScanningFor("equipo");
+                        setShowQRScanner(true);
+                      }}
+                      className="w-full"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      Escanear Remolques
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    * Tracto y Operador son obligatorios
+                  </p>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 mb-6">

@@ -167,6 +167,48 @@ export default function EquipmentInventory() {
     },
   });
 
+  const generateQRCodesMutation = useMutation({
+    mutationFn: async () => {
+      // Obtener equipos sin código QR
+      const { data: equipos, error: fetchError } = await supabase
+        .from("inventario_equipos")
+        .select("id, numero_economico")
+        .or("qr_code.is.null,qr_code.eq.");
+
+      if (fetchError) throw fetchError;
+
+      if (!equipos || equipos.length === 0) {
+        return { updated: 0 };
+      }
+
+      // Actualizar QR codes uno por uno
+      for (const equipo of equipos) {
+        const { error } = await supabase
+          .from("inventario_equipos")
+          .update({ qr_code: equipo.id })
+          .eq("id", equipo.id);
+        
+        if (error) throw error;
+      }
+
+      return { updated: equipos.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["inventario_equipos"] });
+      toast({ 
+        title: "Éxito", 
+        description: `Se generaron ${data.updated} códigos QR` 
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "No se pudieron generar los códigos QR", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -237,11 +279,21 @@ export default function EquipmentInventory() {
           <h1 className="text-2xl font-bold">Inventario de Equipos</h1>
           <p className="text-muted-foreground">Tractos, Dollies y Remolques</p>
         </div>
-        <div className="w-full sm:w-auto">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" />Nuevo Equipo</Button>
-            </DialogTrigger>
+        <div className="flex gap-2">
+          {userRole === "admin" && (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => generateQRCodesMutation.mutate()}
+                disabled={generateQRCodesMutation.isPending}
+              >
+                <QrCode className="h-4 w-4 mr-2" />
+                {generateQRCodesMutation.isPending ? "Generando..." : "Generar QR"}
+              </Button>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto"><Plus className="h-4 w-4 mr-2" />Nuevo Equipo</Button>
+                </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Registrar Nuevo Equipo</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -286,7 +338,9 @@ export default function EquipmentInventory() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+              </Dialog>
+            </>
+          )}
         </div>
       </div>
 

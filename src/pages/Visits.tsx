@@ -32,6 +32,7 @@ export default function Visits() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [clientId, setClientId] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -47,6 +48,21 @@ export default function Visits() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
+    const loadClientId = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("client_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (data) {
+          setClientId(data.client_id);
+        }
+      }
+    };
+
+    loadClientId();
     fetchVisits();
 
     const channel = supabase
@@ -67,7 +83,7 @@ export default function Visits() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const fetchVisits = async () => {
     try {
@@ -196,7 +212,14 @@ export default function Visits() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !clientId) {
+      toast({
+        title: "Error",
+        description: "No se pudo obtener la información del usuario",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -221,6 +244,7 @@ export default function Visits() {
           credencial_url: credencialUrl,
           estado: 'en_instalaciones',
           created_by: user.id,
+          client_id: clientId,
         });
 
       if (error) throw error;

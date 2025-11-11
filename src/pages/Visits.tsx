@@ -121,42 +121,19 @@ export default function Visits() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleCameraCapture = async () => {
+  const handleCameraCapture = (videoElement: HTMLVideoElement) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
-      });
-      
-      const video = document.createElement('video');
-      video.srcObject = stream;
-      video.play();
-      
-      // Wait for video to be ready
-      await new Promise(resolve => {
-        video.onloadedmetadata = resolve;
-      });
-      
       // Create canvas and capture frame
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
       const ctx = canvas.getContext('2d');
-      ctx?.drawImage(video, 0, 0);
       
-      // Stop the stream
-      stream.getTracks().forEach(track => track.stop());
+      if (!ctx) {
+        throw new Error('No se pudo obtener el contexto del canvas');
+      }
+      
+      ctx.drawImage(videoElement, 0, 0);
       
       // Convert to blob and file
       canvas.toBlob((blob) => {
@@ -165,14 +142,19 @@ export default function Visits() {
           setSelectedImage(file);
           setImagePreview(canvas.toDataURL('image/jpeg'));
           setShowCamera(false);
+          
+          toast({
+            title: "Éxito",
+            description: "Foto capturada exitosamente",
+          });
         }
-      }, 'image/jpeg', 0.9);
+      }, 'image/jpeg', 0.95);
       
     } catch (error) {
-      console.error("Error accessing camera:", error);
+      console.error("Error capturing photo:", error);
       toast({
         title: "Error",
-        description: "No se pudo acceder a la cámara",
+        description: "No se pudo capturar la foto",
         variant: "destructive",
       });
     }
@@ -615,8 +597,14 @@ export default function Visits() {
   );
 }
 
-function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose: () => void }) {
-  const videoRef = useState<HTMLVideoElement | null>(null)[0];
+function CameraCapture({ 
+  onCapture, 
+  onClose 
+}: { 
+  onCapture: (videoElement: HTMLVideoElement) => void; 
+  onClose: () => void 
+}) {
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
@@ -625,14 +613,14 @@ function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose:
     const startCamera = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+          video: { 
+            facingMode: 'environment', 
+            width: { ideal: 1920 }, 
+            height: { ideal: 1080 } 
+          }
         });
         currentStream = mediaStream;
         setStream(mediaStream);
-        
-        if (videoRef) {
-          videoRef.srcObject = mediaStream;
-        }
       } catch (error) {
         console.error("Error starting camera:", error);
       }
@@ -647,6 +635,16 @@ function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose:
     };
   }, []);
 
+  const handleCapture = () => {
+    if (videoRef) {
+      onCapture(videoRef);
+      // Stop the camera stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
       <div className="relative w-full max-w-4xl">
@@ -654,7 +652,12 @@ function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose:
           variant="ghost"
           size="icon"
           className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white"
-          onClick={onClose}
+          onClick={() => {
+            if (stream) {
+              stream.getTracks().forEach(track => track.stop());
+            }
+            onClose();
+          }}
         >
           <X className="h-6 w-6" />
         </Button>
@@ -662,9 +665,10 @@ function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose:
         <div className="relative bg-black rounded-lg overflow-hidden">
           <video
             ref={(ref) => {
-              if (ref && stream) {
+              if (ref && stream && !videoRef) {
                 ref.srcObject = stream;
                 ref.play();
+                setVideoRef(ref);
               }
             }}
             autoPlay
@@ -675,7 +679,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: () => void; onClose:
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
             <Button
               size="lg"
-              onClick={onCapture}
+              onClick={handleCapture}
               className="rounded-full h-16 w-16 bg-white hover:bg-gray-200"
             >
               <Camera className="h-8 w-8 text-black" />

@@ -74,13 +74,11 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 lastScan = now;
                 
                 const code = result.getText();
-                addDebug(`Código detectado: ${code}`);
+                console.log(`[QRScanner] Código detectado: ${code}`);
                 onScan(code);
                 stopScanner();
               }
-              if (error && error.name !== 'NotFoundException') {
-                addDebug(`Error de escaneo: ${error.name}`);
-              }
+              // No mostrar errores de escaneo normal al usuario
             }
           );
           addDebug('Escáner activo, esperando código QR...');
@@ -175,13 +173,6 @@ export default function QRScanner({ onScan, onClose }: QRScannerProps) {
                 {isScanning && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-48 h-48 border-2 border-primary rounded-lg animate-pulse" />
-                  </div>
-                )}
-                {debugInfo.length > 0 && (
-                  <div className="absolute bottom-2 left-2 right-2 text-xs bg-black/70 text-white p-2 rounded max-h-20 overflow-auto">
-                    {debugInfo.map((info, i) => (
-                      <p key={i}>{info}</p>
-                    ))}
                   </div>
                 )}
               </div>

@@ -423,12 +423,15 @@ export default function FacilityInspections() {
           </div>
 
           <Tabs value={categoriaSeleccionada} onValueChange={(v) => setCategoriaSeleccionada(v as keyof typeof CATEGORIAS)}>
-            <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full gap-1">
+            <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full gap-1 h-auto p-2">
               {Object.entries(CATEGORIAS).map(([key, cat]) => (
-                <TabsTrigger key={key} value={key} className="text-xs flex items-center gap-1.5 px-2 py-2">
-                  <span className="text-base">{cat.icon}</span>
-                  <span className="hidden sm:inline">{cat.nombre}</span>
-                  <span className="sm:hidden">{key}</span>
+                <TabsTrigger 
+                  key={key} 
+                  value={key} 
+                  className="text-xs flex flex-col sm:flex-row items-center justify-center gap-1 px-2 py-2 h-auto whitespace-normal"
+                >
+                  <span className="text-base flex-shrink-0">{cat.icon}</span>
+                  <span className="text-center leading-tight">{cat.nombre}</span>
                 </TabsTrigger>
               ))}
             </TabsList>

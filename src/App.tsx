@@ -38,6 +38,7 @@ import WarehouseReception from "./pages/WarehouseReception";
 import WarehouseInventory from "./pages/WarehouseInventory";
 import WarehouseReports from "./pages/WarehouseReports";
 import CorrectiveActions from "./pages/CorrectiveActions";
+import FacilityInspections from "./pages/FacilityInspections";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -357,6 +358,16 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <CorrectiveActions />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/instalaciones"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <FacilityInspections />
                   </Layout>
                 </ProtectedRoute>
               }

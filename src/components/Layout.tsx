@@ -73,6 +73,7 @@ const allNavigationItems = [
   { name: "Inventario de Equipo", path: "/inventario", icon: Package, roles: ["admin"] },
   { name: "Almacén Refacciones", path: "/almacen", icon: Warehouse, roles: ["admin", "usuario"] },
   { name: "Mantenimiento", path: "/mantenimiento", icon: Wrench, roles: ["admin"] },
+  { name: "Mantenimiento Instalaciones", path: "/instalaciones", icon: Building2, roles: ["admin", "usuario"] },
   
   // Configuración
   { name: "Clientes CTPAT", path: "/clientes", icon: Building2, roles: ["admin"] },

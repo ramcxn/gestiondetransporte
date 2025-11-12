@@ -679,6 +679,60 @@ export type Database = {
           },
         ]
       }
+      inspecciones_instalaciones: {
+        Row: {
+          acciones_correctivas: Json | null
+          categoria: string
+          client_id: string
+          created_at: string
+          created_by: string
+          estado: string
+          evidencia_fotografica: Json | null
+          fecha_inspeccion: string
+          folio: string
+          id: string
+          inspector_id: string | null
+          inspector_nombre: string
+          observaciones_generales: string | null
+          puntos_verificacion: Json
+          updated_at: string
+        }
+        Insert: {
+          acciones_correctivas?: Json | null
+          categoria: string
+          client_id: string
+          created_at?: string
+          created_by: string
+          estado?: string
+          evidencia_fotografica?: Json | null
+          fecha_inspeccion?: string
+          folio: string
+          id?: string
+          inspector_id?: string | null
+          inspector_nombre: string
+          observaciones_generales?: string | null
+          puntos_verificacion?: Json
+          updated_at?: string
+        }
+        Update: {
+          acciones_correctivas?: Json | null
+          categoria?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          estado?: string
+          evidencia_fotografica?: Json | null
+          fecha_inspeccion?: string
+          folio?: string
+          id?: string
+          inspector_id?: string | null
+          inspector_nombre?: string
+          observaciones_generales?: string | null
+          puntos_verificacion?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventario_equipos: {
         Row: {
           año: number | null
@@ -2320,6 +2374,7 @@ export type Database = {
       }
       can_view_all_data: { Args: never; Returns: boolean }
       generate_accion_correctiva_folio: { Args: never; Returns: string }
+      generate_inspeccion_instalaciones_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
       get_client_id_by_email_domain: { Args: never; Returns: string }
       get_user_client_id: { Args: never; Returns: string }

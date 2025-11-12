@@ -9,8 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CameraCapture } from "@/components/CameraCapture";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { 
   Building2, 
   Plus, 
@@ -20,7 +23,9 @@ import {
   FileText,
   Calendar,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Download,
+  Image as ImageIcon
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -178,6 +183,9 @@ export default function FacilityInspections() {
   const [puntosVerificacion, setPuntosVerificacion] = useState<Record<string, PuntoVerificacion>>({});
   const [accionesCorrectivas, setAccionesCorrectivas] = useState<AccionCorrectiva[]>([]);
   const [observacionesGenerales, setObservacionesGenerales] = useState("");
+  const [showCamera, setShowCamera] = useState(false);
+  const [currentPuntoCodigo, setCurrentPuntoCodigo] = useState<string>("");
+  const [fotosCategoria, setFotosCategoria] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchInspecciones();
@@ -219,7 +227,47 @@ export default function FacilityInspections() {
     setAccionesCorrectivas([]);
     setObservacionesGenerales("");
     setCategoriaSeleccionada("SP");
+    setFotosCategoria({});
     setShowForm(true);
+  };
+
+  const handleTomarFoto = (codigo: string) => {
+    setCurrentPuntoCodigo(codigo);
+    setShowCamera(true);
+  };
+
+  const handleCameraCapture = async (blob: Blob) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Usuario no autenticado");
+
+      const fileName = `${Date.now()}_${currentPuntoCodigo}.jpg`;
+      const filePath = `${userData.user.id}/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from("fotos-instalaciones")
+        .upload(filePath, blob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("fotos-instalaciones")
+        .getPublicUrl(filePath);
+
+      handlePuntoChange(currentPuntoCodigo, "foto_url", urlData.publicUrl);
+      
+      setFotosCategoria(prev => ({
+        ...prev,
+        [categoriaSeleccionada]: [...(prev[categoriaSeleccionada] || []), urlData.publicUrl]
+      }));
+
+      toast.success("Foto capturada exitosamente");
+      setShowCamera(false);
+      setCurrentPuntoCodigo("");
+    } catch (error) {
+      console.error("Error al subir foto:", error);
+      toast.error("Error al guardar la foto");
+    }
   };
 
   const handlePuntoChange = (codigo: string, field: keyof PuntoVerificacion, value: any) => {
@@ -279,6 +327,82 @@ export default function FacilityInspections() {
     return total > 0 ? Math.round((cumplidos / total) * 100) : 0;
   };
 
+  const generarReportePDF = async (inspeccion: Inspeccion) => {
+    try {
+      const doc = new jsPDF();
+      const categoria = CATEGORIAS[inspeccion.categoria as keyof typeof CATEGORIAS];
+      
+      // Header
+      doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
+      doc.text("Reporte de Inspección de Instalaciones", 105, 20, { align: "center" });
+      
+      // Info general
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Folio: ${inspeccion.folio}`, 20, 35);
+      doc.text(`Fecha: ${format(new Date(inspeccion.fecha_inspeccion), "dd/MM/yyyy HH:mm", { locale: es })}`, 20, 42);
+      doc.text(`Inspector: ${inspeccion.inspector_nombre}`, 20, 49);
+      doc.text(`Categoría: ${categoria?.nombre || inspeccion.categoria}`, 20, 56);
+      
+      const cumplimiento = calcularCumplimiento(inspeccion.puntos_verificacion);
+      doc.text(`Cumplimiento: ${cumplimiento}%`, 20, 63);
+
+      // Tabla de puntos
+      const tableData = inspeccion.puntos_verificacion.map((punto: any) => [
+        punto.codigo,
+        punto.criterio,
+        punto.cumple === true ? "✓ Sí" : punto.cumple === false ? "✗ No" : "N/A",
+        punto.observaciones || "-"
+      ]);
+
+      autoTable(doc, {
+        startY: 75,
+        head: [["Código", "Criterio", "Cumple", "Observaciones"]],
+        body: tableData,
+        theme: "striped",
+        headStyles: { fillColor: [59, 130, 246] },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 55 }
+        }
+      });
+
+      // Observaciones generales
+      if (inspeccion.observaciones_generales) {
+        const finalY = (doc as any).lastAutoTable.finalY || 75;
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text("Observaciones Generales:", 20, finalY + 15);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const splitText = doc.splitTextToSize(inspeccion.observaciones_generales, 170);
+        doc.text(splitText, 20, finalY + 23);
+      }
+
+      doc.save(`Inspeccion_${inspeccion.folio}.pdf`);
+      toast.success("Reporte generado exitosamente");
+    } catch (error) {
+      console.error("Error al generar PDF:", error);
+      toast.error("Error al generar el reporte");
+    }
+  };
+
+  if (showCamera) {
+    return (
+      <CameraCapture 
+        onCapture={handleCameraCapture}
+        onClose={() => {
+          setShowCamera(false);
+          setCurrentPuntoCodigo("");
+        }}
+      />
+    );
+  }
+
   if (showForm) {
     return (
       <Layout>
@@ -299,11 +423,12 @@ export default function FacilityInspections() {
           </div>
 
           <Tabs value={categoriaSeleccionada} onValueChange={(v) => setCategoriaSeleccionada(v as keyof typeof CATEGORIAS)}>
-            <TabsList className="grid grid-cols-4 lg:grid-cols-8 w-full">
+            <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full gap-1">
               {Object.entries(CATEGORIAS).map(([key, cat]) => (
-                <TabsTrigger key={key} value={key} className="text-xs">
-                  <span className="mr-1">{cat.icon}</span>
-                  {key}
+                <TabsTrigger key={key} value={key} className="text-xs flex items-center gap-1.5 px-2 py-2">
+                  <span className="text-base">{cat.icon}</span>
+                  <span className="hidden sm:inline">{cat.nombre}</span>
+                  <span className="sm:hidden">{key}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -319,33 +444,49 @@ export default function FacilityInspections() {
                   <div className="space-y-6">
                     {categoria.puntos.map((punto) => (
                       <div key={punto.codigo} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge variant="outline">{punto.codigo}</Badge>
-                              <span className="text-sm font-medium">{punto.criterio}</span>
+                      <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="outline">{punto.codigo}</Badge>
+                                <span className="text-sm font-medium">{punto.criterio}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                <strong>Objetivo:</strong> {punto.objetivo}
+                              </p>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              <strong>Objetivo:</strong> {punto.objetivo}
-                            </p>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant={puntosVerificacion[punto.codigo]?.cumple === true ? "default" : "outline"}
+                                onClick={() => handlePuntoChange(punto.codigo, "cumple", true)}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={puntosVerificacion[punto.codigo]?.cumple === false ? "destructive" : "outline"}
+                                onClick={() => handlePuntoChange(punto.codigo, "cumple", false)}
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleTomarFoto(punto.codigo)}
+                              >
+                                <Camera className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant={puntosVerificacion[punto.codigo]?.cumple === true ? "default" : "outline"}
-                              onClick={() => handlePuntoChange(punto.codigo, "cumple", true)}
-                            >
-                              <CheckCircle2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={puntosVerificacion[punto.codigo]?.cumple === false ? "destructive" : "outline"}
-                              onClick={() => handlePuntoChange(punto.codigo, "cumple", false)}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
+
+                          {puntosVerificacion[punto.codigo]?.foto_url && (
+                            <div className="flex items-center gap-2 text-sm text-green-600">
+                              <ImageIcon className="h-4 w-4" />
+                              <span>Evidencia fotográfica capturada</span>
+                            </div>
+                          )}
                         </div>
 
                         {puntosVerificacion[punto.codigo]?.cumple === false && (
@@ -456,8 +597,16 @@ export default function FacilityInspections() {
                         {cumplimiento}% Cumplimiento
                       </Badge>
                       <div className="text-sm text-muted-foreground">
-                        {inspeccion.puntos_verificacion.filter(p => p.cumple === true).length} / {inspeccion.puntos_verificacion.length} puntos
+                        {inspeccion.puntos_verificacion.filter((p: any) => p.cumple === true).length} / {inspeccion.puntos_verificacion.length} puntos
                       </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => generarReportePDF(inspeccion)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Descargar PDF
+                      </Button>
                     </div>
                   </div>
                 </Card>

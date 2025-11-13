@@ -7,13 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User, Camera } from "lucide-react";
+import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User, Camera, Download, Calendar } from "lucide-react";
 import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { z } from "zod";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const securityRoundSchema = z.object({
   zona_id: z.string().min(1, "Debes seleccionar una zona"),
@@ -56,6 +58,10 @@ export default function SecurityRounds() {
   const [zones, setZones] = useState<SecurityZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportStartDate, setReportStartDate] = useState("");
+  const [reportEndDate, setReportEndDate] = useState("");
+  const [generatingReport, setGeneratingReport] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -193,6 +199,203 @@ export default function SecurityRounds() {
     }
   };
 
+  const generatePDFReport = async () => {
+    if (!reportStartDate || !reportEndDate) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar ambas fechas",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingReport(true);
+    try {
+      // Fetch rounds in date range
+      const { data: roundsData, error } = await supabase
+        .from("rondines")
+        .select("*")
+        .gte("created_at", `${reportStartDate}T00:00:00`)
+        .lte("created_at", `${reportEndDate}T23:59:59`)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!roundsData || roundsData.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay rondines en el rango de fechas seleccionado",
+          variant: "destructive",
+        });
+        setGeneratingReport(false);
+        return;
+      }
+
+      // Get creator names
+      const creatorIds = [...new Set(roundsData.map(r => r.created_by))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", creatorIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      let yPosition = 20;
+
+      // Header
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Reporte de Rondines de Seguridad', pageWidth / 2, yPosition, { align: 'center' });
+      
+      yPosition += 10;
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Período: ${new Date(reportStartDate).toLocaleDateString('es-MX')} - ${new Date(reportEndDate).toLocaleDateString('es-MX')}`, pageWidth / 2, yPosition, { align: 'center' });
+      
+      yPosition += 10;
+      doc.text(`Total de rondines: ${roundsData.length}`, pageWidth / 2, yPosition, { align: 'center' });
+      doc.text(`Incidentes reportados: ${roundsData.filter(r => r.incidente).length}`, pageWidth / 2, yPosition + 5, { align: 'center' });
+
+      // Process each round
+      for (let i = 0; i < roundsData.length; i++) {
+        const round = roundsData[i];
+        
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        yPosition += 15;
+        
+        // Round header
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Rondín ${i + 1}`, 15, yPosition);
+        
+        yPosition += 7;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        
+        // Round details
+        const details = [
+          `Ubicación: ${round.ubicacion}`,
+          `Fecha: ${new Date(round.created_at).toLocaleDateString('es-MX')} ${new Date(round.created_at).toLocaleTimeString('es-MX')}`,
+          `Guardía: ${profileMap.get(round.created_by) || 'Desconocido'}`,
+          `Estado: ${round.incidente ? '⚠️ Incidente reportado' : '✓ Sin incidentes'}`,
+        ];
+
+        details.forEach(detail => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          doc.text(detail, 15, yPosition);
+          yPosition += 6;
+        });
+
+        if (round.incidente && round.descripcion_incidente) {
+          if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          doc.setFont('helvetica', 'bold');
+          doc.text('Descripción del incidente:', 15, yPosition);
+          yPosition += 6;
+          doc.setFont('helvetica', 'normal');
+          const descLines = doc.splitTextToSize(round.descripcion_incidente, pageWidth - 30);
+          descLines.forEach((line: string) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(line, 15, yPosition);
+            yPosition += 5;
+          });
+        }
+
+        // Add photo if exists
+        if (round.foto_url) {
+          try {
+            if (yPosition > 200) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            
+            yPosition += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text('Evidencia fotográfica:', 15, yPosition);
+            yPosition += 5;
+
+            // Fetch and convert image to base64
+            const response = await fetch(round.foto_url);
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+            });
+
+            const imgWidth = 80;
+            const imgHeight = 60;
+            
+            if (yPosition + imgHeight > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+
+            doc.addImage(base64, 'JPEG', 15, yPosition, imgWidth, imgHeight);
+            yPosition += imgHeight + 5;
+          } catch (imgError) {
+            console.error('Error loading image:', imgError);
+            doc.setFont('helvetica', 'italic');
+            doc.text('(No se pudo cargar la imagen)', 15, yPosition);
+            yPosition += 5;
+          }
+        }
+
+        // Separator line
+        if (i < roundsData.length - 1) {
+          if (yPosition > 265) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          doc.setDrawColor(200, 200, 200);
+          doc.line(15, yPosition, pageWidth - 15, yPosition);
+        }
+      }
+
+      // Footer on all pages
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')} ${new Date().toLocaleTimeString('es-MX')}`, 15, doc.internal.pageSize.getHeight() - 10);
+      }
+
+      doc.save(`Rondines_${reportStartDate}_${reportEndDate}.pdf`);
+
+      toast({
+        title: "Reporte generado",
+        description: "El PDF se ha descargado exitosamente",
+      });
+
+      setIsReportDialogOpen(false);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el reporte",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -311,13 +514,71 @@ export default function SecurityRounds() {
             <p className="text-muted-foreground">Inspección de {zones.length} zonas con registro QR</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <QrCode className="h-4 w-4 mr-2" />
-              Nuevo Rondín
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Reporte
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Generar Reporte de Rondines</DialogTitle>
+                <DialogDescription>
+                  Selecciona el rango de fechas para generar el reporte PDF con evidencia fotográfica
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="start-date">Fecha Inicial</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={reportStartDate}
+                      onChange={(e) => setReportStartDate(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="end-date">Fecha Final</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={reportEndDate}
+                      onChange={(e) => setReportEndDate(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsReportDialogOpen(false)}
+                  disabled={generatingReport}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={generatePDFReport} disabled={generatingReport}>
+                  {generatingReport ? "Generando..." : "Generar Reporte"}
+                  <Download className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <QrCode className="h-4 w-4 mr-2" />
+                Nuevo Rondín
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Registrar Rondín de Seguridad</DialogTitle>
@@ -418,6 +679,7 @@ export default function SecurityRounds() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-4">

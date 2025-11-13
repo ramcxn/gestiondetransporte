@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, User, Camera, Download, Calendar } from "lucide-react";
+import { Shield, QrCode, CheckCircle2, Clock, MapPin, AlertTriangle, Download, Calendar, Play, Square } from "lucide-react";
 import QRScanner from "@/components/QRScanner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,8 +31,25 @@ const securityRoundSchema = z.object({
   path: ["descripcion_incidente"],
 });
 
-interface SecurityRound {
+interface Rondin {
   id: string;
+  folio: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  estado: 'en_progreso' | 'completado' | 'cancelado';
+  zonas_totales: number;
+  zonas_visitadas: number;
+  incidentes_reportados: number;
+  observaciones: string | null;
+  client_id: string;
+  created_by: string;
+  created_at: string;
+  creator_name?: string;
+}
+
+interface VisitaZona {
+  id: string;
+  rondin_id: string;
   ubicacion: string;
   codigo_qr: string;
   incidente: boolean;
@@ -40,7 +57,6 @@ interface SecurityRound {
   foto_url: string | null;
   created_at: string;
   created_by: string;
-  creator_name?: string;
 }
 
 interface SecurityZone {
@@ -54,7 +70,9 @@ interface SecurityZone {
 export default function SecurityRounds() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [rounds, setRounds] = useState<SecurityRound[]>([]);
+  const [currentRondin, setCurrentRondin] = useState<Rondin | null>(null);
+  const [rondines, setRondines] = useState<Rondin[]>([]);
+  const [visitas, setVisitas] = useState<VisitaZona[]>([]);
   const [zones, setZones] = useState<SecurityZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -77,826 +95,297 @@ export default function SecurityRounds() {
 
   useEffect(() => {
     fetchZones();
-    fetchRounds();
+    fetchCurrentRondin();
+    fetchRondines();
 
     const channel = supabase
-      .channel('rounds-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'rondines'
-        },
-        () => {
-          fetchRounds();
-        }
-      )
+      .channel('rondines-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rondines' }, () => {
+        fetchRondines();
+        fetchCurrentRondin();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'visitas_zonas' }, () => {
+        if (currentRondin) fetchVisitasRondin(currentRondin.id);
+      })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const fetchZones = async () => {
     try {
-      const { data, error } = await supabase
-        .from("zonas_seguridad")
-        .select("*")
-        .eq('activa', true)
-        .order("nombre", { ascending: true });
-
+      const { data, error } = await supabase.from("zonas_seguridad").select("*").eq('activa', true).order("nombre", { ascending: true });
       if (error) throw error;
       setZones(data || []);
     } catch (error) {
       console.error("Error fetching zones:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar las zonas de seguridad",
-        variant: "destructive",
-      });
     }
   };
 
-  const fetchRounds = async () => {
+  const fetchCurrentRondin = async () => {
     try {
-      const { data: roundsData, error: roundsError } = await supabase
-        .from("rondines")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (roundsError) throw roundsError;
-
-      const userIds = [...new Set(roundsData?.map(r => r.created_by) || [])];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", userIds);
-
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p.full_name]) || []);
-      
-      const enrichedRounds = roundsData?.map(round => ({
-        ...round,
-        creator_name: profilesMap.get(round.created_by) || "Usuario"
-      })) || [];
-
-      setRounds(enrichedRounds);
+      const { data, error } = await supabase.from("rondines").select("*").eq('estado', 'en_progreso').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setCurrentRondin(data);
+        fetchVisitasRondin(data.id);
+      }
     } catch (error) {
-      console.error("Error fetching rounds:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los rondines",
-        variant: "destructive",
-      });
+      console.error("Error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  const fetchVisitasRondin = async (rondinId: string) => {
+    try {
+      const { data, error } = await supabase.from("visitas_zonas").select("*").eq('rondin_id', rondinId).order('created_at', { ascending: false });
+      if (error) throw error;
+      setVisitas(data || []);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const fetchRondines = async () => {
+    try {
+      const { data: rondinesData, error } = await supabase.from("rondines").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+
+      const userIds = [...new Set(rondinesData?.map(r => r.created_by) || [])];
+      const { data: profilesData } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p.full_name]) || []);
+      
+      const enrichedRondines = rondinesData?.map(rondin => ({ ...rondin, creator_name: profilesMap.get(rondin.created_by) || "Usuario" })) || [];
+      setRondines(enrichedRondines);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handleStartRondin = async () => {
+    if (!user || currentRondin) return;
+    try {
+      const { data, error } = await supabase.from("rondines").insert({ zonas_totales: zones.length, zonas_visitadas: 0, incidentes_reportados: 0, estado: 'en_progreso', created_by: user.id }).select().single();
+      if (error) throw error;
+      setCurrentRondin(data);
+      toast({ title: "Rondín iniciado", description: `Folio: ${data.folio}` });
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handleFinishRondin = async () => {
+    if (!currentRondin) return;
+    if (currentRondin.zonas_visitadas < currentRondin.zonas_totales) {
+      toast({ title: "Rondín incompleto", description: `Completa todas las zonas (${currentRondin.zonas_visitadas}/${currentRondin.zonas_totales})`, variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase.from("rondines").update({ estado: 'completado', fecha_fin: new Date().toISOString() }).eq('id', currentRondin.id);
+      if (error) throw error;
+      toast({ title: "Rondín completado" });
+      setCurrentRondin(null);
+      setVisitas([]);
+      fetchRondines();
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
   const uploadImage = async (): Promise<string | null> => {
     if (!selectedImage || !user) return null;
-
     setUploadingImage(true);
     try {
-      const fileExt = selectedImage.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('fotos-rondines')
-        .upload(filePath, selectedImage);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('fotos-rondines')
-        .getPublicUrl(filePath);
-
+      const fileName = `${user.id}-${Date.now()}.${selectedImage.name.split('.').pop()}`;
+      const { error } = await supabase.storage.from('fotos-rondines').upload(fileName, selectedImage);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('fotos-rondines').getPublicUrl(fileName);
       return publicUrl;
     } catch (error) {
-      console.error("Error uploading image:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo subir la imagen",
-        variant: "destructive",
-      });
+      console.error("Error:", error);
       return null;
     } finally {
       setUploadingImage(false);
     }
   };
 
-  const generatePDFReport = async () => {
-    if (!reportStartDate || !reportEndDate) {
-      toast({
-        title: "Error",
-        description: "Debes seleccionar ambas fechas",
-        variant: "destructive",
-      });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentRondin || !user) return;
+
+    try {
+      securityRoundSchema.parse(formData);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        toast({ title: "Error", description: error.errors[0].message, variant: "destructive" });
+      }
       return;
     }
 
-    setGeneratingReport(true);
-    try {
-      // Fetch rounds in date range
-      const { data: roundsData, error } = await supabase
-        .from("rondines")
-        .select("*")
-        .gte("created_at", `${reportStartDate}T00:00:00`)
-        .lte("created_at", `${reportEndDate}T23:59:59`)
-        .order("created_at", { ascending: false });
+    const selectedZone = zones.find(z => z.id === formData.zona_id);
+    if (!selectedZone) return;
 
-      if (error) throw error;
-
-      if (!roundsData || roundsData.length === 0) {
-        toast({
-          title: "Sin datos",
-          description: "No hay rondines en el rango de fechas seleccionado",
-          variant: "destructive",
-        });
-        setGeneratingReport(false);
-        return;
-      }
-
-      // Get creator names
-      const creatorIds = [...new Set(roundsData.map(r => r.created_by))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", creatorIds);
-
-      const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
-
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      let yPosition = 20;
-
-      // Header
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Reporte de Rondines de Seguridad', pageWidth / 2, yPosition, { align: 'center' });
-      
-      yPosition += 10;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Período: ${new Date(reportStartDate).toLocaleDateString('es-MX')} - ${new Date(reportEndDate).toLocaleDateString('es-MX')}`, pageWidth / 2, yPosition, { align: 'center' });
-      
-      yPosition += 10;
-      doc.text(`Total de rondines: ${roundsData.length}`, pageWidth / 2, yPosition, { align: 'center' });
-      doc.text(`Incidentes reportados: ${roundsData.filter(r => r.incidente).length}`, pageWidth / 2, yPosition + 5, { align: 'center' });
-
-      // Process each round
-      for (let i = 0; i < roundsData.length; i++) {
-        const round = roundsData[i];
-        
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        yPosition += 15;
-        
-        // Round header
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Rondín ${i + 1}`, 15, yPosition);
-        
-        yPosition += 7;
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'normal');
-        
-        // Round details
-        const details = [
-          `Ubicación: ${round.ubicacion}`,
-          `Fecha: ${new Date(round.created_at).toLocaleDateString('es-MX')} ${new Date(round.created_at).toLocaleTimeString('es-MX')}`,
-          `Guardía: ${profileMap.get(round.created_by) || 'Desconocido'}`,
-          `Estado: ${round.incidente ? '⚠️ Incidente reportado' : '✓ Sin incidentes'}`,
-        ];
-
-        details.forEach(detail => {
-          if (yPosition > 270) {
-            doc.addPage();
-            yPosition = 20;
-          }
-          doc.text(detail, 15, yPosition);
-          yPosition += 6;
-        });
-
-        if (round.incidente && round.descripcion_incidente) {
-          if (yPosition > 250) {
-            doc.addPage();
-            yPosition = 20;
-          }
-          doc.setFont('helvetica', 'bold');
-          doc.text('Descripción del incidente:', 15, yPosition);
-          yPosition += 6;
-          doc.setFont('helvetica', 'normal');
-          const descLines = doc.splitTextToSize(round.descripcion_incidente, pageWidth - 30);
-          descLines.forEach((line: string) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 20;
-            }
-            doc.text(line, 15, yPosition);
-            yPosition += 5;
-          });
-        }
-
-        // Add photo if exists
-        if (round.foto_url) {
-          try {
-            if (yPosition > 200) {
-              doc.addPage();
-              yPosition = 20;
-            }
-            
-            yPosition += 5;
-            doc.setFont('helvetica', 'bold');
-            doc.text('Evidencia fotográfica:', 15, yPosition);
-            yPosition += 5;
-
-            // Fetch and convert image to base64
-            const response = await fetch(round.foto_url);
-            const blob = await response.blob();
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(blob);
-            });
-
-            const imgWidth = 80;
-            const imgHeight = 60;
-            
-            if (yPosition + imgHeight > 270) {
-              doc.addPage();
-              yPosition = 20;
-            }
-
-            doc.addImage(base64, 'JPEG', 15, yPosition, imgWidth, imgHeight);
-            yPosition += imgHeight + 5;
-          } catch (imgError) {
-            console.error('Error loading image:', imgError);
-            doc.setFont('helvetica', 'italic');
-            doc.text('(No se pudo cargar la imagen)', 15, yPosition);
-            yPosition += 5;
-          }
-        }
-
-        // Separator line
-        if (i < roundsData.length - 1) {
-          if (yPosition > 265) {
-            doc.addPage();
-            yPosition = 20;
-          }
-          doc.setDrawColor(200, 200, 200);
-          doc.line(15, yPosition, pageWidth - 15, yPosition);
-        }
-      }
-
-      // Footer on all pages
-      const pageCount = doc.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-        doc.text(`Generado: ${new Date().toLocaleDateString('es-MX')} ${new Date().toLocaleTimeString('es-MX')}`, 15, doc.internal.pageSize.getHeight() - 10);
-      }
-
-      doc.save(`Rondines_${reportStartDate}_${reportEndDate}.pdf`);
-
-      toast({
-        title: "Reporte generado",
-        description: "El PDF se ha descargado exitosamente",
-      });
-
-      setIsReportDialogOpen(false);
-    } catch (error) {
-      console.error("Error generating report:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo generar el reporte",
-        variant: "destructive",
-      });
-    } finally {
-      setGeneratingReport(false);
+    const alreadyVisited = visitas.some(v => v.codigo_qr === selectedZone.codigo_qr);
+    if (alreadyVisited) {
+      toast({ title: "Zona ya visitada", variant: "destructive" });
+      return;
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
 
     setSubmitting(true);
     try {
-      // Validate form data
-      const validatedData = securityRoundSchema.parse(formData);
+      const fotoUrl = await uploadImage();
+      await supabase.from("visitas_zonas").insert({ rondin_id: currentRondin.id, ubicacion: selectedZone.ubicacion, codigo_qr: selectedZone.codigo_qr, incidente: formData.incidente, descripcion_incidente: formData.descripcion_incidente || null, foto_url: fotoUrl, created_by: user.id });
       
-      let fotoUrl = null;
+      const newZonasVisitadas = currentRondin.zonas_visitadas + 1;
+      const newIncidentes = currentRondin.incidentes_reportados + (formData.incidente ? 1 : 0);
+      await supabase.from("rondines").update({ zonas_visitadas: newZonasVisitadas, incidentes_reportados: newIncidentes }).eq('id', currentRondin.id);
       
-      if (selectedImage) {
-        fotoUrl = await uploadImage();
-      }
-
-      const selectedZone = zones.find(z => z.id === validatedData.zona_id);
+      setCurrentRondin({ ...currentRondin, zonas_visitadas: newZonasVisitadas, incidentes_reportados: newIncidentes });
+      toast({ title: "Visita registrada", description: `${newZonasVisitadas}/${currentRondin.zonas_totales}` });
       
-      // Get client_id using RPC function
-      const { data: rpcClientId } = await supabase.rpc('get_client_id_by_email_domain');
-      
-      let finalClientId = rpcClientId;
-      
-      // Fallback to profile client_id if RPC returns null
-      if (!finalClientId) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("client_id")
-          .eq("id", user.id)
-          .single();
-        finalClientId = profile?.client_id;
-      }
-
-      if (!finalClientId) throw new Error("No client_id found");
-      
-      const { error } = await supabase
-        .from("rondines")
-        .insert({
-          ubicacion: selectedZone?.ubicacion || "",
-          codigo_qr: selectedZone?.codigo_qr || "",
-          incidente: validatedData.incidente,
-          descripcion_incidente: validatedData.incidente ? validatedData.descripcion_incidente : null,
-          foto_url: fotoUrl,
-          client_id: finalClientId,
-          created_by: user.id,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Rondín registrado exitosamente",
-      });
-
-      setFormData({
-        zona_id: "",
-        incidente: false,
-        descripcion_incidente: "",
-      });
+      setFormData({ zona_id: "", incidente: false, descripcion_incidente: "" });
       setSelectedImage(null);
       setImagePreview(null);
       setIsDialogOpen(false);
+      fetchVisitasRondin(currentRondin.id);
     } catch (error) {
-      console.error("Error submitting round:", error);
-      if (error instanceof z.ZodError) {
-        toast({
-          title: "Error de validación",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: "No se pudo registrar el rondín",
-          variant: "destructive",
-        });
-      }
+      console.error("Error:", error);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleQRScan = (qrCode: string) => {
-    const zone = zones.find(z => z.codigo_qr === qrCode);
+  const handleQRScan = (result: string) => {
+    const zone = zones.find((z) => z.codigo_qr === result);
     if (zone) {
       setFormData({ ...formData, zona_id: zone.id });
-      toast({
-        title: "QR Escaneado",
-        description: `Zona detectada: ${zone.nombre}`,
-      });
-    } else {
-      toast({
-        title: "Código no encontrado",
-        description: "El código QR no corresponde a ninguna zona registrada",
-        variant: "destructive",
-      });
+      setShowQRScanner(false);
+      toast({ title: "Zona identificada", description: `${zone.nombre}` });
     }
-    setShowQRScanner(false);
   };
 
-  const todayRounds = rounds.filter(
-    (r) => new Date(r.created_at).toDateString() === new Date().toDateString()
-  );
-  const completedRounds = todayRounds.length;
-  const incidentsToday = todayRounds.filter((r) => r.incidente).length;
-  const zonesCheckedToday = new Set(todayRounds.map(r => r.codigo_qr)).size;
+  const generatePDFReport = async () => {
+    if (!reportStartDate || !reportEndDate) {
+      toast({ title: "Error", description: "Selecciona ambas fechas", variant: "destructive" });
+      return;
+    }
+    setGeneratingReport(true);
+    try {
+      const startDate = new Date(reportStartDate);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(reportEndDate);
+      endDate.setHours(23, 59, 59, 999);
+
+      const { data: rondinesData } = await supabase.from("rondines").select("*").gte("created_at", startDate.toISOString()).lte("created_at", endDate.toISOString()).order("created_at", { ascending: false });
+      if (!rondinesData || rondinesData.length === 0) {
+        toast({ title: "Sin datos", variant: "destructive" });
+        setGeneratingReport(false);
+        return;
+      }
+
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Reporte de Rondines", 105, 20, { align: "center" });
+      doc.setFontSize(12);
+      doc.text(`Total: ${rondinesData.length}`, 105, 30, { align: "center" });
+
+      const tableData = rondinesData.map(r => [r.folio, new Date(r.created_at).toLocaleDateString(), r.estado, `${r.zonas_visitadas}/${r.zonas_totales}`, r.incidentes_reportados.toString()]);
+      autoTable(doc, { startY: 40, head: [["Folio", "Fecha", "Estado", "Zonas", "Incidentes"]], body: tableData });
+
+      doc.save(`reporte-rondines-${reportStartDate}.pdf`);
+      toast({ title: "Reporte generado" });
+      setIsReportDialogOpen(false);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><Shield className="h-12 w-12 animate-pulse" /></div>;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const completedToday = rondines.filter(r => r.estado === 'completado' && new Date(r.created_at) >= today);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary rounded-lg">
-            <Shield className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <div className="p-2 bg-primary rounded-lg"><Shield className="h-6 w-6 text-primary-foreground" /></div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Rondines de Seguridad</h1>
-            <p className="text-muted-foreground">Inspección de {zones.length} zonas con registro QR</p>
+            <h1 className="text-2xl font-bold">Rondines de Seguridad</h1>
+            <p className="text-muted-foreground">{zones.length} zonas</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Reporte
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Generar Reporte de Rondines</DialogTitle>
-                <DialogDescription>
-                  Selecciona el rango de fechas para generar el reporte PDF con evidencia fotográfica
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start-date">Fecha Inicial</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="start-date"
-                      type="date"
-                      value={reportStartDate}
-                      onChange={(e) => setReportStartDate(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end-date">Fecha Final</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="end-date"
-                      type="date"
-                      value={reportEndDate}
-                      onChange={(e) => setReportEndDate(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsReportDialogOpen(false)}
-                  disabled={generatingReport}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={generatePDFReport} disabled={generatingReport}>
-                  {generatingReport ? "Generando..." : "Generar Reporte"}
-                  <Download className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
-                <QrCode className="h-4 w-4 mr-2" />
-                Nuevo Rondín
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Registrar Rondín de Seguridad</DialogTitle>
-              <DialogDescription>Escanee el código QR o seleccione la zona manualmente</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="zona">Zona de Seguridad</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={formData.zona_id}
-                    onValueChange={(value) => setFormData({ ...formData, zona_id: value })}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Seleccionar zona" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {zones.map((zone) => (
-                        <SelectItem key={zone.id} value={zone.id}>
-                          {zone.nombre} - {zone.ubicacion} ({zone.codigo_qr})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button type="button" onClick={() => setShowQRScanner(true)}>
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Haga clic en el botón con la cámara para escanear el código QR de la zona
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="incidente"
-                  checked={formData.incidente}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, incidente: checked as boolean })
-                  }
-                />
-                <Label htmlFor="incidente" className="cursor-pointer">
-                  ¿Se encontró algún incidente?
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="zone-photo">Fotografía de la Zona</Label>
-                <Input
-                  id="zone-photo"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="cursor-pointer"
-                />
-                {imagePreview && (
-                  <div className="relative w-full h-48 border rounded-lg overflow-hidden">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Fotografía del estado actual de la zona
-                </p>
-              </div>
-              {formData.incidente && (
-                <div className="space-y-2">
-                  <Label htmlFor="descripcion">Descripción del Incidente</Label>
-                  <Textarea
-                    id="descripcion"
-                    placeholder="Describa el incidente encontrado"
-                    value={formData.descripcion_incidente}
-                    onChange={(e) =>
-                      setFormData({ ...formData, descripcion_incidente: e.target.value })
-                    }
-                    required={formData.incidente}
-                  />
-                </div>
-              )}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  disabled={submitting || uploadingImage}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90"
-                  disabled={submitting || uploadingImage}
-                >
-                  {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Rondín"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-        </div>
+        <Button variant="outline" onClick={() => setIsReportDialogOpen(true)}><Download className="mr-2 h-4 w-4" />Reporte</Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-4">
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rondines Hoy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{todayRounds.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Completados</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Zonas Verificadas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{zonesCheckedToday}/{zones.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Hoy</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Checkpoints</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-foreground">{rounds.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Todos los registros</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Incidentes Hoy</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-destructive">{incidentsToday}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {incidentsToday > 0 ? "Documentados" : "Sin incidentes"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Zonas de Seguridad ({zones.length})</CardTitle>
-              <CardDescription>Puntos de verificación con código QR</CardDescription>
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Gestionar Zonas
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Gestión de Zonas de Seguridad</DialogTitle>
-                  <DialogDescription>
-                    Las zonas se gestionan desde el módulo de Zonas de Seguridad (solo administradores)
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Los administradores pueden crear, editar y generar códigos QR automáticamente para
-                    cada zona desde el módulo dedicado en el menú principal.
-                  </p>
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Zonas Activas:</h4>
-                    {zones.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No hay zonas configuradas</p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {zones.map((zone) => (
-                          <li key={zone.id} className="text-sm flex items-center gap-2">
-                            <MapPin className="h-3 w-3 text-primary" />
-                            <span className="font-medium">{zone.nombre}</span>
-                            <span className="text-muted-foreground">- {zone.ubicacion}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Generar Reporte</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Fecha Inicial</Label><Input type="date" value={reportStartDate} onChange={(e) => setReportStartDate(e.target.value)} /></div>
+            <div><Label>Fecha Final</Label><Input type="date" value={reportEndDate} onChange={(e) => setReportEndDate(e.target.value)} /></div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {zones.map((zone) => {
-              const zoneRoundsToday = todayRounds.filter(r => r.codigo_qr === zone.codigo_qr);
-              const hasIncidents = zoneRoundsToday.some(r => r.incidente);
-              
-              return (
-                <div
-                  key={zone.id}
-                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <h4 className="font-semibold text-foreground">{zone.nombre}</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-1">{zone.ubicacion}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {zone.codigo_qr}
-                        </Badge>
-                        {zoneRoundsToday.length > 0 && (
-                          <Badge variant={hasIncidents ? "destructive" : "default"} className="text-xs">
-                            {zoneRoundsToday.length} hoy
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsReportDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={generatePDFReport} disabled={generatingReport}>Generar</Button>
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle>Historial de Rondines</CardTitle>
-          <CardDescription>Registro completo de inspecciones de seguridad</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      {currentRondin ? (
+        <Card className="border-primary">
+          <CardHeader>
+            <div className="flex justify-between">
+              <div><CardTitle><Clock className="inline h-5 w-5 mr-2" />Rondín en Progreso</CardTitle><CardDescription>{currentRondin.folio}</CardDescription></div>
+              <Button onClick={handleFinishRondin} size="sm"><Square className="mr-2 h-4 w-4" />Finalizar</Button>
             </div>
-          ) : rounds.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No hay rondines registrados
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div><p className="text-sm text-muted-foreground">Progreso</p><p className="text-2xl font-bold">{currentRondin.zonas_visitadas}/{currentRondin.zonas_totales}</p></div>
+              <div><p className="text-sm text-muted-foreground">Incidentes</p><p className="text-2xl font-bold text-destructive">{currentRondin.incidentes_reportados}</p></div>
+              <div><Badge>En Progreso</Badge></div>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {rounds.map((round) => (
-                <div
-                  key={round.id}
-                  className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h4 className="font-semibold text-foreground">{round.ubicacion}</h4>
-                        {round.incidente ? (
-                          <Badge variant="destructive">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            Incidente Reportado
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-accent text-accent-foreground">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Sin Incidentes
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="grid gap-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span>
-                            {new Date(round.created_at).toLocaleDateString("es-MX")} •{" "}
-                            {new Date(round.created_at).toLocaleTimeString("es-MX", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <QrCode className="h-4 w-4" />
-                          <span>Código: {round.codigo_qr}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <span>Guardia: {round.creator_name}</span>
-                        </div>
-                        {round.incidente && round.descripcion_incidente && (
-                          <div className="mt-2 p-2 bg-destructive/10 rounded text-sm border border-destructive/20">
-                            <strong className="text-destructive">Incidente:</strong>{" "}
-                            {round.descripcion_incidente}
-                          </div>
-                        )}
-                        {round.foto_url && (
-                          <div className="mt-2">
-                            <img 
-                              src={round.foto_url} 
-                              alt="Foto del incidente" 
-                              className="w-full max-w-md h-48 object-cover rounded-lg border"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {showQRScanner && (
-        <QRScanner 
-          onScan={handleQRScan}
-          onClose={() => setShowQRScanner(false)}
-        />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card><CardContent className="flex flex-col items-center py-12"><Shield className="h-12 w-12 text-muted-foreground mb-4" /><Button onClick={handleStartRondin}><Play className="mr-2 h-4 w-4" />Iniciar Rondín</Button></CardContent></Card>
       )}
+
+      <div className="grid grid-cols-3 gap-4">
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Rondines Hoy</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{completedToday.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Meta Diaria</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">3</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Total</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{rondines.length}</div></CardContent></Card>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild><Button className="w-full" disabled={!currentRondin}><QrCode className="mr-2 h-4 w-4" />Visitar Zona</Button></DialogTrigger>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Registrar Visita</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div><Label>Zona</Label>
+              <div className="flex gap-2">
+                <Select value={formData.zona_id} onValueChange={(v) => setFormData({ ...formData, zona_id: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{zones.map(z => <SelectItem key={z.id} value={z.id}>{z.nombre}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button type="button" variant="outline" onClick={() => setShowQRScanner(!showQRScanner)}><QrCode /></Button>
+              </div>
+            </div>
+            {showQRScanner && <QRScanner onScan={handleQRScan} />}
+            <div className="flex items-center gap-2"><Checkbox checked={formData.incidente} onCheckedChange={(c) => setFormData({ ...formData, incidente: c as boolean })} /><Label>Reportar incidente</Label></div>
+            {formData.incidente && <div><Label>Descripción</Label><Textarea value={formData.descripcion_incidente} onChange={(e) => setFormData({ ...formData, descripcion_incidente: e.target.value })} /></div>}
+            <div><Label>Foto</Label><Input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { setSelectedImage(file); const reader = new FileReader(); reader.onloadend = () => setImagePreview(reader.result as string); reader.readAsDataURL(file); } }} />{imagePreview && <img src={imagePreview} className="mt-2 h-48 object-cover rounded-lg" />}</div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button><Button type="submit" disabled={submitting}>Registrar</Button></div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Card><CardHeader><CardTitle>Historial de Rondines</CardTitle></CardHeader><CardContent><div className="space-y-4">{rondines.map(r => <div key={r.id} className="p-4 border rounded-lg"><div className="flex justify-between mb-2"><div><p className="font-medium">{r.folio}</p><p className="text-sm text-muted-foreground">{new Date(r.created_at).toLocaleString()}</p></div><Badge variant={r.estado === 'completado' ? 'default' : 'secondary'}>{r.estado}</Badge></div><div className="grid grid-cols-3 gap-4 text-sm"><div>Zonas: {r.zonas_visitadas}/{r.zonas_totales}</div><div>Incidentes: {r.incidentes_reportados}</div></div></div>)}</div></CardContent></Card>
     </div>
   );
 }

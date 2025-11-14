@@ -177,6 +177,19 @@ export default function SecurityRounds() {
       return;
     }
     try {
+      // Obtener el client_id del usuario
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('client_id')
+        .eq('id', user.id)
+        .single();
+
+      console.log('[SecurityRounds] Client ID obtenido:', profile?.client_id);
+      
+      if (!profile?.client_id) {
+        throw new Error('No se pudo obtener el client_id del usuario');
+      }
+
       console.log('[SecurityRounds] Insertando rondín en base de datos...');
       const { data, error } = await supabase
         .from("rondines")
@@ -186,7 +199,8 @@ export default function SecurityRounds() {
           zonas_visitadas: 0, 
           incidentes_reportados: 0, 
           estado: 'en_progreso', 
-          created_by: user.id 
+          created_by: user.id,
+          client_id: profile.client_id
         } as any)
         .select()
         .single();

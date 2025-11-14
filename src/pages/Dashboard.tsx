@@ -241,7 +241,7 @@ export default function Dashboard() {
       }
       const { data: rondinesHoy } = await rondinesHoyQuery;
 
-      const rondinesIncidentes = rondinesHoy?.filter(r => r.incidente).length || 0;
+      const rondinesIncidentes = rondinesHoy?.filter(r => r.incidentes_reportados > 0).length || 0;
 
       let revisionesDocQuery = supabase
         .from("revision_documental")

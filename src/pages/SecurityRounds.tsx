@@ -36,7 +36,7 @@ interface Rondin {
   folio: string;
   fecha_inicio: string;
   fecha_fin: string | null;
-  estado: 'en_progreso' | 'completado' | 'cancelado';
+  estado: string;
   zonas_totales: number;
   zonas_visitadas: number;
   incidentes_reportados: number;
@@ -44,6 +44,7 @@ interface Rondin {
   client_id: string;
   created_by: string;
   created_at: string;
+  updated_at: string;
   creator_name?: string;
 }
 
@@ -166,7 +167,18 @@ export default function SecurityRounds() {
   const handleStartRondin = async () => {
     if (!user || currentRondin) return;
     try {
-      const { data, error } = await supabase.from("rondines").insert({ zonas_totales: zones.length, zonas_visitadas: 0, incidentes_reportados: 0, estado: 'en_progreso', created_by: user.id }).select().single();
+      const { data, error } = await supabase
+        .from("rondines")
+        .insert({ 
+          folio: '', // Se genera automáticamente por el trigger
+          zonas_totales: zones.length, 
+          zonas_visitadas: 0, 
+          incidentes_reportados: 0, 
+          estado: 'en_progreso', 
+          created_by: user.id 
+        } as any)
+        .select()
+        .single();
       if (error) throw error;
       setCurrentRondin(data);
       toast({ title: "Rondín iniciado", description: `Folio: ${data.folio}` });
@@ -376,7 +388,7 @@ export default function SecurityRounds() {
                 <Button type="button" variant="outline" onClick={() => setShowQRScanner(!showQRScanner)}><QrCode /></Button>
               </div>
             </div>
-            {showQRScanner && <QRScanner onScan={handleQRScan} />}
+            {showQRScanner && <QRScanner onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />}
             <div className="flex items-center gap-2"><Checkbox checked={formData.incidente} onCheckedChange={(c) => setFormData({ ...formData, incidente: c as boolean })} /><Label>Reportar incidente</Label></div>
             {formData.incidente && <div><Label>Descripción</Label><Textarea value={formData.descripcion_incidente} onChange={(e) => setFormData({ ...formData, descripcion_incidente: e.target.value })} /></div>}
             <div><Label>Foto</Label><Input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { setSelectedImage(file); const reader = new FileReader(); reader.onloadend = () => setImagePreview(reader.result as string); reader.readAsDataURL(file); } }} />{imagePreview && <img src={imagePreview} className="mt-2 h-48 object-cover rounded-lg" />}</div>

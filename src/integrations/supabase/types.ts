@@ -1648,46 +1648,50 @@ export type Database = {
       rondines: {
         Row: {
           client_id: string | null
-          codigo_qr: string
           created_at: string
           created_by: string
-          descripcion_incidente: string | null
-          foto_url: string | null
+          estado: string
+          fecha_fin: string | null
+          fecha_inicio: string
+          folio: string
           id: string
-          incidente: boolean | null
-          ubicacion: string
+          incidentes_reportados: number
+          observaciones: string | null
+          updated_at: string
+          zonas_totales: number
+          zonas_visitadas: number
         }
         Insert: {
           client_id?: string | null
-          codigo_qr: string
           created_at?: string
           created_by: string
-          descripcion_incidente?: string | null
-          foto_url?: string | null
+          estado?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          folio: string
           id?: string
-          incidente?: boolean | null
-          ubicacion: string
+          incidentes_reportados?: number
+          observaciones?: string | null
+          updated_at?: string
+          zonas_totales: number
+          zonas_visitadas?: number
         }
         Update: {
           client_id?: string | null
-          codigo_qr?: string
           created_at?: string
           created_by?: string
-          descripcion_incidente?: string | null
-          foto_url?: string | null
+          estado?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string
+          folio?: string
           id?: string
-          incidente?: boolean | null
-          ubicacion?: string
+          incidentes_reportados?: number
+          observaciones?: string | null
+          updated_at?: string
+          zonas_totales?: number
+          zonas_visitadas?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "rondines_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       rutas: {
         Row: {
@@ -2321,6 +2325,60 @@ export type Database = {
           },
         ]
       }
+      visitas_zonas: {
+        Row: {
+          client_id: string | null
+          codigo_qr: string
+          created_at: string
+          created_by: string
+          descripcion_incidente: string | null
+          foto_url: string | null
+          id: string
+          incidente: boolean | null
+          rondin_id: string | null
+          ubicacion: string
+        }
+        Insert: {
+          client_id?: string | null
+          codigo_qr: string
+          created_at?: string
+          created_by: string
+          descripcion_incidente?: string | null
+          foto_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          rondin_id?: string | null
+          ubicacion: string
+        }
+        Update: {
+          client_id?: string | null
+          codigo_qr?: string
+          created_at?: string
+          created_by?: string
+          descripcion_incidente?: string | null
+          foto_url?: string | null
+          id?: string
+          incidente?: boolean | null
+          rondin_id?: string | null
+          ubicacion?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rondines_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visitas_zonas_rondin_id_fkey"
+            columns: ["rondin_id"]
+            isOneToOne: false
+            referencedRelation: "rondines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zonas_seguridad: {
         Row: {
           activa: boolean
@@ -2375,6 +2433,7 @@ export type Database = {
       can_view_all_data: { Args: never; Returns: boolean }
       generate_accion_correctiva_folio: { Args: never; Returns: string }
       generate_inspeccion_instalaciones_folio: { Args: never; Returns: string }
+      generate_rondin_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
       get_client_id_by_email_domain: { Args: never; Returns: string }
       get_user_client_id: { Args: never; Returns: string }

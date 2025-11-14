@@ -415,14 +415,19 @@ export default function SecurityRounds() {
         <DialogContent>
           <DialogHeader><DialogTitle>Registrar Visita</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div><Label>Zona</Label>
-              <div className="flex gap-2">
-                <Select value={formData.zona_id} onValueChange={(v) => setFormData({ ...formData, zona_id: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{zones.map(z => <SelectItem key={z.id} value={z.id}>{z.nombre}</SelectItem>)}</SelectContent>
-                </Select>
-                <Button type="button" variant="outline" onClick={() => setShowQRScanner(!showQRScanner)}><QrCode /></Button>
-              </div>
+            <div>
+              <Label>Zona</Label>
+              {formData.zona_id ? (
+                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                  <span className="font-medium">{zones.find(z => z.id === formData.zona_id)?.nombre}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setFormData({ ...formData, zona_id: "" })}>Cambiar</Button>
+                </div>
+              ) : (
+                <Button type="button" variant="outline" className="w-full" onClick={() => setShowQRScanner(true)}>
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Escanear Código QR
+                </Button>
+              )}
             </div>
             {showQRScanner && <QRScanner onScan={handleQRScan} onClose={() => setShowQRScanner(false)} />}
             <div className="flex items-center gap-2"><Checkbox checked={formData.incidente} onCheckedChange={(c) => setFormData({ ...formData, incidente: c as boolean })} /><Label>Reportar incidente</Label></div>

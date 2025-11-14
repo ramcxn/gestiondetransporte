@@ -165,8 +165,19 @@ export default function SecurityRounds() {
   };
 
   const handleStartRondin = async () => {
-    if (!user || currentRondin) return;
+    console.log('[SecurityRounds] Iniciando rondín...', { user, currentRondin, zonesLength: zones.length });
+    if (!user) {
+      console.log('[SecurityRounds] Error: No hay usuario autenticado');
+      toast({ title: "Error", description: "Usuario no autenticado", variant: "destructive" });
+      return;
+    }
+    if (currentRondin) {
+      console.log('[SecurityRounds] Error: Ya hay un rondín en progreso');
+      toast({ title: "Error", description: "Ya hay un rondín en progreso", variant: "destructive" });
+      return;
+    }
     try {
+      console.log('[SecurityRounds] Insertando rondín en base de datos...');
       const { data, error } = await supabase
         .from("rondines")
         .insert({ 
@@ -179,11 +190,22 @@ export default function SecurityRounds() {
         } as any)
         .select()
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[SecurityRounds] Error al insertar:', error);
+        throw error;
+      }
+      
+      console.log('[SecurityRounds] Rondín creado exitosamente:', data);
       setCurrentRondin(data);
       toast({ title: "Rondín iniciado", description: `Folio: ${data.folio}` });
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (error: any) {
+      console.error('[SecurityRounds] Error en handleStartRondin:', error);
+      toast({ 
+        title: "Error al iniciar rondín", 
+        description: error.message || "Error desconocido", 
+        variant: "destructive" 
+      });
     }
   };
 

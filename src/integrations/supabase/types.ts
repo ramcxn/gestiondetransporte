@@ -1290,51 +1290,69 @@ export type Database = {
           created_at: string
           created_by: string
           departamento: string
+          dias_trabajo: Json | null
           dias_vacaciones_disponibles: number | null
           dias_vacaciones_tomados: number | null
           direccion: string
           estado: string
           fecha_alta: string
+          hora_entrada_esperada: string | null
+          hora_salida_esperada: string | null
+          hora_salida_sabado: string | null
           id: string
           nombre: string
           numero_empleado: string
+          observaciones_horario: string | null
           puesto: string
           qr_code: string | null
           telefono: string | null
+          turno: string | null
         }
         Insert: {
           client_id: string
           created_at?: string
           created_by: string
           departamento: string
+          dias_trabajo?: Json | null
           dias_vacaciones_disponibles?: number | null
           dias_vacaciones_tomados?: number | null
           direccion: string
           estado?: string
           fecha_alta: string
+          hora_entrada_esperada?: string | null
+          hora_salida_esperada?: string | null
+          hora_salida_sabado?: string | null
           id?: string
           nombre: string
           numero_empleado: string
+          observaciones_horario?: string | null
           puesto: string
           qr_code?: string | null
           telefono?: string | null
+          turno?: string | null
         }
         Update: {
           client_id?: string
           created_at?: string
           created_by?: string
           departamento?: string
+          dias_trabajo?: Json | null
           dias_vacaciones_disponibles?: number | null
           dias_vacaciones_tomados?: number | null
           direccion?: string
           estado?: string
           fecha_alta?: string
+          hora_entrada_esperada?: string | null
+          hora_salida_esperada?: string | null
+          hora_salida_sabado?: string | null
           id?: string
           nombre?: string
           numero_empleado?: string
+          observaciones_horario?: string | null
           puesto?: string
           qr_code?: string | null
           telefono?: string | null
+          turno?: string | null
         }
         Relationships: [
           {

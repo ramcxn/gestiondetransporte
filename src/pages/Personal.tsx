@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Calendar, Phone, MapPin, UserX, QrCode, Edit, Download, Trash2 } from "lucide-react";
+import { Users, Calendar, Phone, MapPin, UserX, QrCode, Edit, Download, Trash2, Clock } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { QRCodeGenerator, generateQRCodeDataURL } from "@/components/QRCodeGenerator";
 import { calcularDiasVacaciones } from "@/lib/vacacionesUtils";
+import ScheduleForm from "@/components/ScheduleForm";
 
 interface PersonalRecord {
   id: string;
@@ -28,6 +29,12 @@ interface PersonalRecord {
   qr_code: string | null;
   dias_vacaciones_disponibles: number;
   dias_vacaciones_tomados: number;
+  hora_entrada_esperada: string | null;
+  hora_salida_esperada: string | null;
+  hora_salida_sabado: string | null;
+  turno: string | null;
+  dias_trabajo: any;
+  observaciones_horario: string | null;
 }
 
 export default function Personal() {
@@ -36,6 +43,7 @@ export default function Personal() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<PersonalRecord | null>(null);
   const [personal, setPersonal] = useState<PersonalRecord[]>([]);
   const [departamentos, setDepartamentos] = useState<Array<{ id: string; nombre: string }>>([]);
@@ -705,6 +713,12 @@ export default function Personal() {
                           <MapPin className="h-4 w-4" />
                           <span>{person.direccion}</span>
                         </div>
+                        {person.departamento === "monitoreo" && person.hora_entrada_esperada && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>Horario: {person.hora_entrada_esperada.slice(0, 5)} - {person.hora_salida_esperada?.slice(0, 5)} • {person.turno}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -737,6 +751,20 @@ export default function Personal() {
                               <QrCode className="h-4 w-4 mr-1" />
                               Ver QR
                             </Button>
+                            {person.departamento === "monitoreo" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedPerson(person);
+                                  setScheduleDialogOpen(true);
+                                }}
+                                className="w-full sm:w-auto"
+                              >
+                                <Clock className="h-4 w-4 mr-1" />
+                                Gestionar Horario
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -886,6 +914,27 @@ export default function Personal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Schedule Management Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gestionar Horario de Trabajo</DialogTitle>
+            <DialogDescription>
+              Configure el horario y turno para {selectedPerson?.nombre}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPerson && (
+            <ScheduleForm 
+              person={selectedPerson} 
+              onClose={() => {
+                setScheduleDialogOpen(false);
+                fetchPersonal();
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Department Dialog */}
       <Dialog open={departmentDialogOpen} onOpenChange={setDepartmentDialogOpen}>

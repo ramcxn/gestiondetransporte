@@ -49,10 +49,10 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
 
     setLoading(true);
     try {
-      // Obtener todo el personal activo
+      // Obtener todo el personal activo con sus horarios
       const { data: personalData, error: personalError } = await supabase
         .from("personal")
-        .select("*")
+        .select("id, nombre, numero_empleado, puesto, departamento, hora_entrada_esperada, hora_salida_esperada, hora_salida_sabado")
         .eq("estado", "activo")
         .order("nombre", { ascending: true });
 
@@ -93,19 +93,20 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
 
         console.log(`${person.nombre}: ${personAttendances.length} asistencias`);
 
+        // Usar horarios personalizados o valores por defecto
+        const horaEntradaEsperada = person.hora_entrada_esperada || "09:00:00";
+        const horaSalidaEsperada = person.hora_salida_esperada || "18:00:00";
+        const horaSalidaSabado = person.hora_salida_sabado || "13:30:00";
+
         const diasTrabajados = calcularDiasTrabajados(personAttendances);
-        const diasLlegadaTarde = calcularDiasLlegadaTarde(personAttendances);
-        const diasSalidaAnticipada = calcularDiasSalidaAnticipada(personAttendances);
-        const tiempoSalidaAnticipada = calcularTiempoSalidaAnticipada(personAttendances);
+        const diasLlegadaTarde = calcularDiasLlegadaTarde(personAttendances, horaEntradaEsperada);
+        const diasSalidaAnticipada = calcularDiasSalidaAnticipada(personAttendances, horaSalidaEsperada, horaSalidaSabado);
+        const tiempoSalidaAnticipada = calcularTiempoSalidaAnticipada(personAttendances, horaSalidaEsperada, horaSalidaSabado);
         const permisosUsados = calcularPermisosUsados(personVales);
         const horasTrabajadas = calcularHorasTrabajadas(personAttendances);
         
-        // Calcular tiempo extra solo para monitoreo y taller
-        let tiempoExtra = { horas: 0, minutos: 0, formateado: "0h 0m" };
-        const departamentosConExtra = ["monitoreo", "taller"];
-        if (departamentosConExtra.includes(person.departamento.toLowerCase())) {
-          tiempoExtra = calcularTiempoExtra(personAttendances);
-        }
+        // Calcular tiempo extra para todos
+        const tiempoExtra = calcularTiempoExtra(personAttendances, horaSalidaEsperada, horaSalidaSabado);
 
         return {
           Nombre: person.nombre,
@@ -204,11 +205,11 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Días trabajados</li>
               <li>Total de horas laboradas</li>
-              <li>Días de llegada tarde (después de 9:00 AM)</li>
+              <li>Días de llegada tarde (según horario personalizado)</li>
               <li>Permisos de salida utilizados</li>
-              <li>Días con salida anticipada</li>
+              <li>Días con salida anticipada (según horario personalizado)</li>
               <li>Tiempo de salida anticipada</li>
-              <li>Tiempo extra (solo Monitoreo y Taller)</li>
+              <li>Tiempo extra trabajado</li>
             </ul>
           </div>
           <Button

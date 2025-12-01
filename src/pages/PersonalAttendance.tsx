@@ -21,6 +21,9 @@ interface Personal {
   numero_empleado: string;
   puesto: string;
   departamento: string;
+  hora_entrada_esperada: string | null;
+  hora_salida_esperada: string | null;
+  hora_salida_sabado: string | null;
 }
 
 interface Attendance {
@@ -99,7 +102,7 @@ export default function PersonalAttendance() {
     try {
       const { data: personalData, error: personalError } = await supabase
         .from("personal")
-        .select("*")
+        .select("id, nombre, numero_empleado, puesto, departamento, hora_entrada_esperada, hora_salida_esperada, hora_salida_sabado")
         .eq("estado", "activo")
         .order("nombre", { ascending: true });
 
@@ -114,7 +117,10 @@ export default function PersonalAttendance() {
             nombre,
             numero_empleado,
             puesto,
-            departamento
+            departamento,
+            hora_entrada_esperada,
+            hora_salida_esperada,
+            hora_salida_sabado
           )
         `)
         .order("fecha_entrada", { ascending: false })

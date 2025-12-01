@@ -7,6 +7,7 @@ import { FileSpreadsheet, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
+import { differenceInMinutes } from "date-fns";
 import { 
   calcularDiasTrabajados,
   calcularHorasTrabajadas,
@@ -82,8 +83,19 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
 
       if (valesError) throw valesError;
 
+      // Calcular días laborables en el período (excluyendo domingos)
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(endDate);
+      let diasLaborables = 0;
+      for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay();
+        if (dayOfWeek !== 0) { // No contar domingos
+          diasLaborables++;
+        }
+      }
+
       // Procesar datos para cada persona
-      const reportData = (personalData || []).map((person) => {
+      const reportData = (personalData || []).map((person, index) => {
         const personAttendances = (attendanceData || []).filter(
           (a) => a.personal_id === person.id
         );
@@ -105,47 +117,167 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
         const permisosUsados = calcularPermisosUsados(personVales);
         const horasTrabajadas = calcularHorasTrabajadas(personAttendances);
         
-        // Calcular tiempo extra para todos
-        const tiempoExtra = calcularTiempoExtra(personAttendances, horaSalidaEsperada, horaSalidaSabado);
+        // Calcular tiempo extra dividido en normal y especial
+        let minutosExtraNormal = 0;
+        let minutosExtraEspecial = 0;
+        
+        personAttendances.forEach((a) => {
+          if (!a.fecha_salida) return;
+          
+          const salida = new Date(a.fecha_salida);
+          const diaSemana = salida.getDay();
+          const horaSalida = salida.getHours();
+          
+          // Determinar hora de salida esperada
+          let horaSalidaEsperadaNum = 18;
+          let minutoSalidaEsperado = 0;
+          
+          if (diaSemana === 6) {
+            [horaSalidaEsperadaNum, minutoSalidaEsperado] = horaSalidaSabado.split(':').map(Number);
+          } else if (diaSemana !== 0) {
+            [horaSalidaEsperadaNum, minutoSalidaEsperado] = horaSalidaEsperada.split(':').map(Number);
+          }
+          
+          const horaSalidaEsperadaDate = new Date(salida);
+          horaSalidaEsperadaDate.setHours(horaSalidaEsperadaNum, minutoSalidaEsperado, 0, 0);
+          
+          if (salida > horaSalidaEsperadaDate) {
+            const minutosExtra = differenceInMinutes(salida, horaSalidaEsperadaDate);
+            
+            // Especial: domingo o después de 8pm
+            if (diaSemana === 0 || horaSalida >= 20) {
+              minutosExtraEspecial += minutosExtra;
+            } else {
+              minutosExtraNormal += minutosExtra;
+            }
+          }
+        });
+
+        // Calcular ausencias
+        const ausencias = diasLaborables - diasTrabajados;
+
+        // Calcular minutos de llegada tarde
+        let totalMinutosLlegadaTarde = 0;
+        personAttendances.forEach((a) => {
+          const entrada = new Date(a.fecha_entrada);
+          const [horaEsperada, minutoEsperado] = horaEntradaEsperada.split(':').map(Number);
+          const horaEntrada = entrada.getHours();
+          const minutoEntrada = entrada.getMinutes();
+          
+          if (horaEntrada > horaEsperada || (horaEntrada === horaEsperada && minutoEntrada > minutoEsperado)) {
+            const horaEsperadaDate = new Date(entrada);
+            horaEsperadaDate.setHours(horaEsperada, minutoEsperado, 0, 0);
+            totalMinutosLlegadaTarde += differenceInMinutes(entrada, horaEsperadaDate);
+          }
+        });
+
+        // Calcular minutos de salida temprana
+        let totalMinutosSalidaTemprana = 0;
+        personAttendances.forEach((a) => {
+          if (!a.fecha_salida) return;
+          
+          const salida = new Date(a.fecha_salida);
+          const diaSemana = salida.getDay();
+          
+          let horaSalidaEsperadaNum = 18;
+          let minutoSalidaEsperado = 0;
+          
+          if (diaSemana === 6) {
+            [horaSalidaEsperadaNum, minutoSalidaEsperado] = horaSalidaSabado.split(':').map(Number);
+          } else if (diaSemana !== 0) {
+            [horaSalidaEsperadaNum, minutoSalidaEsperado] = horaSalidaEsperada.split(':').map(Number);
+          }
+          
+          const horaSalidaEsperadaDate = new Date(salida);
+          horaSalidaEsperadaDate.setHours(horaSalidaEsperadaNum, minutoSalidaEsperado, 0, 0);
+          
+          if (salida < horaSalidaEsperadaDate) {
+            totalMinutosSalidaTemprana += differenceInMinutes(horaSalidaEsperadaDate, salida);
+          }
+        });
+
+        // Formatear horas
+        const formatHours = (minutos: number) => {
+          const horas = Math.floor(minutos / 60);
+          const mins = minutos % 60;
+          return `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        };
 
         return {
-          Nombre: person.nombre,
-          "Número Empleado": person.numero_empleado,
-          Departamento: person.departamento,
-          Puesto: person.puesto,
-          "Días Trabajados": diasTrabajados,
-          "Horas Laboradas": horasTrabajadas.horasFormateadas,
-          "Días Llegada Tarde": diasLlegadaTarde,
-          "Permisos de Salida": permisosUsados,
-          "Días Salida Anticipada": diasSalidaAnticipada,
-          "Tiempo Salida Anticipada": tiempoSalidaAnticipada.formateado,
-          "Tiempo Extra": tiempoExtra.formateado,
+          "ID": index + 1,
+          "Nombre": person.nombre,
+          "Depart.": person.departamento,
+          "H. trabajo Estándar": formatHours(diasLaborables * 8 * 60), // Asumiendo 8 horas por día
+          "H. trabajo Real": horasTrabajadas.horasFormateadas,
+          "Llegada tardía Veces": diasLlegadaTarde,
+          "Llegada tardía Minuta": totalMinutosLlegadaTarde,
+          "Salida temprana Veces": diasSalidaAnticipada,
+          "Salida temprana Minuta": totalMinutosSalidaTemprana,
+          "H. extras Normal": formatHours(minutosExtraNormal),
+          "H. extras Especial": formatHours(minutosExtraEspecial),
+          "Asistencia (est/real)": `${diasLaborables}/${diasTrabajados}`,
+          "Ausencia": ausencias.toFixed(1),
+          "P.": permisosUsados.toFixed(1),
+          "Viajes": "0.0",
+          "Marcado": "",
+          "H. extra": "",
+          "Asignación": "",
+          "Tardea/antes": "",
+          "P. ocas.": "",
+          "Salario": "",
+          "Notas": ""
         };
       });
 
-      // Crear libro de Excel
-      const worksheet = XLSX.utils.json_to_sheet(reportData);
+      // Crear libro de Excel con encabezado
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Asistencia");
+      
+      // Crear hoja con título
+      const headerData = [
+        ["Hoja de resumen de asistencia"],
+        [`Fecha: ${startDate} ~ ${endDate}`],
+        []
+      ];
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(headerData);
+      
+      // Agregar datos
+      XLSX.utils.sheet_add_json(worksheet, reportData, {
+        origin: -1,
+        skipHeader: false
+      });
 
       // Ajustar ancho de columnas
       const columnWidths = [
-        { wch: 30 }, // Nombre
-        { wch: 15 }, // Número Empleado
-        { wch: 20 }, // Departamento
-        { wch: 25 }, // Puesto
-        { wch: 15 }, // Días Trabajados
-        { wch: 18 }, // Horas Laboradas
-        { wch: 18 }, // Días Llegada Tarde
-        { wch: 18 }, // Permisos de Salida
-        { wch: 20 }, // Días Salida Anticipada
-        { wch: 22 }, // Tiempo Salida Anticipada
-        { wch: 15 }, // Tiempo Extra
+        { wch: 5 },  // ID
+        { wch: 25 }, // Nombre
+        { wch: 15 }, // Depart.
+        { wch: 12 }, // H. trabajo Estándar
+        { wch: 12 }, // H. trabajo Real
+        { wch: 12 }, // Llegada tardía Veces
+        { wch: 12 }, // Llegada tardía Minuta
+        { wch: 12 }, // Salida temprana Veces
+        { wch: 12 }, // Salida temprana Minuta
+        { wch: 12 }, // H. extras Normal
+        { wch: 12 }, // H. extras Especial
+        { wch: 15 }, // Asistencia (est/real)
+        { wch: 10 }, // Ausencia
+        { wch: 8 },  // P.
+        { wch: 8 },  // Viajes
+        { wch: 10 }, // Marcado
+        { wch: 10 }, // H. extra
+        { wch: 12 }, // Asignación
+        { wch: 12 }, // Tardea/antes
+        { wch: 10 }, // P. ocas.
+        { wch: 10 }, // Salario
+        { wch: 15 }, // Notas
       ];
       worksheet['!cols'] = columnWidths;
 
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Resumen Asistencia");
+
       // Descargar archivo
-      const fileName = `Reporte_Asistencia_${startDate}_${endDate}.xlsx`;
+      const fileName = `Hoja_Resumen_Asistencia_${startDate}_${endDate}.xlsx`;
       XLSX.writeFile(workbook, fileName);
 
       toast({
@@ -203,13 +335,13 @@ export default function AttendanceReportDialog({ isAdmin }: AttendanceReportDial
           <div className="bg-muted p-3 rounded-lg text-sm space-y-1">
             <p className="font-medium">El reporte incluirá:</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
-              <li>Días trabajados</li>
-              <li>Total de horas laboradas</li>
-              <li>Días de llegada tarde (según horario personalizado)</li>
-              <li>Permisos de salida utilizados</li>
-              <li>Días con salida anticipada (según horario personalizado)</li>
-              <li>Tiempo de salida anticipada</li>
-              <li>Tiempo extra trabajado</li>
+              <li>Horas de trabajo estándar vs real</li>
+              <li>Llegadas tarde (veces y minutos)</li>
+              <li>Salidas tempranas (veces y minutos)</li>
+              <li>Horas extras (normal y especial)</li>
+              <li>Asistencia (esperada/real) y ausencias</li>
+              <li>Permisos utilizados</li>
+              <li>Columnas para adiciones y deducciones</li>
             </ul>
           </div>
           <Button

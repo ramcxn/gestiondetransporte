@@ -713,7 +713,7 @@ export default function Personal() {
                           <MapPin className="h-4 w-4" />
                           <span>{person.direccion}</span>
                         </div>
-                        {person.departamento === "monitoreo" && person.hora_entrada_esperada && (
+                        {person.hora_entrada_esperada && (
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4" />
                             <span>Horario: {person.hora_entrada_esperada.slice(0, 5)} - {person.hora_salida_esperada?.slice(0, 5)} • {person.turno}</span>
@@ -751,20 +751,18 @@ export default function Personal() {
                               <QrCode className="h-4 w-4 mr-1" />
                               Ver QR
                             </Button>
-                            {person.departamento === "monitoreo" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedPerson(person);
-                                  setScheduleDialogOpen(true);
-                                }}
-                                className="w-full sm:w-auto"
-                              >
-                                <Clock className="h-4 w-4 mr-1" />
-                                Gestionar Horario
-                              </Button>
-                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedPerson(person);
+                                setScheduleDialogOpen(true);
+                              }}
+                              className="w-full sm:w-auto"
+                            >
+                              <Clock className="h-4 w-4 mr-1" />
+                              Gestionar Horario
+                            </Button>
                           </>
                         )}
                       </div>

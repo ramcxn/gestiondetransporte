@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRScanner from "@/components/QRScanner";
 import AttendanceReportDialog from "@/components/AttendanceReportDialog";
+import IndividualAttendanceReportDialog from "@/components/IndividualAttendanceReportDialog";
 import { differenceInMinutes } from "date-fns";
 
 interface Personal {
@@ -574,7 +575,10 @@ export default function PersonalAttendance() {
             <p className="text-muted-foreground">Registro de entrada y salida del personal</p>
           </div>
         </div>
-        <AttendanceReportDialog isAdmin={isAdmin} />
+        <div className="flex gap-2">
+          <AttendanceReportDialog isAdmin={isAdmin} />
+          <IndividualAttendanceReportDialog isAdmin={isAdmin} />
+        </div>
       </div>
 
       {isAdmin && (

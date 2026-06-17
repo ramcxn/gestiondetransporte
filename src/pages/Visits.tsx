@@ -590,9 +590,17 @@ export default function Visits() {
                           <User className="h-3 w-3" />
                           <span>Registrado por: {visit.creator_name}</span>
                         </div>
-                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedVisit(visit)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Detalle
+                    </Button>
                   </div>
+                </div>
                 </div>
               ))}
             </div>

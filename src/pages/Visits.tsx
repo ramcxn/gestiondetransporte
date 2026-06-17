@@ -500,15 +500,26 @@ export default function Visits() {
                       </div>
                     </div>
                     {visit.estado === "en_instalaciones" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleExit(visit.id)}
-                        className="w-full sm:w-auto"
-                      >
-                        <LogOut className="h-4 w-4 mr-1" />
-                        Salida
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setSelectedVisit(visit)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalle
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExit(visit.id)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <LogOut className="h-4 w-4 mr-1" />
+                          Salida
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

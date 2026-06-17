@@ -35,6 +35,7 @@ export default function Visits() {
   const [submitting, setSubmitting] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 

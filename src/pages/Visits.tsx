@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User, LogOut, Camera, X } from "lucide-react";
+import { Users, Building2, Clock, User, LogOut, Camera, X, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import VisitsReportDialog from "@/components/VisitsReportDialog";
@@ -34,6 +35,7 @@ export default function Visits() {
   const [submitting, setSubmitting] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -498,15 +500,26 @@ export default function Visits() {
                       </div>
                     </div>
                     {visit.estado === "en_instalaciones" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleExit(visit.id)}
-                        className="w-full sm:w-auto"
-                      >
-                        <LogOut className="h-4 w-4 mr-1" />
-                        Salida
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setSelectedVisit(visit)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver detalle
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleExit(visit.id)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <LogOut className="h-4 w-4 mr-1" />
+                          Salida
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -577,9 +590,17 @@ export default function Visits() {
                           <User className="h-3 w-3" />
                           <span>Registrado por: {visit.creator_name}</span>
                         </div>
-                      </div>
                     </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedVisit(visit)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Detalle
+                    </Button>
                   </div>
+                </div>
                 </div>
               ))}
             </div>
@@ -593,6 +614,94 @@ export default function Visits() {
           onClose={() => setShowCamera(false)}
         />
       )}
+
+      <Dialog open={!!selectedVisit} onOpenChange={(open) => !open && setSelectedVisit(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalle del registro</DialogTitle>
+            <DialogDescription>Información completa del visitante o proveedor</DialogDescription>
+          </DialogHeader>
+          {selectedVisit && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold">{selectedVisit.nombre}</h3>
+                <Badge variant={selectedVisit.tipo === "visitante" ? "default" : "secondary"}>
+                  {selectedVisit.tipo}
+                </Badge>
+                <Badge variant={selectedVisit.estado === "en_instalaciones" ? "default" : "outline"}>
+                  {selectedVisit.estado === "en_instalaciones" ? "En instalaciones" : "Salió"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Empresa</p>
+                  <p className="font-medium">{selectedVisit.empresa}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Área de visita</p>
+                  <p className="font-medium">{selectedVisit.area_visita}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-muted-foreground text-xs">Motivo</p>
+                  <p className="font-medium whitespace-pre-wrap">{selectedVisit.motivo}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Entrada</p>
+                  <p className="font-medium">
+                    {new Date(selectedVisit.created_at).toLocaleString("es-MX")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Salida</p>
+                  <p className="font-medium">
+                    {selectedVisit.fecha_salida
+                      ? new Date(selectedVisit.fecha_salida).toLocaleString("es-MX")
+                      : "—"}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-muted-foreground text-xs">Registrado por</p>
+                  <p className="font-medium">{selectedVisit.creator_name}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-muted-foreground text-xs mb-2">Credencial</p>
+                {selectedVisit.credencial_url ? (
+                  <a
+                    href={selectedVisit.credencial_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src={selectedVisit.credencial_url}
+                      alt="Credencial"
+                      className="w-full max-h-96 object-contain rounded-lg border"
+                    />
+                  </a>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Sin fotografía registrada</p>
+                )}
+              </div>
+
+              {selectedVisit.estado === "en_instalaciones" && (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    handleExit(selectedVisit.id);
+                    setSelectedVisit(null);
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Registrar salida
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

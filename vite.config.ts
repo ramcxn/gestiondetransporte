@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: 'auto',
+      injectRegister: null,
       includeAssets: ["favicon.png", "robots.txt"],
       manifest: {
         name: "Gestión de Transporte CTPAT",
@@ -34,6 +34,9 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         runtimeCaching: [

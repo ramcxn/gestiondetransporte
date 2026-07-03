@@ -347,27 +347,38 @@ export default function SecurityZones() {
             </div>
           ) : (
             <div className="space-y-4">
-              {zones.map((zone) => (
+              {zones.map((zone, index) => (
                 <div
                   key={zone.id}
                   className="p-4 rounded-lg border border-border hover:shadow-card transition-shadow"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold text-foreground text-lg">{zone.nombre}</h4>
-                        <Badge variant={zone.activa ? "default" : "secondary"}>
-                          {zone.activa ? "Activa" : "Inactiva"}
-                        </Badge>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveZone(index, -1)} disabled={index === 0} title="Subir">
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => moveZone(index, 1)} disabled={index === zones.length - 1} title="Bajar">
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>{zone.ubicacion}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-xs font-mono text-muted-foreground">#{index + 1}</span>
+                          <h4 className="font-semibold text-foreground text-lg">{zone.nombre}</h4>
+                          <Badge variant={zone.activa ? "default" : "secondary"}>
+                            {zone.activa ? "Activa" : "Inactiva"}
+                          </Badge>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <QrCode className="h-4 w-4" />
-                          <span className="font-mono">{zone.codigo_qr}</span>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            <span>{zone.ubicacion}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <QrCode className="h-4 w-4" />
+                            <span className="font-mono">{zone.codigo_qr}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -376,7 +387,7 @@ export default function SecurityZones() {
                       <div className="bg-white p-2 rounded-lg border">
                         <QRCodeGenerator value={zone.codigo_qr} size={120} />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
                         <Button
                           variant="outline"
                           size="sm"
@@ -392,22 +403,19 @@ export default function SecurityZones() {
                           }}
                         >
                           <Download className="h-4 w-4 mr-1" />
-                          Descargar QR
+                          QR
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openEditDialog(zone)}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
                         </Button>
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={zone.activa}
                             onCheckedChange={() => toggleZoneStatus(zone.id, zone.activa)}
                           />
-                          <span className="text-sm text-muted-foreground">
-                            {zone.activa ? "Activa" : "Inactiva"}
-                          </span>
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => deleteZone(zone.id)}
-                        >
+                        <Button variant="destructive" size="sm" onClick={() => deleteZone(zone.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -416,6 +424,7 @@ export default function SecurityZones() {
                 </div>
               ))}
             </div>
+
           )}
         </CardContent>
       </Card>

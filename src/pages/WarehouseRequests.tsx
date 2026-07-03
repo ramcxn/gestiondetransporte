@@ -63,6 +63,19 @@ export default function WarehouseRequests() {
     },
   });
 
+  const { data: unidades } = useQuery({
+    queryKey: ["unidades_inventario_equipos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventario_equipos")
+        .select("id, numero_economico, tipo_equipo, marca, modelo")
+        .order("numero_economico");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+
   const createMutation = useMutation({
     mutationFn: async (formData: any) => {
       const { data: { user } } = await supabase.auth.getUser();

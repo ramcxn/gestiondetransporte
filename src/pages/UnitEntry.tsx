@@ -158,99 +158,84 @@ export default function UnitEntry() {
 
   const handleQRScan = async (qrData: string) => {
     try {
-      // Buscar en equipos por qr_code
-      const { data: equipo, error: equipoError } = await supabase
-        .from("inventario_equipos")
-        .select("*")
-        .eq("qr_code", qrData)
-        .single();
+      const raw = (qrData || "").trim();
+      const uuidMatch = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      const candidates = Array.from(new Set([raw, uuidMatch?.[0]].filter(Boolean))) as string[];
 
-      if (!equipoError && equipo) {
-        // Auto-rellenar según el tipo de equipo
-        if (equipo.tipo_equipo?.toLowerCase() === 'tracto') {
-          setFormData({
-            ...formData,
-            tracto_id: equipo.id,
-            numero_economico: equipo.numero_economico,
-            numero_unidad: equipo.numero_economico
-          });
-          toast({
-            title: "Tracto escaneado",
-            description: `${equipo.numero_economico} - ${equipo.marca} ${equipo.modelo}`,
-          });
-        } else if (equipo.tipo_equipo?.toLowerCase() === 'dolly') {
-          setFormData({
-            ...formData,
-            dolly_id: equipo.id
-          });
-          toast({
-            title: "Dolly escaneado",
-            description: `${equipo.numero_economico}`,
-          });
-        } else if (equipo.tipo_equipo?.toLowerCase() === 'remolque') {
+      // Buscar equipo por qr_code, id o numero_economico
+      let equipo: any = null;
+      for (const c of candidates) {
+        const { data } = await supabase
+          .from("inventario_equipos")
+          .select("*")
+          .or(`qr_code.eq.${c},id.eq.${c},numero_economico.eq.${c}`)
+          .maybeSingle();
+        if (data) { equipo = data; break; }
+      }
+      if (!equipo) {
+        const { data } = await supabase
+          .from("inventario_equipos")
+          .select("*")
+          .ilike("numero_economico", raw)
+          .maybeSingle();
+        if (data) equipo = data;
+      }
+
+      if (equipo) {
+        const tipo = equipo.tipo_equipo?.toLowerCase();
+        if (tipo === 'tracto') {
+          setFormData({ ...formData, tracto_id: equipo.id, numero_economico: equipo.numero_economico, numero_unidad: equipo.numero_economico });
+          toast({ title: "Tracto escaneado", description: `${equipo.numero_economico} - ${equipo.marca ?? ''} ${equipo.modelo ?? ''}` });
+        } else if (tipo === 'dolly') {
+          setFormData({ ...formData, dolly_id: equipo.id });
+          toast({ title: "Dolly escaneado", description: `${equipo.numero_economico}` });
+        } else if (tipo === 'remolque') {
           if (!formData.remolque_1_id) {
-            setFormData({
-              ...formData,
-              remolque_1_id: equipo.id
-            });
-            toast({
-              title: "Remolque 1 escaneado",
-              description: `${equipo.numero_economico}`,
-            });
+            setFormData({ ...formData, remolque_1_id: equipo.id });
+            toast({ title: "Remolque 1 escaneado", description: `${equipo.numero_economico}` });
           } else {
-            setFormData({
-              ...formData,
-              remolque_2_id: equipo.id
-            });
-            toast({
-              title: "Remolque 2 escaneado",
-              description: `${equipo.numero_economico}`,
-            });
+            setFormData({ ...formData, remolque_2_id: equipo.id });
+            toast({ title: "Remolque 2 escaneado", description: `${equipo.numero_economico}` });
           }
+        } else {
+          toast({ title: "Equipo escaneado", description: `${equipo.numero_economico}` });
         }
         setShowQRScanner(false);
         return;
       }
 
-      // Buscar en operadores por qr_code
-      const { data: operador, error: operadorError } = await supabase
-        .from("operadores")
-        .select("*")
-        .eq("qr_code", qrData)
-        .eq("estado", "activo")
-        .single();
+      // Buscar operador por qr_code, id o numero_empleado
+      let operador: any = null;
+      for (const c of candidates) {
+        const { data } = await supabase
+          .from("operadores")
+          .select("*")
+          .or(`qr_code.eq.${c},id.eq.${c},numero_empleado.eq.${c}`)
+          .eq("estado", "activo")
+          .maybeSingle();
+        if (data) { operador = data; break; }
+      }
 
-      if (!operadorError && operador) {
-        setFormData({
-          ...formData,
-          operador_id: operador.id,
-          operador: operador.nombre
-        });
-        toast({
-          title: "Operador escaneado",
-          description: `${operador.nombre} - ${operador.numero_empleado}`,
-        });
+      if (operador) {
+        setFormData({ ...formData, operador_id: operador.id, operador: operador.nombre });
+        toast({ title: "Operador escaneado", description: `${operador.nombre} - ${operador.numero_empleado}` });
         setShowQRScanner(false);
         return;
       }
 
-      // Solo mostrar error si realmente no se encontró nada
       setShowQRScanner(false);
       toast({
         title: "No encontrado",
-        description: "Código QR no reconocido",
+        description: `Código QR no reconocido: ${raw.substring(0, 40)}`,
         variant: "destructive",
       });
     } catch (error) {
+      console.error("QR scan error:", error);
       setShowQRScanner(false);
-      // No mostrar detalles técnicos del error
-      toast({
-        title: "Error",
-        description: "No se pudo leer el código QR",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No se pudo leer el código QR", variant: "destructive" });
     }
   };
+
 
   const fetchOperadores = async () => {
     const { data } = await supabase

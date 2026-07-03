@@ -19,9 +19,11 @@ interface SecurityZone {
   codigo_qr: string;
   ubicacion: string;
   activa: boolean;
+  orden: number;
   created_at: string;
   created_by: string;
 }
+
 
 export default function SecurityZones() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

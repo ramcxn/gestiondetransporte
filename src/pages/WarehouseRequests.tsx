@@ -298,8 +298,22 @@ export default function WarehouseRequests() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="unidad">Unidad *</Label>
-                  <Input id="unidad" name="unidad" required placeholder="Número económico" />
+                  <Select name="unidad" required>
+                    <SelectTrigger id="unidad">
+                      <SelectValue placeholder="Seleccione una unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {unidades?.map((u) => (
+                        <SelectItem key={u.id} value={u.numero_economico}>
+                          {u.numero_economico}
+                          {u.tipo_equipo ? ` — ${u.tipo_equipo}` : ""}
+                          {u.marca || u.modelo ? ` (${[u.marca, u.modelo].filter(Boolean).join(" ")})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="prioridad">Prioridad *</Label>
                   <Select name="prioridad" defaultValue="normal" required>

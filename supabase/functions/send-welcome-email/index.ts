@@ -47,19 +47,21 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify user is admin
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Verify user is admin (a user may have multiple roles)
+    const { data: roleRow } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .single();
+      .eq("role", "admin")
+      .maybeSingle();
 
-    if (roleError || roleData?.role !== "admin") {
+    if (!roleRow) {
       return new Response(
         JSON.stringify({ success: false, error: "Only administrators can send welcome emails" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
 
     const { email, fullName, password, role }: WelcomeEmailRequest = await req.json();
 

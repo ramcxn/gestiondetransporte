@@ -27,6 +27,7 @@ interface SecurityZone {
 
 export default function SecurityZones() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingZone, setEditingZone] = useState<SecurityZone | null>(null);
   const [zones, setZones] = useState<SecurityZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -37,6 +38,7 @@ export default function SecurityZones() {
     nombre: "",
     ubicacion: "",
   });
+
 
   useEffect(() => {
     fetchZones();

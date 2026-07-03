@@ -84,10 +84,19 @@ export default function WarehouseRequests() {
       // Generar folio
       const { data: folioData } = await supabase.rpc("generate_solicitud_folio");
       
-      // Get client_id basado en el dominio del email
-      const { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
+      // Determinar client_id: primero por dominio de email, luego por perfil
+      let { data: clientId } = await supabase.rpc('get_client_id_by_email_domain');
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('client_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        clientId = profile?.client_id ?? null;
+      }
 
       if (!clientId) throw new Error("No se pudo determinar el cliente");
+
 
       const { data: solicitud, error: solicitudError } = await supabase
         .from("solicitudes_refacciones")

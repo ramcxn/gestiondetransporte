@@ -239,18 +239,18 @@ export default function SecurityZones() {
             <p className="text-muted-foreground">Gestión de zonas con códigos QR automáticos</p>
           </div>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingZone(null); setFormData({ nombre: "", ubicacion: "" }); } }}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button className="bg-primary hover:bg-primary/90" onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Nueva Zona
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Crear Zona de Seguridad</DialogTitle>
+              <DialogTitle>{editingZone ? "Editar Zona de Seguridad" : "Crear Zona de Seguridad"}</DialogTitle>
               <DialogDescription>
-                Se generará automáticamente un código QR único para esta zona
+                {editingZone ? "Modifique los datos de la zona. El código QR no cambia." : "Se generará automáticamente un código QR único para esta zona"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -276,33 +276,27 @@ export default function SecurityZones() {
                 />
               </div>
 
-              <div className="p-4 bg-accent/10 rounded-lg border">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <QrCode className="h-4 w-4" />
-                  <span>El código QR se generará automáticamente al crear la zona</span>
+              {!editingZone && (
+                <div className="p-4 bg-accent/10 rounded-lg border">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <QrCode className="h-4 w-4" />
+                    <span>El código QR se generará automáticamente al crear la zona</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  disabled={submitting}
-                >
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={submitting}>
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90"
-                  disabled={submitting}
-                >
-                  {submitting ? "Creando..." : "Crear Zona"}
+                <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={submitting}>
+                  {submitting ? "Guardando..." : editingZone ? "Guardar Cambios" : "Crear Zona"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+
       </div>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">

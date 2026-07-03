@@ -68,7 +68,9 @@ export default function SecurityZones() {
       const { data, error } = await supabase
         .from("zonas_seguridad")
         .select("*")
+        .order("orden", { ascending: true })
         .order("nombre", { ascending: true });
+
 
       if (error) throw error;
       setZones(data || []);

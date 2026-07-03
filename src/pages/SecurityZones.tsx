@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Plus, QrCode, Download, Trash2 } from "lucide-react";
+import { MapPin, Plus, QrCode, Download, Trash2, Pencil, ArrowUp, ArrowDown } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { QRCodeGenerator } from "@/components/QRCodeGenerator";
+
 
 interface SecurityZone {
   id: string;

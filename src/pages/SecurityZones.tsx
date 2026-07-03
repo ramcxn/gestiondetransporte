@@ -99,51 +99,80 @@ export default function SecurityZones() {
 
     setSubmitting(true);
     try {
-      const codigoQR = generateQRCode();
+      if (editingZone) {
+        const { error } = await supabase
+          .from("zonas_seguridad")
+          .update({ nombre: formData.nombre, ubicacion: formData.ubicacion })
+          .eq('id', editingZone.id);
+        if (error) throw error;
+        toast({ title: "Éxito", description: `Zona "${formData.nombre}" actualizada` });
+      } else {
+        const codigoQR = generateQRCode();
+        const { data: profile } = await supabase
+          .from("profiles").select("client_id").eq("id", user.id).single();
+        if (!profile?.client_id) throw new Error("No client_id found");
 
-      // Get client_id
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("client_id")
-        .eq("id", user.id)
-        .single();
+        const maxOrden = zones.reduce((m, z) => Math.max(m, z.orden ?? 0), 0);
+        const { error } = await supabase
+          .from("zonas_seguridad")
+          .insert({
+            nombre: formData.nombre,
+            ubicacion: formData.ubicacion,
+            codigo_qr: codigoQR,
+            activa: true,
+            orden: maxOrden + 1,
+            client_id: profile.client_id,
+            created_by: user.id,
+          });
+        if (error) throw error;
+        toast({ title: "Éxito", description: `Zona "${formData.nombre}" creada` });
+      }
 
-      if (!profile?.client_id) throw new Error("No client_id found");
-
-      const { error } = await supabase
-        .from("zonas_seguridad")
-        .insert({
-          nombre: formData.nombre,
-          ubicacion: formData.ubicacion,
-          codigo_qr: codigoQR,
-          activa: true,
-          client_id: profile.client_id,
-          created_by: user.id,
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: `Zona "${formData.nombre}" creada con código QR generado automáticamente`,
-      });
-
-      setFormData({
-        nombre: "",
-        ubicacion: "",
-      });
+      setFormData({ nombre: "", ubicacion: "" });
+      setEditingZone(null);
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("Error creating zone:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo crear la zona",
-        variant: "destructive",
-      });
+      console.error("Error saving zone:", error);
+      toast({ title: "Error", description: "No se pudo guardar la zona", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const openEditDialog = (zone: SecurityZone) => {
+    setEditingZone(zone);
+    setFormData({ nombre: zone.nombre, ubicacion: zone.ubicacion });
+    setIsDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setEditingZone(null);
+    setFormData({ nombre: "", ubicacion: "" });
+    setIsDialogOpen(true);
+  };
+
+  const moveZone = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= zones.length) return;
+    const a = zones[index];
+    const b = zones[target];
+    // Optimistic swap
+    const newZones = [...zones];
+    newZones[index] = { ...b, orden: a.orden };
+    newZones[target] = { ...a, orden: b.orden };
+    setZones(newZones);
+    try {
+      await Promise.all([
+        supabase.from("zonas_seguridad").update({ orden: b.orden }).eq('id', a.id),
+        supabase.from("zonas_seguridad").update({ orden: a.orden }).eq('id', b.id),
+      ]);
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: "No se pudo reordenar", variant: "destructive" });
+      fetchZones();
+    }
+  };
+
 
   const toggleZoneStatus = async (zoneId: string, currentStatus: boolean) => {
     try {

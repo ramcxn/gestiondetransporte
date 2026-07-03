@@ -2406,6 +2406,7 @@ export type Database = {
           created_by: string
           id: string
           nombre: string
+          orden: number
           ubicacion: string
         }
         Insert: {
@@ -2416,6 +2417,7 @@ export type Database = {
           created_by: string
           id?: string
           nombre: string
+          orden?: number
           ubicacion: string
         }
         Update: {
@@ -2426,6 +2428,7 @@ export type Database = {
           created_by?: string
           id?: string
           nombre?: string
+          orden?: number
           ubicacion?: string
         }
         Relationships: [

@@ -67,6 +67,7 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
+  const [userWritePermissions, setUserWritePermissions] = useState<Record<string, boolean>>({});
   const [creatingUser, setCreatingUser] = useState(false);
   const [deletingUser, setDeletingUser] = useState(false);
   const [newUser, setNewUser] = useState<NewUserForm>({
@@ -127,12 +128,15 @@ const UserManagement = () => {
       if (error) throw error;
 
       const permissions: Record<string, boolean> = {};
+      const writePermissions: Record<string, boolean> = {};
       AVAILABLE_MODULES.forEach(module => {
-        const perm = data?.find(p => p.module_name === module.key);
-        permissions[module.key] = perm ? perm.can_access : true;
+        const perm = data?.find((p: any) => p.module_name === module.key) as any;
+        permissions[module.key] = perm ? (perm.can_read ?? perm.can_access) : true;
+        writePermissions[module.key] = perm ? (perm.can_write ?? perm.can_access) : true;
       });
 
       setUserPermissions(permissions);
+      setUserWritePermissions(writePermissions);
     } catch (error) {
       console.error("Error fetching permissions:", error);
     } finally {
@@ -161,7 +165,9 @@ const UserManagement = () => {
       const permissions = Object.entries(userPermissions).map(([module, canAccess]) => ({
         user_id: selectedUser.id,
         module_name: module,
-        can_access: canAccess,
+        can_access: canAccess || (userWritePermissions[module] ?? false),
+        can_read: canAccess,
+        can_write: userWritePermissions[module] ?? false,
       }));
 
       const { error } = await supabase
@@ -552,6 +558,7 @@ const UserManagement = () => {
         if (!open) {
           // Limpiar permisos al cerrar el diálogo
           setUserPermissions({});
+          setUserWritePermissions({});
           setSelectedUser(null);
         }
       }}>
@@ -574,22 +581,41 @@ const UserManagement = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="grid grid-cols-[1fr_96px_96px] gap-3 px-2 text-sm font-medium text-muted-foreground">
+                  <span>Módulo</span>
+                  <span>Lectura</span>
+                  <span>Escritura</span>
+                </div>
                 {AVAILABLE_MODULES.map((module) => (
-                  <div key={module.key} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={module.key}
-                      checked={userPermissions[module.key] ?? true}
-                      onCheckedChange={(checked) =>
-                        setUserPermissions({
-                          ...userPermissions,
-                          [module.key]: checked as boolean,
-                        })
-                      }
-                    />
-                    <Label htmlFor={module.key} className="cursor-pointer">
+                  <div key={module.key} className="grid grid-cols-[1fr_96px_96px] gap-3 items-center rounded-md border p-2">
+                    <Label className="cursor-pointer">
                       {module.name}
                     </Label>
+                    <div className="flex justify-center">
+                      <Checkbox
+                        id={`${module.key}-read`}
+                        checked={userPermissions[module.key] ?? true}
+                        onCheckedChange={(checked) =>
+                          setUserPermissions({
+                            ...userPermissions,
+                            [module.key]: checked as boolean,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex justify-center">
+                      <Checkbox
+                        id={`${module.key}-write`}
+                        checked={userWritePermissions[module.key] ?? true}
+                        onCheckedChange={(checked) =>
+                          setUserWritePermissions({
+                            ...userWritePermissions,
+                            [module.key]: checked as boolean,
+                          })
+                        }
+                      />
+                    </div>
                   </div>
                 ))}
               </div>

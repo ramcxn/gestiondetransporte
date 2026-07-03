@@ -2038,6 +2038,8 @@ export type Database = {
       user_module_permissions: {
         Row: {
           can_access: boolean
+          can_read: boolean
+          can_write: boolean
           created_at: string
           id: string
           module_name: string
@@ -2046,6 +2048,8 @@ export type Database = {
         }
         Insert: {
           can_access?: boolean
+          can_read?: boolean
+          can_write?: boolean
           created_at?: string
           id?: string
           module_name: string
@@ -2054,6 +2058,8 @@ export type Database = {
         }
         Update: {
           can_access?: boolean
+          can_read?: boolean
+          can_write?: boolean
           created_at?: string
           id?: string
           module_name?: string
@@ -2458,10 +2464,20 @@ export type Database = {
       generate_solicitud_folio: { Args: never; Returns: string }
       get_client_id_by_email_domain: { Args: never; Returns: string }
       get_user_client_id: { Args: never; Returns: string }
-      has_module_permission: {
-        Args: { _module_name: string; _user_id: string }
+      has_any_module_permission: {
+        Args: { _module_names: string[]; _permission: string; _user_id: string }
         Returns: boolean
       }
+      has_module_permission:
+        | { Args: { _module_name: string; _user_id: string }; Returns: boolean }
+        | {
+            Args: {
+              _module_name: string
+              _permission: string
+              _user_id: string
+            }
+            Returns: boolean
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2469,8 +2485,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_table_module_permission: {
+        Args: { _permission: string; _table_name: string; _user_id: string }
+        Returns: boolean
+      }
       is_admin: { Args: never; Returns: boolean }
       matches_user_client: { Args: never; Returns: boolean }
+      module_names_for_table: {
+        Args: { _table_name: string }
+        Returns: string[]
+      }
     }
     Enums: {
       app_role: "admin" | "usuario"

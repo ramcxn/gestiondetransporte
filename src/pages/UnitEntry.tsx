@@ -1065,8 +1065,14 @@ export default function UnitEntry() {
                           accept="image/*"
                           capture="environment"
                           onChange={handleImageChange(1)}
-                          className="cursor-pointer"
+                          className="sr-only"
                         />
+                        <Label
+                          htmlFor="photo1"
+                          className="flex items-center justify-center w-full h-10 px-3 rounded-md border border-input bg-background text-sm font-medium text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+                        >
+                          Tomar fotografía
+                        </Label>
                         {imagePreview1 && (
                           <div className="relative w-full h-32 border rounded-lg overflow-hidden">
                             <img 
@@ -1085,8 +1091,14 @@ export default function UnitEntry() {
                           accept="image/*"
                           capture="environment"
                           onChange={handleImageChange(2)}
-                          className="cursor-pointer"
+                          className="sr-only"
                         />
+                        <Label
+                          htmlFor="photo2"
+                          className="flex items-center justify-center w-full h-10 px-3 rounded-md border border-input bg-background text-sm font-medium text-foreground cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+                        >
+                          Tomar fotografía
+                        </Label>
                         {imagePreview2 && (
                           <div className="relative w-full h-32 border rounded-lg overflow-hidden">
                             <img 

@@ -1063,6 +1063,7 @@ export default function UnitEntry() {
                           id="photo1"
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           onChange={handleImageChange(1)}
                           className="cursor-pointer"
                         />
@@ -1082,6 +1083,7 @@ export default function UnitEntry() {
                           id="photo2"
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           onChange={handleImageChange(2)}
                           className="cursor-pointer"
                         />

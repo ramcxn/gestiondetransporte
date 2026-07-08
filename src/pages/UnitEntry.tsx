@@ -1083,6 +1083,7 @@ export default function UnitEntry() {
                           id="photo2"
                           type="file"
                           accept="image/*"
+                          capture="environment"
                           onChange={handleImageChange(2)}
                           className="cursor-pointer"
                         />

@@ -220,7 +220,7 @@ export default function Visits() {
         }
       }
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("visitas")
         .insert({
           nombre: formData.nombre,
@@ -232,7 +232,9 @@ export default function Visits() {
           estado: 'en_instalaciones',
           created_by: user.id,
           client_id: clientId,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -240,6 +242,10 @@ export default function Visits() {
         title: "Éxito",
         description: `${visitorType === "visitante" ? "Visitante" : "Proveedor"} registrado exitosamente`,
       });
+
+      if (inserted) {
+        setPassVisit(inserted as Visit);
+      }
 
       setFormData({
         nombre: "",

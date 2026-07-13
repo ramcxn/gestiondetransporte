@@ -38,8 +38,18 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff,woff2}"],
         runtimeCaching: [
+          {
+            // HTML navigations: always try network first so users get fresh app shell.
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-navigations",
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: "NetworkFirst",
@@ -63,7 +73,6 @@ export default defineConfig(({ mode }) => ({
             }
           }
         ],
-        navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/]
       }
     })

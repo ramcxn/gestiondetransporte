@@ -719,6 +719,12 @@ export default function Visits() {
           )}
         </DialogContent>
       </Dialog>
+
+      <VisitPass
+        open={!!passVisit}
+        onOpenChange={(open) => !open && setPassVisit(null)}
+        visit={passVisit}
+      />
     </div>
   );
 }

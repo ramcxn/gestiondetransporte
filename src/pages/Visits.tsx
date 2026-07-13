@@ -843,6 +843,79 @@ export default function Visits() {
         </DialogContent>
       </Dialog>
 
+      {scanOpen && (
+        <QRScanner onScan={handleScan} onClose={() => setScanOpen(false)} />
+      )}
+
+      <Dialog open={!!scannedVisit} onOpenChange={(open) => !open && setScannedVisit(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Pase escaneado</DialogTitle>
+            <DialogDescription>Verifica la información y confirma el ingreso.</DialogDescription>
+          </DialogHeader>
+          {scannedVisit && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold">{scannedVisit.nombre}</h3>
+                <Badge variant={scannedVisit.tipo === "visitante" ? "default" : "secondary"}>
+                  {scannedVisit.tipo}
+                </Badge>
+                <Badge variant="outline">
+                  {scannedVisit.estado === "programada"
+                    ? "Programada"
+                    : scannedVisit.estado === "en_instalaciones"
+                    ? "Ya está en instalaciones"
+                    : "Salió"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Empresa</p>
+                  <p className="font-medium">{scannedVisit.empresa}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Área</p>
+                  <p className="font-medium">{scannedVisit.area_visita}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground text-xs">Motivo</p>
+                  <p className="font-medium whitespace-pre-wrap">{scannedVisit.motivo}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Emitido</p>
+                  <p className="font-medium">{new Date(scannedVisit.created_at).toLocaleString("es-MX")}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Vigencia</p>
+                  <p className="font-medium">
+                    {scannedVisit.qr_expira_at
+                      ? `Hasta ${new Date(scannedVisit.qr_expira_at).toLocaleString("es-MX")}`
+                      : "Frecuente (no expira)"}
+                  </p>
+                </div>
+              </div>
+              {scannedVisit.credencial_url && (
+                <img
+                  src={scannedVisit.credencial_url}
+                  alt="Credencial"
+                  className="w-full max-h-64 object-contain rounded-lg border"
+                />
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setScannedVisit(null)}>
+              Cerrar
+            </Button>
+            {scannedVisit?.estado === "programada" && (
+              <Button onClick={confirmScannedEntry} disabled={confirmingEntry}>
+                {confirmingEntry ? "Registrando..." : "Confirmar ingreso"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <VisitPass
         open={!!passVisit}
         onOpenChange={(open) => !open && setPassVisit(null)}

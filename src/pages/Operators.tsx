@@ -40,6 +40,7 @@ export default function Operators() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [selectedOperator, setSelectedOperator] = useState<Operator | null>(null);
   const [generatingQRs, setGeneratingQRs] = useState(false);
+  const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
   const { user, userRole, clientIdByDomain } = useAuth();
   const { toast } = useToast();
 

@@ -429,16 +429,16 @@ export default function Operators() {
               {generatingQRs ? "Generando..." : "Generar QR Faltantes"}
             </Button>
           )}
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => resetForm()}>
                 <UserCheck className="h-4 w-4 mr-2" />
                 Nuevo Operador
               </Button>
             </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Registrar Nuevo Operador</DialogTitle>
+              <DialogTitle>{editingOperator ? "Editar Operador" : "Registrar Nuevo Operador"}</DialogTitle>
               <DialogDescription>Complete la información del operador y su contrato</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">

@@ -37,6 +37,7 @@ export default function Visits() {
   const [showCamera, setShowCamera] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [passVisit, setPassVisit] = useState<Visit | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 

@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User, LogOut, Camera, X, Eye } from "lucide-react";
+import { Users, Building2, Clock, User, LogOut, Camera, X, Eye, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import VisitsReportDialog from "@/components/VisitsReportDialog";
+import VisitPass from "@/components/VisitPass";
 
 interface Visit {
   id: string;

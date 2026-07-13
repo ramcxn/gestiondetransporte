@@ -53,7 +53,8 @@ export default function Visits() {
     motivo: "",
     area_visita: "",
   });
-  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "frecuente">("1");
+  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "custom" | "frecuente">("1");
+  const [vigenciaFecha, setVigenciaFecha] = useState<string>("");
   const [preRegistro, setPreRegistro] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);

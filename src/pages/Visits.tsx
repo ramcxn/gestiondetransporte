@@ -53,7 +53,8 @@ export default function Visits() {
     motivo: "",
     area_visita: "",
   });
-  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "frecuente">("1");
+  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "custom" | "frecuente">("1");
+  const [vigenciaFecha, setVigenciaFecha] = useState<string>("");
   const [preRegistro, setPreRegistro] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -228,10 +229,33 @@ export default function Visits() {
         }
       }
 
-      const qrExpiraAt =
-        vigencia === "frecuente"
-          ? null
-          : new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+      let qrExpiraAt: string | null;
+      if (vigencia === "frecuente") {
+        qrExpiraAt = null;
+      } else if (vigencia === "custom") {
+        if (!vigenciaFecha) {
+          toast({
+            title: "Fecha requerida",
+            description: "Selecciona la fecha y hora de expiración del pase QR",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+        const chosen = new Date(vigenciaFecha);
+        if (isNaN(chosen.getTime()) || chosen.getTime() <= Date.now()) {
+          toast({
+            title: "Fecha inválida",
+            description: "La fecha de expiración debe ser posterior a ahora",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+        qrExpiraAt = chosen.toISOString();
+      } else {
+        qrExpiraAt = new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+      }
 
       const { data: inserted, error } = await supabase
         .from("visitas")
@@ -512,7 +536,7 @@ export default function Visits() {
             <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
               <div className="space-y-2">
                 <Label>Vigencia del pase QR</Label>
-                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "frecuente") => setVigencia(v)}>
+                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "custom" | "frecuente") => setVigencia(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -520,9 +544,21 @@ export default function Visits() {
                     <SelectItem value="1">1 día</SelectItem>
                     <SelectItem value="7">7 días</SelectItem>
                     <SelectItem value="30">30 días</SelectItem>
+                    <SelectItem value="custom">Fecha específica…</SelectItem>
                     <SelectItem value="frecuente">Frecuente (no expira)</SelectItem>
                   </SelectContent>
                 </Select>
+                {vigencia === "custom" && (
+                  <Input
+                    type="datetime-local"
+                    value={vigenciaFecha}
+                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+                      .toISOString()
+                      .slice(0, 16)}
+                    onChange={(e) => setVigenciaFecha(e.target.value)}
+                    required
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Modo de registro</Label>

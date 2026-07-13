@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User, LogOut, Camera, X, Eye, QrCode } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Users, Building2, Clock, User, LogOut, Camera, X, Eye, QrCode, ScanLine } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import VisitsReportDialog from "@/components/VisitsReportDialog";
 import VisitPass from "@/components/VisitPass";
+import QRScanner from "@/components/QRScanner";
 
 interface Visit {
   id: string;
@@ -26,6 +27,8 @@ interface Visit {
   created_at: string;
   fecha_salida: string | null;
   created_by: string;
+  qr_expira_at: string | null;
+  qr_usado_at: string | null;
   creator_name?: string;
 }
 
@@ -38,6 +41,9 @@ export default function Visits() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [passVisit, setPassVisit] = useState<Visit | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scannedVisit, setScannedVisit] = useState<Visit | null>(null);
+  const [confirmingEntry, setConfirmingEntry] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -47,6 +53,8 @@ export default function Visits() {
     motivo: "",
     area_visita: "",
   });
+  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "frecuente">("1");
+  const [preRegistro, setPreRegistro] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -220,6 +228,11 @@ export default function Visits() {
         }
       }
 
+      const qrExpiraAt =
+        vigencia === "frecuente"
+          ? null
+          : new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: inserted, error } = await supabase
         .from("visitas")
         .insert({
@@ -229,9 +242,10 @@ export default function Visits() {
           motivo: formData.motivo,
           area_visita: formData.area_visita,
           credencial_url: credencialUrl,
-          estado: 'en_instalaciones',
+          estado: preRegistro ? 'programada' : 'en_instalaciones',
           created_by: user.id,
           client_id: clientId,
+          qr_expira_at: qrExpiraAt,
         })
         .select()
         .single();
@@ -264,6 +278,79 @@ export default function Visits() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleScan = async (raw: string) => {
+    setScanOpen(false);
+    let visitId: string | null = null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.type === "VISITA" && parsed?.id) visitId = parsed.id;
+    } catch {
+      // Not JSON, try as plain UUID
+      if (/^[0-9a-f-]{20,}$/i.test(raw.trim())) visitId = raw.trim();
+    }
+
+    if (!visitId) {
+      toast({
+        title: "QR no válido",
+        description: "El código escaneado no corresponde a un pase de acceso.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("visitas")
+      .select("*")
+      .eq("id", visitId)
+      .maybeSingle();
+
+    if (error || !data) {
+      toast({
+        title: "No encontrado",
+        description: "No se encontró una visita con ese código.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.qr_expira_at && new Date(data.qr_expira_at).getTime() < Date.now()) {
+      toast({
+        title: "Pase expirado",
+        description: `Este pase venció el ${new Date(data.qr_expira_at).toLocaleString("es-MX")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setScannedVisit(data as Visit);
+  };
+
+  const confirmScannedEntry = async () => {
+    if (!scannedVisit) return;
+    setConfirmingEntry(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("visitas")
+        .update({
+          estado: "en_instalaciones",
+          qr_usado_at: now,
+        })
+        .eq("id", scannedVisit.id);
+      if (error) throw error;
+      toast({
+        title: "Ingreso registrado",
+        description: `${scannedVisit.nombre} ha ingresado correctamente.`,
+      });
+      setScannedVisit(null);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "No se pudo registrar el ingreso", variant: "destructive" });
+    } finally {
+      setConfirmingEntry(false);
     }
   };
 
@@ -312,7 +399,13 @@ export default function Visits() {
             <p className="text-muted-foreground">Control de acceso con registro fotográfico</p>
           </div>
         </div>
-        <VisitsReportDialog />
+        <div className="flex gap-2">
+          <Button variant="default" onClick={() => setScanOpen(true)}>
+            <ScanLine className="h-4 w-4 mr-2" />
+            Escanear pase QR
+          </Button>
+          <VisitsReportDialog />
+        </div>
       </div>
 
       <Card className="shadow-card">
@@ -415,12 +508,42 @@ export default function Visits() {
                 </p>
               </div>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
+              <div className="space-y-2">
+                <Label>Vigencia del pase QR</Label>
+                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "frecuente") => setVigencia(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 día</SelectItem>
+                    <SelectItem value="7">7 días</SelectItem>
+                    <SelectItem value="30">30 días</SelectItem>
+                    <SelectItem value="frecuente">Frecuente (no expira)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Modo de registro</Label>
+                <Select value={preRegistro ? "pre" : "ahora"} onValueChange={(v) => setPreRegistro(v === "pre")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ahora">Registrar ingreso ahora</SelectItem>
+                    <SelectItem value="pre">Pre-registro (enviar QR, ingresa después)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
               disabled={submitting || uploadingImage}
             >
-              {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Entrada"}
+              {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : preRegistro ? "Generar pase QR" : "Registrar Entrada"}
             </Button>
           </form>
         </CardContent>
@@ -717,6 +840,79 @@ export default function Visits() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {scanOpen && (
+        <QRScanner onScan={handleScan} onClose={() => setScanOpen(false)} />
+      )}
+
+      <Dialog open={!!scannedVisit} onOpenChange={(open) => !open && setScannedVisit(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Pase escaneado</DialogTitle>
+            <DialogDescription>Verifica la información y confirma el ingreso.</DialogDescription>
+          </DialogHeader>
+          {scannedVisit && (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-semibold">{scannedVisit.nombre}</h3>
+                <Badge variant={scannedVisit.tipo === "visitante" ? "default" : "secondary"}>
+                  {scannedVisit.tipo}
+                </Badge>
+                <Badge variant="outline">
+                  {scannedVisit.estado === "programada"
+                    ? "Programada"
+                    : scannedVisit.estado === "en_instalaciones"
+                    ? "Ya está en instalaciones"
+                    : "Salió"}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Empresa</p>
+                  <p className="font-medium">{scannedVisit.empresa}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Área</p>
+                  <p className="font-medium">{scannedVisit.area_visita}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground text-xs">Motivo</p>
+                  <p className="font-medium whitespace-pre-wrap">{scannedVisit.motivo}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Emitido</p>
+                  <p className="font-medium">{new Date(scannedVisit.created_at).toLocaleString("es-MX")}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Vigencia</p>
+                  <p className="font-medium">
+                    {scannedVisit.qr_expira_at
+                      ? `Hasta ${new Date(scannedVisit.qr_expira_at).toLocaleString("es-MX")}`
+                      : "Frecuente (no expira)"}
+                  </p>
+                </div>
+              </div>
+              {scannedVisit.credencial_url && (
+                <img
+                  src={scannedVisit.credencial_url}
+                  alt="Credencial"
+                  className="w-full max-h-64 object-contain rounded-lg border"
+                />
+              )}
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setScannedVisit(null)}>
+              Cerrar
+            </Button>
+            {scannedVisit?.estado === "programada" && (
+              <Button onClick={confirmScannedEntry} disabled={confirmingEntry}>
+                {confirmingEntry ? "Registrando..." : "Confirmar ingreso"}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

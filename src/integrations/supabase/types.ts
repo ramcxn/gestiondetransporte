@@ -2309,6 +2309,8 @@ export type Database = {
           id: string
           motivo: string
           nombre: string
+          qr_expira_at: string | null
+          qr_usado_at: string | null
           tipo: string
         }
         Insert: {
@@ -2323,6 +2325,8 @@ export type Database = {
           id?: string
           motivo: string
           nombre: string
+          qr_expira_at?: string | null
+          qr_usado_at?: string | null
           tipo: string
         }
         Update: {
@@ -2337,6 +2341,8 @@ export type Database = {
           id?: string
           motivo?: string
           nombre?: string
+          qr_expira_at?: string | null
+          qr_usado_at?: string | null
           tipo?: string
         }
         Relationships: [

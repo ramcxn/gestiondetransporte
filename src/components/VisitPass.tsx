@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Download, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import logoUrl from "@/assets/logo.png";
 
 interface VisitPassProps {
   open: boolean;
@@ -16,14 +17,12 @@ interface VisitPassProps {
     motivo: string;
     area_visita: string;
     created_at: string;
-    creator_name?: string;
+    qr_expira_at?: string | null;
   } | null;
-  companyName?: string;
 }
 
-// Wrap text to fit within maxWidth
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(" ");
+  const words = (text || "").split(/\s+/);
   const lines: string[] = [];
   let current = "";
   for (const word of words) {
@@ -39,17 +38,40 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
-export default function VisitPass({ open, onOpenChange, visit, companyName = "GESTIÓN DE TRANSPORTE" }: VisitPassProps) {
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+// Brand tokens (mirror index.css: --primary 215 85% 35%, --secondary 30 95% 55%)
+const BRAND = {
+  primary: "#0E4B99",
+  primaryDark: "#0A3970",
+  accent: "#F79320",
+  ink: "#0B1220",
+  paper: "#FFFFFF",
+  soft: "#F1F5FB",
+};
+
+export default function VisitPass({ open, onOpenChange, visit }: VisitPassProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [dataUrl, setDataUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!open || !visit) return;
+    if (!open || !visit) {
+      setDataUrl(null);
+      return;
+    }
 
     const render = async () => {
-      const W = 720;
-      const H = 1180;
+      const W = 800;
+      const H = 1300;
       const canvas = canvasRef.current || document.createElement("canvas");
       canvas.width = W;
       canvas.height = H;
@@ -57,98 +79,166 @@ export default function VisitPass({ open, onOpenChange, visit, companyName = "GE
       if (!ctx) return;
 
       // Background
-      ctx.fillStyle = "#FFC72C";
+      ctx.fillStyle = BRAND.paper;
       ctx.fillRect(0, 0, W, H);
 
-      // Decorative frame (thin dark border with corner offsets)
-      ctx.strokeStyle = "#0F1720";
-      ctx.lineWidth = 4;
-      const m = 40;
-      ctx.strokeRect(m, m + 80, W - m * 2, H - m * 2 - 200);
+      // Top brand banner
+      const bannerH = 170;
+      ctx.fillStyle = BRAND.primary;
+      ctx.fillRect(0, 0, W, bannerH);
+      // Accent stripe
+      ctx.fillStyle = BRAND.accent;
+      ctx.fillRect(0, bannerH, W, 8);
 
-      // Header text (company)
-      ctx.fillStyle = "#0F1720";
+      // Logo (centered top)
+      try {
+        const logo = await loadImage(logoUrl);
+        const logoH = 90;
+        const logoW = (logo.width / logo.height) * logoH;
+        ctx.drawImage(logo, 40, (bannerH - logoH) / 2, logoW, logoH);
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "left";
+        ctx.font = "700 30px 'Helvetica Neue', Arial, sans-serif";
+        ctx.fillText("GESTIÓN DE TRANSPORTE", 40 + logoW + 24, bannerH / 2 - 4);
+        ctx.font = "500 18px 'Helvetica Neue', Arial, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillText("CTPAT COMPLIANCE", 40 + logoW + 24, bannerH / 2 + 24);
+      } catch {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "center";
+        ctx.font = "700 34px 'Helvetica Neue', Arial, sans-serif";
+        ctx.fillText("GESTIÓN DE TRANSPORTE", W / 2, bannerH / 2 + 10);
+      }
+
+      // Pass title
       ctx.textAlign = "center";
-      ctx.font = "bold 34px 'Helvetica Neue', Arial, sans-serif";
-      ctx.fillText(companyName, W / 2, 100);
-      ctx.font = "500 18px 'Helvetica Neue', Arial, sans-serif";
-      ctx.fillText("PASE DE ACCESO", W / 2, 130);
+      ctx.fillStyle = BRAND.ink;
+      ctx.font = "800 40px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillText("PASE DE ACCESO", W / 2, bannerH + 70);
+      ctx.font = "500 20px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillStyle = "#4A5568";
+      const tipoLabel = visit.tipo?.toUpperCase() === "PROVEEDOR" ? "Proveedor autorizado" : "Visitante autorizado";
+      ctx.fillText(tipoLabel, W / 2, bannerH + 100);
 
-      // QR code
+      // QR block
       const qrPayload = JSON.stringify({
         type: "VISITA",
         id: visit.id,
-        nombre: visit.nombre,
-        empresa: visit.empresa,
+        exp: visit.qr_expira_at || null,
       });
-      const qrSize = 380;
+      const qrSize = 420;
       const qrDataUrl = await QRCode.toDataURL(qrPayload, {
         width: qrSize,
-        margin: 2,
-        color: { dark: "#0F1720", light: "#FFFFFF" },
-        errorCorrectionLevel: "M",
+        margin: 1,
+        color: { dark: BRAND.ink, light: "#FFFFFF" },
+        errorCorrectionLevel: "H",
       });
-      const qrImg = new Image();
-      qrImg.src = qrDataUrl;
-      await new Promise<void>((resolve) => {
-        qrImg.onload = () => resolve();
-      });
-      // White card behind QR
+      const qrImg = await loadImage(qrDataUrl);
+
       const qrX = (W - qrSize) / 2;
-      const qrY = 180;
+      const qrY = bannerH + 140;
+      // QR card
+      ctx.fillStyle = BRAND.soft;
+      ctx.strokeStyle = BRAND.primary;
+      ctx.lineWidth = 3;
+      const pad = 24;
+      ctx.beginPath();
+      const cardX = qrX - pad;
+      const cardY = qrY - pad;
+      const cardW = qrSize + pad * 2;
+      const cardH = qrSize + pad * 2;
+      const r = 20;
+      ctx.moveTo(cardX + r, cardY);
+      ctx.arcTo(cardX + cardW, cardY, cardX + cardW, cardY + cardH, r);
+      ctx.arcTo(cardX + cardW, cardY + cardH, cardX, cardY + cardH, r);
+      ctx.arcTo(cardX, cardY + cardH, cardX, cardY, r);
+      ctx.arcTo(cardX, cardY, cardX + cardW, cardY, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
+      ctx.fillRect(qrX, qrY, qrSize, qrSize);
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-      // Info block
-      let y = qrY + qrSize + 70;
-      ctx.textAlign = "left";
-      ctx.fillStyle = "#0F1720";
-      const labelFont = "bold 22px 'Helvetica Neue', Arial, sans-serif";
-      const valueFont = "22px 'Helvetica Neue', Arial, sans-serif";
-      const leftX = 90;
+      // Info block - each row on its own line, label above value
+      let y = qrY + qrSize + pad + 60;
+      const leftX = 60;
+      const rightEdge = W - 60;
+      const valueMaxWidth = rightEdge - leftX;
 
       const created = new Date(visit.created_at);
-      const createdStr = `${created.toLocaleDateString("es-MX")} ${created.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`;
+      const createdStr = `${created.toLocaleDateString("es-MX")} · ${created.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`;
 
-      const drawRow = (label: string, value: string) => {
-        ctx.font = labelFont;
-        ctx.fillText(label, leftX, y);
-        const labelWidth = ctx.measureText(label).width + 12;
-        ctx.font = valueFont;
-        const maxWidth = W - leftX - 60 - labelWidth;
-        const lines = wrapText(ctx, value, maxWidth);
-        lines.forEach((line, i) => {
-          ctx.fillText(line, leftX + labelWidth, y + i * 28);
-        });
-        y += Math.max(38, lines.length * 28 + 10);
-      };
+      let vigenciaStr = "Frecuente · No expira";
+      let vigenciaColor = BRAND.primary;
+      if (visit.qr_expira_at) {
+        const exp = new Date(visit.qr_expira_at);
+        vigenciaStr = `Válido hasta: ${exp.toLocaleDateString("es-MX")} · ${exp.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`;
+        if (exp.getTime() < Date.now()) {
+          vigenciaStr = `EXPIRADO: ${exp.toLocaleDateString("es-MX")}`;
+          vigenciaColor = "#B91C1C";
+        }
+      }
 
-      drawRow("Creado:", createdStr);
-      ctx.font = "bold 24px 'Helvetica Neue', Arial, sans-serif";
-      ctx.fillText(visit.tipo?.toUpperCase() === "PROVEEDOR" ? "PROVEEDOR" : "VISITANTE", leftX, y);
-      y += 40;
-      drawRow("Invitado:", visit.nombre.toUpperCase());
-      drawRow("Empresa:", visit.empresa.toUpperCase());
-      drawRow("Área:", visit.area_visita.toUpperCase());
-      drawRow("Código:", visit.id.slice(0, 12).toUpperCase());
+      const rows: Array<{ label: string; value: string; emphasize?: boolean; color?: string }> = [
+        { label: "Invitado", value: visit.nombre, emphasize: true },
+        { label: "Empresa", value: visit.empresa },
+        { label: "Área a visitar", value: visit.area_visita },
+        { label: "Motivo", value: visit.motivo },
+        { label: "Emitido", value: createdStr },
+        { label: "Vigencia", value: vigenciaStr, color: vigenciaColor, emphasize: true },
+        { label: "Código", value: visit.id.slice(0, 8).toUpperCase() },
+      ];
 
-      // Footer indications bar
-      ctx.fillStyle = "#0F1720";
-      ctx.fillRect(0, H - 90, W, 90);
-      ctx.fillStyle = "#FFC72C";
+      ctx.textAlign = "left";
+      for (const row of rows) {
+        // Label
+        ctx.fillStyle = "#6B7280";
+        ctx.font = "600 15px 'Helvetica Neue', Arial, sans-serif";
+        ctx.fillText(row.label.toUpperCase(), leftX, y);
+        y += 22;
+
+        // Value (wrapped)
+        ctx.fillStyle = row.color || BRAND.ink;
+        ctx.font = row.emphasize
+          ? "700 24px 'Helvetica Neue', Arial, sans-serif"
+          : "500 22px 'Helvetica Neue', Arial, sans-serif";
+        const lines = wrapText(ctx, row.value, valueMaxWidth);
+        for (const line of lines) {
+          ctx.fillText(line, leftX, y);
+          y += 28;
+        }
+        y += 12;
+      }
+
+      // Footer banner
+      const footH = 90;
+      ctx.fillStyle = BRAND.primaryDark;
+      ctx.fillRect(0, H - footH, W, footH);
+      ctx.fillStyle = BRAND.accent;
+      ctx.fillRect(0, H - footH - 6, W, 6);
+      ctx.fillStyle = "#FFFFFF";
       ctx.textAlign = "center";
-      ctx.font = "bold 20px 'Helvetica Neue', Arial, sans-serif";
-      ctx.fillText("MOSTRAR ESTE CÓDIGO QR AL INGRESAR", W / 2, H - 55);
-      ctx.font = "16px 'Helvetica Neue', Arial, sans-serif";
-      ctx.fillText("Respeta las indicaciones de seguridad del sitio", W / 2, H - 28);
+      ctx.font = "700 22px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillText("MOSTRAR ESTE QR AL INGRESAR", W / 2, H - footH + 36);
+      ctx.font = "400 16px 'Helvetica Neue', Arial, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillText("Presenta una identificación oficial junto con este pase", W / 2, H - footH + 64);
 
       const url = canvas.toDataURL("image/png");
       setDataUrl(url);
     };
 
-    render();
-  }, [open, visit, companyName]);
+    render().catch((err) => {
+      console.error("Error rendering pass:", err);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el pase",
+        variant: "destructive",
+      });
+    });
+  }, [open, visit, toast]);
 
   const download = () => {
     if (!dataUrl || !visit) return;
@@ -171,14 +261,13 @@ export default function VisitPass({ open, onOpenChange, visit, companyName = "GE
           text: `Pase de acceso para ${visit.nombre}`,
         });
       } else {
-        // Fallback: open WhatsApp Web with text
         const text = encodeURIComponent(
           `Pase de acceso para ${visit.nombre} (${visit.empresa}). Descarga la imagen y muéstrala al ingresar.`,
         );
         window.open(`https://wa.me/?text=${text}`, "_blank");
         toast({
           title: "Compartir no soportado",
-          description: "Descarga la imagen y adjúntala manualmente.",
+          description: "Se abrió WhatsApp. Descarga la imagen y adjúntala manualmente.",
         });
       }
     } catch (error) {
@@ -203,11 +292,7 @@ export default function VisitPass({ open, onOpenChange, visit, companyName = "GE
         <div className="space-y-4">
           <canvas ref={canvasRef} className="hidden" />
           {dataUrl ? (
-            <img
-              src={dataUrl}
-              alt="Pase de acceso"
-              className="w-full rounded-lg border shadow-sm"
-            />
+            <img src={dataUrl} alt="Pase de acceso" className="w-full rounded-lg border shadow-sm" />
           ) : (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

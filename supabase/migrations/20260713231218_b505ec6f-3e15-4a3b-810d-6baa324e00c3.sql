@@ -1,0 +1,4 @@
+
+ALTER TABLE public.visitas
+  ADD COLUMN IF NOT EXISTS qr_expira_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS qr_usado_at TIMESTAMPTZ;

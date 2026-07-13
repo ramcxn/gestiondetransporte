@@ -144,14 +144,48 @@ export default function Operators() {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      nombre: "",
+      numero_empleado: "",
+      fecha_alta: "",
+      fecha_vencimiento_contrato: "",
+      direccion: "",
+      numero_licencia: "",
+      fecha_vencimiento_licencia: "",
+    });
+    setSelectedPDF(null);
+    setEditingOperator(null);
+  };
+
+  const openEditDialog = (operator: Operator) => {
+    setEditingOperator(operator);
+    setFormData({
+      nombre: operator.nombre || "",
+      numero_empleado: operator.numero_empleado || "",
+      fecha_alta: operator.fecha_alta || "",
+      fecha_vencimiento_contrato: operator.fecha_vencimiento_contrato || "",
+      direccion: operator.direccion || "",
+      numero_licencia: operator.numero_licencia || "",
+      fecha_vencimiento_licencia: operator.fecha_vencimiento_licencia || "",
+    });
+    setSelectedPDF(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) resetForm();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setSubmitting(true);
     try {
-      let pdfUrl = null;
-      
+      let pdfUrl: string | null = null;
+
       if (selectedPDF) {
         pdfUrl = await uploadPDF();
         if (!pdfUrl) {
@@ -160,15 +194,9 @@ export default function Operators() {
         }
       }
 
-      // Get client_id basado en el dominio del email
-      const clientId = clientIdByDomain;
-
-      if (!clientId) throw new Error("No se pudo determinar el cliente");
-
-      // Insert operator first to get the ID
-      const { data: newOperator, error: insertError } = await supabase
-        .from("operadores")
-        .insert({
+      if (editingOperator) {
+        // Update existing operator
+        const updateData: any = {
           nombre: formData.nombre,
           numero_empleado: formData.numero_empleado,
           fecha_alta: formData.fecha_alta,
@@ -176,47 +204,69 @@ export default function Operators() {
           direccion: formData.direccion,
           numero_licencia: formData.numero_licencia || null,
           fecha_vencimiento_licencia: formData.fecha_vencimiento_licencia || null,
-          pdf_url: pdfUrl,
-          client_id: clientId,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+        };
+        if (pdfUrl) updateData.pdf_url = pdfUrl;
 
-      if (insertError) throw insertError;
+        const { error: updateError } = await supabase
+          .from("operadores")
+          .update(updateData)
+          .eq("id", editingOperator.id);
 
-      // Generate QR code with operator ID
-      const qrCode = `OPERADOR-${newOperator.id}`;
-      
-      // Update with QR code
-      const { error: updateError } = await supabase
-        .from("operadores")
-        .update({ qr_code: qrCode })
-        .eq("id", newOperator.id);
+        if (updateError) throw updateError;
 
-      if (updateError) throw updateError;
+        toast({
+          title: "Éxito",
+          description: "Operador actualizado exitosamente",
+        });
+      } else {
+        // Get client_id basado en el dominio del email
+        const clientId = clientIdByDomain;
 
-      toast({
-        title: "Éxito",
-        description: "Operador registrado exitosamente",
-      });
+        if (!clientId) throw new Error("No se pudo determinar el cliente");
 
-      setFormData({
-        nombre: "",
-        numero_empleado: "",
-        fecha_alta: "",
-        fecha_vencimiento_contrato: "",
-        direccion: "",
-        numero_licencia: "",
-        fecha_vencimiento_licencia: "",
-      });
-      setSelectedPDF(null);
+        // Insert operator first to get the ID
+        const { data: newOperator, error: insertError } = await supabase
+          .from("operadores")
+          .insert({
+            nombre: formData.nombre,
+            numero_empleado: formData.numero_empleado,
+            fecha_alta: formData.fecha_alta,
+            fecha_vencimiento_contrato: formData.fecha_vencimiento_contrato,
+            direccion: formData.direccion,
+            numero_licencia: formData.numero_licencia || null,
+            fecha_vencimiento_licencia: formData.fecha_vencimiento_licencia || null,
+            pdf_url: pdfUrl,
+            client_id: clientId,
+            created_by: user.id,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Generate QR code with operator ID
+        const qrCode = `OPERADOR-${newOperator.id}`;
+
+        const { error: updateError } = await supabase
+          .from("operadores")
+          .update({ qr_code: qrCode })
+          .eq("id", newOperator.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Éxito",
+          description: "Operador registrado exitosamente",
+        });
+      }
+
+      resetForm();
       setIsDialogOpen(false);
     } catch (error) {
       console.error("Error submitting operator:", error);
       toast({
         title: "Error",
-        description: "No se pudo registrar el operador",
+        description: editingOperator ? "No se pudo actualizar el operador" : "No se pudo registrar el operador",
         variant: "destructive",
       });
     } finally {

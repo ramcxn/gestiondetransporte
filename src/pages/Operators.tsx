@@ -513,7 +513,7 @@ export default function Operators() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contract-pdf">Documentos del Contrato (PDF)</Label>
+                <Label htmlFor="contract-pdf">Documentos del Contrato (PDF){editingOperator ? " (opcional, deja vacío para conservar el actual)" : ""}</Label>
                 <Input
                   id="contract-pdf"
                   type="file"

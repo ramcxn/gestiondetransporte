@@ -1,0 +1,2 @@
+ALTER TABLE public.visitas DROP CONSTRAINT IF EXISTS visitas_estado_check;
+ALTER TABLE public.visitas ADD CONSTRAINT visitas_estado_check CHECK (estado = ANY (ARRAY['en_instalaciones'::text, 'salio'::text, 'programada'::text]));

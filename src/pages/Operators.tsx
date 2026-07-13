@@ -765,16 +765,26 @@ export default function Operators() {
                           Ver QR
                         </Button>
                         {userRole === "admin" && (
-                          <Button 
-                            size="sm" 
-                            variant="destructive"
-                            onClick={() => {
-                              setOperatorToDelete(operator);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEditDialog(operator)}
+                            >
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setOperatorToDelete(operator);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>

@@ -229,10 +229,33 @@ export default function Visits() {
         }
       }
 
-      const qrExpiraAt =
-        vigencia === "frecuente"
-          ? null
-          : new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+      let qrExpiraAt: string | null;
+      if (vigencia === "frecuente") {
+        qrExpiraAt = null;
+      } else if (vigencia === "custom") {
+        if (!vigenciaFecha) {
+          toast({
+            title: "Fecha requerida",
+            description: "Selecciona la fecha y hora de expiración del pase QR",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+        const chosen = new Date(vigenciaFecha);
+        if (isNaN(chosen.getTime()) || chosen.getTime() <= Date.now()) {
+          toast({
+            title: "Fecha inválida",
+            description: "La fecha de expiración debe ser posterior a ahora",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+        qrExpiraAt = chosen.toISOString();
+      } else {
+        qrExpiraAt = new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+      }
 
       const { data: inserted, error } = await supabase
         .from("visitas")

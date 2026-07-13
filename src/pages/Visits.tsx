@@ -41,6 +41,9 @@ export default function Visits() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [passVisit, setPassVisit] = useState<Visit | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scannedVisit, setScannedVisit] = useState<Visit | null>(null);
+  const [confirmingEntry, setConfirmingEntry] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -50,6 +53,8 @@ export default function Visits() {
     motivo: "",
     area_visita: "",
   });
+  const [vigencia, setVigencia] = useState<"1" | "7" | "30" | "frecuente">("1");
+  const [preRegistro, setPreRegistro] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);

@@ -508,12 +508,42 @@ export default function Visits() {
                 </p>
               </div>
             </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
+              <div className="space-y-2">
+                <Label>Vigencia del pase QR</Label>
+                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "frecuente") => setVigencia(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 día</SelectItem>
+                    <SelectItem value="7">7 días</SelectItem>
+                    <SelectItem value="30">30 días</SelectItem>
+                    <SelectItem value="frecuente">Frecuente (no expira)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Modo de registro</Label>
+                <Select value={preRegistro ? "pre" : "ahora"} onValueChange={(v) => setPreRegistro(v === "pre")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ahora">Registrar ingreso ahora</SelectItem>
+                    <SelectItem value="pre">Pre-registro (enviar QR, ingresa después)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
               disabled={submitting || uploadingImage}
             >
-              {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : "Registrar Entrada"}
+              {submitting ? "Registrando..." : uploadingImage ? "Subiendo imagen..." : preRegistro ? "Generar pase QR" : "Registrar Entrada"}
             </Button>
           </form>
         </CardContent>

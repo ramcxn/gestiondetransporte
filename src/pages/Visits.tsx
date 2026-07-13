@@ -508,7 +508,16 @@ export default function Visits() {
                       </div>
                     </div>
                     {visit.estado === "en_instalaciones" && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => setPassVisit(visit)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <QrCode className="h-4 w-4 mr-1" />
+                          Pase QR
+                        </Button>
                         <Button
                           size="sm"
                           variant="secondary"

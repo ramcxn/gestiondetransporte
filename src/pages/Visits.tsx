@@ -281,6 +281,79 @@ export default function Visits() {
     }
   };
 
+  const handleScan = async (raw: string) => {
+    setScanOpen(false);
+    let visitId: string | null = null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed?.type === "VISITA" && parsed?.id) visitId = parsed.id;
+    } catch {
+      // Not JSON, try as plain UUID
+      if (/^[0-9a-f-]{20,}$/i.test(raw.trim())) visitId = raw.trim();
+    }
+
+    if (!visitId) {
+      toast({
+        title: "QR no válido",
+        description: "El código escaneado no corresponde a un pase de acceso.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("visitas")
+      .select("*")
+      .eq("id", visitId)
+      .maybeSingle();
+
+    if (error || !data) {
+      toast({
+        title: "No encontrado",
+        description: "No se encontró una visita con ese código.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.qr_expira_at && new Date(data.qr_expira_at).getTime() < Date.now()) {
+      toast({
+        title: "Pase expirado",
+        description: `Este pase venció el ${new Date(data.qr_expira_at).toLocaleString("es-MX")}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setScannedVisit(data as Visit);
+  };
+
+  const confirmScannedEntry = async () => {
+    if (!scannedVisit) return;
+    setConfirmingEntry(true);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("visitas")
+        .update({
+          estado: "en_instalaciones",
+          qr_usado_at: now,
+        })
+        .eq("id", scannedVisit.id);
+      if (error) throw error;
+      toast({
+        title: "Ingreso registrado",
+        description: `${scannedVisit.nombre} ha ingresado correctamente.`,
+      });
+      setScannedVisit(null);
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "No se pudo registrar el ingreso", variant: "destructive" });
+    } finally {
+      setConfirmingEntry(false);
+    }
+  };
+
   const handleExit = async (visitId: string) => {
     try {
       const { error } = await supabase

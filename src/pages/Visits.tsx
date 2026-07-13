@@ -536,7 +536,7 @@ export default function Visits() {
             <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
               <div className="space-y-2">
                 <Label>Vigencia del pase QR</Label>
-                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "frecuente") => setVigencia(v)}>
+                <Select value={vigencia} onValueChange={(v: "1" | "7" | "30" | "custom" | "frecuente") => setVigencia(v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -544,9 +544,21 @@ export default function Visits() {
                     <SelectItem value="1">1 día</SelectItem>
                     <SelectItem value="7">7 días</SelectItem>
                     <SelectItem value="30">30 días</SelectItem>
+                    <SelectItem value="custom">Fecha específica…</SelectItem>
                     <SelectItem value="frecuente">Frecuente (no expira)</SelectItem>
                   </SelectContent>
                 </Select>
+                {vigencia === "custom" && (
+                  <Input
+                    type="datetime-local"
+                    value={vigenciaFecha}
+                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+                      .toISOString()
+                      .slice(0, 16)}
+                    onChange={(e) => setVigenciaFecha(e.target.value)}
+                    required
+                  />
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Modo de registro</Label>

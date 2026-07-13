@@ -399,7 +399,13 @@ export default function Visits() {
             <p className="text-muted-foreground">Control de acceso con registro fotográfico</p>
           </div>
         </div>
-        <VisitsReportDialog />
+        <div className="flex gap-2">
+          <Button variant="default" onClick={() => setScanOpen(true)}>
+            <ScanLine className="h-4 w-4 mr-2" />
+            Escanear pase QR
+          </Button>
+          <VisitsReportDialog />
+        </div>
       </div>
 
       <Card className="shadow-card">

@@ -27,6 +27,8 @@ interface Visit {
   created_at: string;
   fecha_salida: string | null;
   created_by: string;
+  qr_expira_at: string | null;
+  qr_usado_at: string | null;
   creator_name?: string;
 }
 

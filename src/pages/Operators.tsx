@@ -541,7 +541,7 @@ export default function Operators() {
                   className="bg-primary hover:bg-primary/90"
                   disabled={submitting || uploadingPDF}
                 >
-                  {submitting ? "Registrando..." : uploadingPDF ? "Subiendo PDF..." : "Registrar Operador"}
+                  {submitting ? (editingOperator ? "Actualizando..." : "Registrando...") : uploadingPDF ? "Subiendo PDF..." : (editingOperator ? "Actualizar Operador" : "Registrar Operador")}
                 </Button>
               </div>
             </form>

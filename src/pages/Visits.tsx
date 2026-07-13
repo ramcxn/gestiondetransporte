@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Building2, Clock, User, LogOut, Camera, X, Eye } from "lucide-react";
+import { Users, Building2, Clock, User, LogOut, Camera, X, Eye, QrCode } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import VisitsReportDialog from "@/components/VisitsReportDialog";
+import VisitPass from "@/components/VisitPass";
 
 interface Visit {
   id: string;
@@ -36,6 +37,7 @@ export default function Visits() {
   const [showCamera, setShowCamera] = useState(false);
   const [clientId, setClientId] = useState<string | null>(null);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [passVisit, setPassVisit] = useState<Visit | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -218,7 +220,7 @@ export default function Visits() {
         }
       }
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("visitas")
         .insert({
           nombre: formData.nombre,
@@ -230,7 +232,9 @@ export default function Visits() {
           estado: 'en_instalaciones',
           created_by: user.id,
           client_id: clientId,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
@@ -238,6 +242,10 @@ export default function Visits() {
         title: "Éxito",
         description: `${visitorType === "visitante" ? "Visitante" : "Proveedor"} registrado exitosamente`,
       });
+
+      if (inserted) {
+        setPassVisit(inserted as Visit);
+      }
 
       setFormData({
         nombre: "",
@@ -500,7 +508,16 @@ export default function Visits() {
                       </div>
                     </div>
                     {visit.estado === "en_instalaciones" && (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => setPassVisit(visit)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          <QrCode className="h-4 w-4 mr-1" />
+                          Pase QR
+                        </Button>
                         <Button
                           size="sm"
                           variant="secondary"
@@ -702,6 +719,12 @@ export default function Visits() {
           )}
         </DialogContent>
       </Dialog>
+
+      <VisitPass
+        open={!!passVisit}
+        onOpenChange={(open) => !open && setPassVisit(null)}
+        visit={passVisit}
+      />
     </div>
   );
 }

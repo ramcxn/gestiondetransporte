@@ -228,6 +228,11 @@ export default function Visits() {
         }
       }
 
+      const qrExpiraAt =
+        vigencia === "frecuente"
+          ? null
+          : new Date(Date.now() + parseInt(vigencia, 10) * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: inserted, error } = await supabase
         .from("visitas")
         .insert({
@@ -237,9 +242,10 @@ export default function Visits() {
           motivo: formData.motivo,
           area_visita: formData.area_visita,
           credencial_url: credencialUrl,
-          estado: 'en_instalaciones',
+          estado: preRegistro ? 'programada' : 'en_instalaciones',
           created_by: user.id,
           client_id: clientId,
+          qr_expira_at: qrExpiraAt,
         })
         .select()
         .single();

@@ -1158,6 +1158,19 @@ export default function Trips() {
                   </div>
                 )}
               </div>
+
+              {/* Historial de ubicaciones registradas por el operador */}
+              <div className="pt-4 border-t">
+                <Label className="text-muted-foreground mb-2 block">
+                  Historial de ubicaciones (auditoría)
+                </Label>
+                {mapboxToken ? (
+                  <TripLocationHistoryMap viajeId={selectedTrip.id} mapboxToken={mapboxToken} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">Cargando mapa…</p>
+                )}
+              </div>
+
               
               {/* Botones de cambio de estado */}
               <div className="space-y-3 pt-4 border-t">

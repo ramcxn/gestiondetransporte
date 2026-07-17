@@ -1207,7 +1207,7 @@ export default function Trips() {
                 )}
                 {selectedTrip.direccion_carga && (
                   <div className="md:col-span-2">
-                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-green-600" /> Dirección de carga</Label>
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-green-600" />Dirección de carga</Label>
                     <p className="text-sm">{selectedTrip.direccion_carga}</p>
                     {selectedTrip.lat_carga != null && selectedTrip.lng_carga != null && (
                       <a
@@ -1222,7 +1222,7 @@ export default function Trips() {
                 )}
                 {selectedTrip.direccion_descarga && (
                   <div className="md:col-span-2">
-                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-red-600" /> Dirección de descarga</Label>
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-red-600" />Dirección de descarga</Label>
                     <p className="text-sm">{selectedTrip.direccion_descarga}</p>
                     {selectedTrip.lat_descarga != null && selectedTrip.lng_descarga != null && (
                       <a

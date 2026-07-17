@@ -119,7 +119,14 @@ export default function Trips() {
     sucursal: "",
     ruta_id: "",
     unidad_negocio: "HH Express",
+    direccion_carga: "",
+    lat_carga: null as number | null,
+    lng_carga: null as number | null,
+    direccion_descarga: "",
+    lat_descarga: null as number | null,
+    lng_descarga: null as number | null,
   });
+
 
   const [locationUpdate, setLocationUpdate] = useState("");
 

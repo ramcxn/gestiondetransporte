@@ -427,6 +427,10 @@ function TripCard({
   const [uploading, setUploading] = useState(false);
   const [geoError, setGeoError] = useState<GeoError | null>(null);
   const [pendingEstado, setPendingEstado] = useState<string | null>(null);
+  const [tracking, setTracking] = useState(false);
+  const [lastTrackPoint, setLastTrackPoint] = useState<{ lat: number; lng: number; ts: number } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastSentRef = useRef<number>(0);
 
   const LAST_GPS_KEY = `operador_last_gps_${operadorId}`;
 

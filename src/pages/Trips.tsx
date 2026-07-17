@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
 import TripLocationHistoryMap from "@/components/TripLocationHistoryMap";
 import TripAuditLog from "@/components/TripAuditLog";
+import AddressPicker from "@/components/AddressPicker";
 import { z } from "zod";
 
 const tripSchema = z.object({

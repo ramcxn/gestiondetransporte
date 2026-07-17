@@ -678,26 +678,6 @@ export default function Trips() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="origen">Origen</Label>
-                  <Input
-                    id="origen"
-                    placeholder="Ciudad, Estado"
-                    value={formData.origen}
-                    onChange={(e) => setFormData({ ...formData, origen: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="destino">Destino</Label>
-                  <Input
-                    id="destino"
-                    placeholder="Ciudad, Estado"
-                    value={formData.destino}
-                    onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
-                    required
-                  />
-                </div>
                 <div className="md:col-span-2">
                   {mapboxToken ? (
                     <AddressPicker

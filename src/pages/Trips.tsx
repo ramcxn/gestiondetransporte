@@ -707,12 +707,12 @@ export default function Trips() {
                       lat={formData.lat_carga}
                       lng={formData.lng_carga}
                       markerColor="#16a34a"
-                      onChange={(v) => setFormData({
-                        ...formData,
+                      onChange={(v) => setFormData((prev) => ({
+                        ...prev,
                         direccion_carga: v.address,
                         lat_carga: v.lat,
                         lng_carga: v.lng,
-                      })}
+                      }))}
                     />
                   ) : (
                     <p className="text-xs text-muted-foreground">Cargando mapa…</p>
@@ -727,12 +727,12 @@ export default function Trips() {
                       lat={formData.lat_descarga}
                       lng={formData.lng_descarga}
                       markerColor="#dc2626"
-                      onChange={(v) => setFormData({
-                        ...formData,
+                      onChange={(v) => setFormData((prev) => ({
+                        ...prev,
                         direccion_descarga: v.address,
                         lat_descarga: v.lat,
                         lng_descarga: v.lng,
-                      })}
+                      }))}
                     />
                   )}
                 </div>

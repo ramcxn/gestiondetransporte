@@ -617,6 +617,58 @@ function TripCard({
             disabled={uploading}
           />
         </div>
+
+        {geoError && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Ubicación no disponible
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="destructive">
+                  <AlertDescription>{geoError.message}</AlertDescription>
+                </Alert>
+                {geoError.code === 1 && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">¿Cómo habilitar la ubicación?</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      <li>Activa el GPS del dispositivo.</li>
+                      <li>En el navegador, toca el candado 🔒 junto a la URL → Permisos → Ubicación → Permitir.</li>
+                      <li>Recarga la página y vuelve a intentar.</li>
+                    </ul>
+                  </div>
+                )}
+                {(() => {
+                  const last = readLastGps();
+                  return last ? (
+                    <p className="text-xs text-muted-foreground">
+                      Último GPS válido: {last.lat.toFixed(5)}, {last.lng.toFixed(5)} — {new Date(last.ts).toLocaleString()}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hay un GPS previo guardado en este dispositivo.</p>
+                  );
+                })()}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button size="sm" onClick={retryGeo} disabled={busy}>
+                    Reintentar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={useLastKnown} disabled={busy || !readLastGps()}>
+                    Usar último GPS
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={continueWithoutGeo} disabled={busy}>
+                    Continuar sin ubicación
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={cancelGeo} disabled={busy}>
+                    Cancelar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -2586,6 +2586,10 @@ export type Database = {
         Args: { _table_name: string }
         Returns: string[]
       }
+      operador_actualizar_estado_viaje: {
+        Args: { _nuevo_estado: string; _qr_code: string; _viaje_id: string }
+        Returns: Json
+      }
       operador_registrar_documento: {
         Args: {
           _archivo_url: string

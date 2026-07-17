@@ -421,19 +421,46 @@ function TripCard({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  const getPosition = (): Promise<{ lat: number; lng: number } | null> =>
+    new Promise((resolve) => {
+      if (!("geolocation" in navigator)) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    });
+
   const setEstado = async (nuevo: string) => {
     setBusy(true);
+    const coords = await getPosition();
+    if (!coords) {
+      toast({
+        title: "Ubicación no disponible",
+        description: "Activa el GPS/permisos de ubicación para registrar la acción.",
+        variant: "destructive",
+      });
+    }
     const { data, error } = await supabase.rpc("operador_actualizar_estado_viaje", {
-      _qr_code: qr, _viaje_id: viaje.id, _nuevo_estado: nuevo,
+      _qr_code: qr,
+      _viaje_id: viaje.id,
+      _nuevo_estado: nuevo,
+      _lat: coords?.lat ?? null,
+      _lng: coords?.lng ?? null,
+      _ubicacion_texto: coords ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}` : null,
     });
     setBusy(false);
     if (error || (data as any)?.error) {
       toast({ title: "Error", description: (data as any)?.error || error?.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Estado actualizado" });
+    toast({
+      title: "Estado actualizado",
+      description: coords ? `Ubicación registrada: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : "Sin ubicación",
+    });
     onChanged();
   };
+
 
   const handleEvidence = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

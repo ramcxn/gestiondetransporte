@@ -39,6 +39,7 @@ import WarehouseInventory from "./pages/WarehouseInventory";
 import WarehouseReports from "./pages/WarehouseReports";
 import CorrectiveActions from "./pages/CorrectiveActions";
 import FacilityInspections from "./pages/FacilityInspections";
+import OperatorPortal from "./pages/OperatorPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/portal-operador" element={<OperatorPortal />} />
             <Route
               path="/"
               element={

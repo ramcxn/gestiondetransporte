@@ -701,7 +701,7 @@ export default function Trips() {
                 <div className="md:col-span-2">
                   {mapboxToken ? (
                     <AddressPicker
-                      label="Dirección de carga (pin ajustable)"
+                      label="Dirección de carga "
                       mapboxToken={mapboxToken}
                       address={formData.direccion_carga}
                       lat={formData.lat_carga}
@@ -721,7 +721,7 @@ export default function Trips() {
                 <div className="md:col-span-2">
                   {mapboxToken && (
                     <AddressPicker
-                      label="Dirección de descarga (pin ajustable)"
+                      label="Dirección de descarga"
                       mapboxToken={mapboxToken}
                       address={formData.direccion_descarga}
                       lat={formData.lat_descarga}

@@ -188,20 +188,13 @@ export default function OperatorPortal() {
             <h2 className="text-lg font-semibold">Mis viajes</h2>
             {data.viajes.length === 0 && <p className="text-sm text-muted-foreground">Sin viajes registrados.</p>}
             {data.viajes.map((v) => (
-              <Card key={v.id}>
-                <CardContent className="p-4 space-y-1">
-                  <div className="flex justify-between items-start">
-                    <div className="font-medium flex items-center gap-1">
-                      <MapPin className="h-4 w-4" /> {v.origen} → {v.destino}
-                    </div>
-                    <Badge variant={v.estado === "completado" ? "secondary" : "default"}>{v.estado}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Unidad: {v.unidad} · Cliente: {v.cliente || "-"}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" /> Salida: {v.fecha_salida ? new Date(v.fecha_salida).toLocaleDateString() : "-"}
-                  </p>
-                </CardContent>
-              </Card>
+              <TripCard
+                key={v.id}
+                viaje={v}
+                qr={qr!}
+                operadorId={op.id}
+                onChanged={refresh}
+              />
             ))}
           </TabsContent>
 

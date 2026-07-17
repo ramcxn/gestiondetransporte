@@ -325,6 +325,12 @@ export default function Trips() {
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
           created_by: user.id,
+          direccion_carga: formData.direccion_carga || null,
+          lat_carga: formData.lat_carga,
+          lng_carga: formData.lng_carga,
+          direccion_descarga: formData.direccion_descarga || null,
+          lat_descarga: formData.lat_descarga,
+          lng_descarga: formData.lng_descarga,
         });
 
       if (error) throw error;

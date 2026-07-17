@@ -708,6 +708,21 @@ function TripCard({
           <Calendar className="h-3 w-3" /> Salida: {viaje.fecha_salida ? new Date(viaje.fecha_salida).toLocaleDateString() : "-"}
         </p>
 
+        {tracking && (
+          <div className="flex items-center gap-2 rounded-md bg-primary/10 border border-primary/30 px-2 py-1 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+            <span className="font-medium">Rastreo en vivo activo</span>
+            {lastTrackPoint && (
+              <span className="text-muted-foreground ml-auto">
+                {lastTrackPoint.lat.toFixed(4)}, {lastTrackPoint.lng.toFixed(4)} · {new Date(lastTrackPoint.ts).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        )}
+
         {!finalizado && (
           <div className="grid grid-cols-3 gap-2 pt-2">
             <Button size="sm" variant={viaje.estado === "en_zona_carga" ? "default" : "outline"}

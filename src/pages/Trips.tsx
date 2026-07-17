@@ -285,8 +285,8 @@ export default function Trips() {
       const validatedData = tripSchema.parse({
         operador: formData.operador,
         unidad: formData.unidad,
-        origen: formData.origen,
-        destino: formData.destino,
+        origen: formData.direccion_carga || formData.origen,
+        destino: formData.direccion_descarga || formData.destino,
         fecha_salida: formData.fecha_salida,
         fecha_llegada_estimada: formData.fecha_llegada_estimada,
         distancia_km: formData.distancia_km,
@@ -677,26 +677,6 @@ export default function Trips() {
                       )}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="origen">Origen</Label>
-                  <Input
-                    id="origen"
-                    placeholder="Ciudad, Estado"
-                    value={formData.origen}
-                    onChange={(e) => setFormData({ ...formData, origen: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="destino">Destino</Label>
-                  <Input
-                    id="destino"
-                    placeholder="Ciudad, Estado"
-                    value={formData.destino}
-                    onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
-                    required
-                  />
                 </div>
                 <div className="md:col-span-2">
                   {mapboxToken ? (

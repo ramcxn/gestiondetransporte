@@ -535,12 +535,19 @@ function TripCard({
     const { coords, error } = await getPosition();
     setBusy(false);
     if (error) {
+      await logIntento(
+        nuevo, "error",
+        { _viaje_id: viaje.id, _nuevo_estado: nuevo, fase: "geolocalizacion" },
+        { geo_error: error }, null, "ninguna",
+        `geo_${error.code}`, error.message,
+      );
       setPendingEstado(nuevo);
       setGeoError(error);
       return;
     }
     await submitEstado(nuevo, coords, "gps");
   };
+
 
   const retryGeo = async () => {
     if (!pendingEstado) return;

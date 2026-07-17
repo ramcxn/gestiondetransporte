@@ -588,6 +588,78 @@ function TripCard({
 
   const cancelGeo = () => { setGeoError(null); setPendingEstado(null); };
 
+  // Tracking continuo mientras el viaje esté "en_transito"
+  useEffect(() => {
+    if (viaje.estado !== "en_transito") {
+      if (watchIdRef.current !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setTracking(false);
+      return;
+    }
+    if (!("geolocation" in navigator)) return;
+
+    setTracking(true);
+    const MIN_INTERVAL_MS = 60_000; // enviar como máx. 1 punto/min
+    const MIN_DISTANCE_M = 40;
+
+    const distMeters = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+      const R = 6371000;
+      const toRad = (x: number) => (x * Math.PI) / 180;
+      const dLat = toRad(b.lat - a.lat);
+      const dLng = toRad(b.lng - a.lng);
+      const s =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(s));
+    };
+
+    let lastPoint: { lat: number; lng: number } | null = null;
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        saveLastGps(c);
+        const now = Date.now();
+        const farEnough = !lastPoint || distMeters(lastPoint, c) >= MIN_DISTANCE_M;
+        const oldEnough = now - lastSentRef.current >= MIN_INTERVAL_MS;
+        if (!(farEnough && oldEnough) && lastSentRef.current !== 0) return;
+
+        lastSentRef.current = now;
+        lastPoint = c;
+        setLastTrackPoint({ ...c, ts: now });
+        try {
+          await supabase.rpc("operador_registrar_ubicacion_tracking", {
+            _qr_code: qr,
+            _viaje_id: viaje.id,
+            _lat: c.lat,
+            _lng: c.lng,
+            _accuracy: pos.coords.accuracy ?? null,
+            _speed: pos.coords.speed ?? null,
+          });
+        } catch (e) {
+          console.warn("tracking upload failed", e);
+        }
+      },
+      (err) => {
+        console.warn("watchPosition error", err);
+      },
+      { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 }
+    );
+
+    return () => {
+      if (watchIdRef.current !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setTracking(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viaje.estado, viaje.id, qr]);
+
+
+
 
   const handleEvidence = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

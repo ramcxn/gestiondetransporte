@@ -131,7 +131,7 @@ export default function AddressPicker({
 
   return (
     <div className="space-y-2">
-      <Label className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {label}</Label>
+      <Label className="flex items-center gap-1"><MapPin className="h-4 w-4" />{label}</Label>
       <div className="flex gap-2">
         <Input
           value={query}

@@ -1172,6 +1172,15 @@ export default function Trips() {
                 )}
               </div>
 
+              <div className="pt-4 border-t">
+                <Label className="text-muted-foreground mb-2 block">
+                  Bitácora de acciones del operador (auditoría)
+                </Label>
+                <TripAuditLog viajeId={selectedTrip.id} />
+              </div>
+
+
+
               
               {/* Botones de cambio de estado */}
               <div className="space-y-3 pt-4 border-t">

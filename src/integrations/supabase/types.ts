@@ -2722,6 +2722,17 @@ export type Database = {
         }
         Returns: string
       }
+      operador_registrar_ubicacion_tracking: {
+        Args: {
+          _accuracy?: number
+          _lat: number
+          _lng: number
+          _qr_code: string
+          _speed?: number
+          _viaje_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "usuario"

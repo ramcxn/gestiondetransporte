@@ -1205,6 +1205,36 @@ export default function Trips() {
                     <p className="font-semibold">{new Date(selectedTrip.fecha_llegada_estimada).toLocaleDateString("es-MX")}</p>
                   </div>
                 )}
+                {selectedTrip.direccion_carga && (
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-green-600" /> Dirección de carga</Label>
+                    <p className="text-sm">{selectedTrip.direccion_carga}</p>
+                    {selectedTrip.lat_carga != null && selectedTrip.lng_carga != null && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedTrip.lat_carga},${selectedTrip.lng_carga}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-primary underline"
+                      >
+                        Ver en mapa ({selectedTrip.lat_carga.toFixed(5)}, {selectedTrip.lng_carga.toFixed(5)})
+                      </a>
+                    )}
+                  </div>
+                )}
+                {selectedTrip.direccion_descarga && (
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-red-600" /> Dirección de descarga</Label>
+                    <p className="text-sm">{selectedTrip.direccion_descarga}</p>
+                    {selectedTrip.lat_descarga != null && selectedTrip.lng_descarga != null && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedTrip.lat_descarga},${selectedTrip.lng_descarga}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-primary underline"
+                      >
+                        Ver en mapa ({selectedTrip.lat_descarga.toFixed(5)}, {selectedTrip.lng_descarga.toFixed(5)})
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="md:col-span-2">
                   <Label className="text-muted-foreground">Estado</Label>
                   <Badge className="mt-1" variant={selectedTrip.estado === "en_transito" ? "default" : "outline"}>

@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
 import TripLocationHistoryMap from "@/components/TripLocationHistoryMap";
+import TripAuditLog from "@/components/TripAuditLog";
 import { z } from "zod";
 
 const tripSchema = z.object({
@@ -1170,6 +1171,15 @@ export default function Trips() {
                   <p className="text-sm text-muted-foreground">Cargando mapa…</p>
                 )}
               </div>
+
+              <div className="pt-4 border-t">
+                <Label className="text-muted-foreground mb-2 block">
+                  Bitácora de acciones del operador (auditoría)
+                </Label>
+                <TripAuditLog viajeId={selectedTrip.id} />
+              </div>
+
+
 
               
               {/* Botones de cambio de estado */}

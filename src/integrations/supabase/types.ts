@@ -2339,6 +2339,63 @@ export type Database = {
           },
         ]
       }
+      viaje_bitacora_intentos: {
+        Row: {
+          accion: string
+          client_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          fuente_ubicacion: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          operador_id: string | null
+          payload: Json | null
+          qr_code: string | null
+          resultado: string
+          server_response: Json | null
+          user_agent: string | null
+          viaje_id: string | null
+        }
+        Insert: {
+          accion: string
+          client_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          fuente_ubicacion?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          operador_id?: string | null
+          payload?: Json | null
+          qr_code?: string | null
+          resultado: string
+          server_response?: Json | null
+          user_agent?: string | null
+          viaje_id?: string | null
+        }
+        Update: {
+          accion?: string
+          client_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          fuente_ubicacion?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          operador_id?: string | null
+          payload?: Json | null
+          qr_code?: string | null
+          resultado?: string
+          server_response?: Json | null
+          user_agent?: string | null
+          viaje_id?: string | null
+        }
+        Relationships: []
+      }
       viajes: {
         Row: {
           client_id: string
@@ -2647,6 +2704,23 @@ export type Database = {
           _viaje_id: string
         }
         Returns: Json
+      }
+      operador_registrar_intento_bitacora: {
+        Args: {
+          _accion: string
+          _error_code?: string
+          _error_message?: string
+          _fuente_ubicacion?: string
+          _lat?: number
+          _lng?: number
+          _payload?: Json
+          _qr_code: string
+          _resultado: string
+          _server_response?: Json
+          _user_agent?: string
+          _viaje_id: string
+        }
+        Returns: string
       }
     }
     Enums: {

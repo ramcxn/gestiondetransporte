@@ -1303,6 +1303,42 @@ export type Database = {
           },
         ]
       }
+      operador_ubicaciones_historial: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          evento: string
+          id: string
+          lat: number | null
+          lng: number | null
+          operador_id: string
+          ubicacion_texto: string | null
+          viaje_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          evento: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          operador_id: string
+          ubicacion_texto?: string | null
+          viaje_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          evento?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          operador_id?: string
+          ubicacion_texto?: string | null
+          viaje_id?: string | null
+        }
+        Relationships: []
+      }
       operadores: {
         Row: {
           client_id: string

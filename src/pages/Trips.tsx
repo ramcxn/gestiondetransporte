@@ -285,8 +285,8 @@ export default function Trips() {
       const validatedData = tripSchema.parse({
         operador: formData.operador,
         unidad: formData.unidad,
-        origen: formData.origen,
-        destino: formData.destino,
+        origen: formData.direccion_carga || formData.origen,
+        destino: formData.direccion_descarga || formData.destino,
         fecha_salida: formData.fecha_salida,
         fecha_llegada_estimada: formData.fecha_llegada_estimada,
         distancia_km: formData.distancia_km,

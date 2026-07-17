@@ -347,6 +347,12 @@ export default function Trips() {
         sucursal: "",
         ruta_id: "",
         unidad_negocio: "HH Express",
+        direccion_carga: "",
+        lat_carga: null,
+        lng_carga: null,
+        direccion_descarga: "",
+        lat_descarga: null,
+        lng_descarga: null,
       });
       setIsDialogOpen(false);
     } catch (error) {

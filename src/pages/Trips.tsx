@@ -779,7 +779,7 @@ export default function Trips() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente CTPAT</Label>
+                  <Label htmlFor="cliente">Cliente</Label>
                   <Select
                     value={formData.cliente}
                     onValueChange={(value) => setFormData({ ...formData, cliente: value })}

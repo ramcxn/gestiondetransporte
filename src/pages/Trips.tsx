@@ -50,6 +50,12 @@ interface Trip {
   ruta_id: string | null;
   created_at: string;
   unidad_negocio: string;
+  direccion_carga?: string | null;
+  lat_carga?: number | null;
+  lng_carga?: number | null;
+  direccion_descarga?: string | null;
+  lat_descarga?: number | null;
+  lng_descarga?: number | null;
 }
 
 interface Route {

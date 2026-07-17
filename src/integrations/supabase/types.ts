@@ -2403,6 +2403,8 @@ export type Database = {
           created_at: string
           created_by: string
           destino: string
+          direccion_carga: string | null
+          direccion_descarga: string | null
           distancia_km: number
           estado: string
           fecha_llegada_estimada: string | null
@@ -2410,6 +2412,10 @@ export type Database = {
           fecha_salida: string
           flete: number
           id: string
+          lat_carga: number | null
+          lat_descarga: number | null
+          lng_carga: number | null
+          lng_descarga: number | null
           operador: string
           origen: string
           ruta_id: string | null
@@ -2425,6 +2431,8 @@ export type Database = {
           created_at?: string
           created_by: string
           destino: string
+          direccion_carga?: string | null
+          direccion_descarga?: string | null
           distancia_km: number
           estado?: string
           fecha_llegada_estimada?: string | null
@@ -2432,6 +2440,10 @@ export type Database = {
           fecha_salida: string
           flete: number
           id?: string
+          lat_carga?: number | null
+          lat_descarga?: number | null
+          lng_carga?: number | null
+          lng_descarga?: number | null
           operador: string
           origen: string
           ruta_id?: string | null
@@ -2447,6 +2459,8 @@ export type Database = {
           created_at?: string
           created_by?: string
           destino?: string
+          direccion_carga?: string | null
+          direccion_descarga?: string | null
           distancia_km?: number
           estado?: string
           fecha_llegada_estimada?: string | null
@@ -2454,6 +2468,10 @@ export type Database = {
           fecha_salida?: string
           flete?: number
           id?: string
+          lat_carga?: number | null
+          lat_descarga?: number | null
+          lng_carga?: number | null
+          lng_descarga?: number | null
           operador?: string
           origen?: string
           ruta_id?: string | null

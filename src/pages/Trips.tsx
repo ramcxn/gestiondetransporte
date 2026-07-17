@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
 import TripLocationHistoryMap from "@/components/TripLocationHistoryMap";
 import TripAuditLog from "@/components/TripAuditLog";
+import AddressPicker from "@/components/AddressPicker";
 import { z } from "zod";
 
 const tripSchema = z.object({
@@ -49,6 +50,12 @@ interface Trip {
   ruta_id: string | null;
   created_at: string;
   unidad_negocio: string;
+  direccion_carga?: string | null;
+  lat_carga?: number | null;
+  lng_carga?: number | null;
+  direccion_descarga?: string | null;
+  lat_descarga?: number | null;
+  lng_descarga?: number | null;
 }
 
 interface Route {
@@ -118,7 +125,14 @@ export default function Trips() {
     sucursal: "",
     ruta_id: "",
     unidad_negocio: "HH Express",
+    direccion_carga: "",
+    lat_carga: null as number | null,
+    lng_carga: null as number | null,
+    direccion_descarga: "",
+    lat_descarga: null as number | null,
+    lng_descarga: null as number | null,
   });
+
 
   const [locationUpdate, setLocationUpdate] = useState("");
 
@@ -317,6 +331,12 @@ export default function Trips() {
           ruta_id: formData.ruta_id || null,
           estado: 'programado',
           created_by: user.id,
+          direccion_carga: formData.direccion_carga || null,
+          lat_carga: formData.lat_carga,
+          lng_carga: formData.lng_carga,
+          direccion_descarga: formData.direccion_descarga || null,
+          lat_descarga: formData.lat_descarga,
+          lng_descarga: formData.lng_descarga,
         });
 
       if (error) throw error;
@@ -339,6 +359,12 @@ export default function Trips() {
         sucursal: "",
         ruta_id: "",
         unidad_negocio: "HH Express",
+        direccion_carga: "",
+        lat_carga: null,
+        lng_carga: null,
+        direccion_descarga: "",
+        lat_descarga: null,
+        lng_descarga: null,
       });
       setIsDialogOpen(false);
     } catch (error) {
@@ -671,6 +697,44 @@ export default function Trips() {
                     onChange={(e) => setFormData({ ...formData, destino: e.target.value })}
                     required
                   />
+                </div>
+                <div className="md:col-span-2">
+                  {mapboxToken ? (
+                    <AddressPicker
+                      label="Dirección de carga (pin ajustable)"
+                      mapboxToken={mapboxToken}
+                      address={formData.direccion_carga}
+                      lat={formData.lat_carga}
+                      lng={formData.lng_carga}
+                      markerColor="#16a34a"
+                      onChange={(v) => setFormData({
+                        ...formData,
+                        direccion_carga: v.address,
+                        lat_carga: v.lat,
+                        lng_carga: v.lng,
+                      })}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Cargando mapa…</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  {mapboxToken && (
+                    <AddressPicker
+                      label="Dirección de descarga (pin ajustable)"
+                      mapboxToken={mapboxToken}
+                      address={formData.direccion_descarga}
+                      lat={formData.lat_descarga}
+                      lng={formData.lng_descarga}
+                      markerColor="#dc2626"
+                      onChange={(v) => setFormData({
+                        ...formData,
+                        direccion_descarga: v.address,
+                        lat_descarga: v.lat,
+                        lng_descarga: v.lng,
+                      })}
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fecha-salida">Fecha de Salida</Label>
@@ -1139,6 +1203,36 @@ export default function Trips() {
                   <div>
                     <Label className="text-muted-foreground">Llegada Estimada</Label>
                     <p className="font-semibold">{new Date(selectedTrip.fecha_llegada_estimada).toLocaleDateString("es-MX")}</p>
+                  </div>
+                )}
+                {selectedTrip.direccion_carga && (
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-green-600" /> Dirección de carga</Label>
+                    <p className="text-sm">{selectedTrip.direccion_carga}</p>
+                    {selectedTrip.lat_carga != null && selectedTrip.lng_carga != null && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedTrip.lat_carga},${selectedTrip.lng_carga}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-primary underline"
+                      >
+                        Ver en mapa ({selectedTrip.lat_carga.toFixed(5)}, {selectedTrip.lng_carga.toFixed(5)})
+                      </a>
+                    )}
+                  </div>
+                )}
+                {selectedTrip.direccion_descarga && (
+                  <div className="md:col-span-2">
+                    <Label className="text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3 text-red-600" /> Dirección de descarga</Label>
+                    <p className="text-sm">{selectedTrip.direccion_descarga}</p>
+                    {selectedTrip.lat_descarga != null && selectedTrip.lng_descarga != null && (
+                      <a
+                        href={`https://www.google.com/maps?q=${selectedTrip.lat_descarga},${selectedTrip.lng_descarga}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-primary underline"
+                      >
+                        Ver en mapa ({selectedTrip.lat_descarga.toFixed(5)}, {selectedTrip.lng_descarga.toFixed(5)})
+                      </a>
+                    )}
                   </div>
                 )}
                 <div className="md:col-span-2">

@@ -415,39 +415,65 @@ function NotifRow({ label, fecha, warn }: { label: string; fecha?: string; warn:
   );
 }
 
+type GeoError = {
+  code: number; // 1 denied, 2 unavailable, 3 timeout, 0 unsupported
+  message: string;
+};
+
 function TripCard({
   viaje, qr, operadorId, onChanged,
 }: { viaje: any; qr: string; operadorId: string; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [geoError, setGeoError] = useState<GeoError | null>(null);
+  const [pendingEstado, setPendingEstado] = useState<string | null>(null);
 
-  const getPosition = (): Promise<{ lat: number; lng: number } | null> =>
+  const LAST_GPS_KEY = `operador_last_gps_${operadorId}`;
+
+  const readLastGps = (): { lat: number; lng: number; ts: number } | null => {
+    try {
+      const raw = localStorage.getItem(LAST_GPS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  };
+  const saveLastGps = (c: { lat: number; lng: number }) => {
+    try { localStorage.setItem(LAST_GPS_KEY, JSON.stringify({ ...c, ts: Date.now() })); } catch {}
+  };
+
+  const getPosition = (): Promise<{ coords: { lat: number; lng: number } | null; error: GeoError | null }> =>
     new Promise((resolve) => {
-      if (!("geolocation" in navigator)) return resolve(null);
+      if (!("geolocation" in navigator)) {
+        return resolve({ coords: null, error: { code: 0, message: "Este dispositivo no soporta geolocalización." } });
+      }
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => resolve(null),
+        (pos) => {
+          const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          saveLastGps(c);
+          resolve({ coords: c, error: null });
+        },
+        (err) => {
+          const map: Record<number, string> = {
+            1: "Permiso de ubicación denegado. Habilita el GPS y los permisos del navegador para esta app.",
+            2: "No se pudo determinar tu ubicación. Verifica que el GPS esté encendido y con señal.",
+            3: "Se agotó el tiempo esperando la ubicación. Intenta de nuevo en un lugar con mejor señal.",
+          };
+          resolve({ coords: null, error: { code: err.code, message: map[err.code] || err.message } });
+        },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
     });
 
-  const setEstado = async (nuevo: string) => {
+  const submitEstado = async (nuevo: string, coords: { lat: number; lng: number } | null, fuente: "gps" | "cache" | "ninguna") => {
     setBusy(true);
-    const coords = await getPosition();
-    if (!coords) {
-      toast({
-        title: "Ubicación no disponible",
-        description: "Activa el GPS/permisos de ubicación para registrar la acción.",
-        variant: "destructive",
-      });
-    }
     const { data, error } = await supabase.rpc("operador_actualizar_estado_viaje", {
       _qr_code: qr,
       _viaje_id: viaje.id,
       _nuevo_estado: nuevo,
       _lat: coords?.lat ?? null,
       _lng: coords?.lng ?? null,
-      _ubicacion_texto: coords ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}` : null,
+      _ubicacion_texto: coords
+        ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}${fuente === "cache" ? " (última conocida)" : ""}`
+        : null,
     });
     setBusy(false);
     if (error || (data as any)?.error) {
@@ -456,10 +482,59 @@ function TripCard({
     }
     toast({
       title: "Estado actualizado",
-      description: coords ? `Ubicación registrada: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : "Sin ubicación",
+      description: coords
+        ? `Ubicación ${fuente === "cache" ? "(última conocida) " : ""}registrada: ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`
+        : "Sin ubicación",
     });
     onChanged();
   };
+
+  const setEstado = async (nuevo: string) => {
+    setBusy(true);
+    const { coords, error } = await getPosition();
+    setBusy(false);
+    if (error) {
+      setPendingEstado(nuevo);
+      setGeoError(error);
+      return;
+    }
+    await submitEstado(nuevo, coords, "gps");
+  };
+
+  const retryGeo = async () => {
+    if (!pendingEstado) return;
+    setGeoError(null);
+    const nuevo = pendingEstado;
+    setBusy(true);
+    const { coords, error } = await getPosition();
+    setBusy(false);
+    if (error) { setGeoError(error); return; }
+    setPendingEstado(null);
+    await submitEstado(nuevo, coords, "gps");
+  };
+
+  const useLastKnown = async () => {
+    if (!pendingEstado) return;
+    const last = readLastGps();
+    if (!last) {
+      toast({ title: "Sin ubicación previa", description: "No hay un GPS válido guardado en este dispositivo.", variant: "destructive" });
+      return;
+    }
+    const nuevo = pendingEstado;
+    setGeoError(null);
+    setPendingEstado(null);
+    await submitEstado(nuevo, { lat: last.lat, lng: last.lng }, "cache");
+  };
+
+  const continueWithoutGeo = async () => {
+    if (!pendingEstado) return;
+    const nuevo = pendingEstado;
+    setGeoError(null);
+    setPendingEstado(null);
+    await submitEstado(nuevo, null, "ninguna");
+  };
+
+  const cancelGeo = () => { setGeoError(null); setPendingEstado(null); };
 
 
   const handleEvidence = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -542,6 +617,58 @@ function TripCard({
             disabled={uploading}
           />
         </div>
+
+        {geoError && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Ubicación no disponible
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Alert variant="destructive">
+                  <AlertDescription>{geoError.message}</AlertDescription>
+                </Alert>
+                {geoError.code === 1 && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">¿Cómo habilitar la ubicación?</p>
+                    <ul className="list-disc pl-4 space-y-0.5">
+                      <li>Activa el GPS del dispositivo.</li>
+                      <li>En el navegador, toca el candado 🔒 junto a la URL → Permisos → Ubicación → Permitir.</li>
+                      <li>Recarga la página y vuelve a intentar.</li>
+                    </ul>
+                  </div>
+                )}
+                {(() => {
+                  const last = readLastGps();
+                  return last ? (
+                    <p className="text-xs text-muted-foreground">
+                      Último GPS válido: {last.lat.toFixed(5)}, {last.lng.toFixed(5)} — {new Date(last.ts).toLocaleString()}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hay un GPS previo guardado en este dispositivo.</p>
+                  );
+                })()}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button size="sm" onClick={retryGeo} disabled={busy}>
+                    Reintentar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={useLastKnown} disabled={busy || !readLastGps()}>
+                    Usar último GPS
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={continueWithoutGeo} disabled={busy}>
+                    Continuar sin ubicación
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={cancelGeo} disabled={busy}>
+                    Cancelar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

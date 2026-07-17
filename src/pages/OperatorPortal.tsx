@@ -463,9 +463,40 @@ function TripCard({
       );
     });
 
+  const logIntento = async (
+    accion: string,
+    resultado: "exito" | "error",
+    payload: any,
+    serverResponse: any,
+    coords: { lat: number; lng: number } | null,
+    fuente: "gps" | "cache" | "ninguna",
+    errorCode?: string | null,
+    errorMessage?: string | null,
+  ) => {
+    try {
+      await supabase.rpc("operador_registrar_intento_bitacora", {
+        _qr_code: qr,
+        _viaje_id: viaje.id,
+        _accion: accion,
+        _resultado: resultado,
+        _error_code: errorCode ?? null,
+        _error_message: errorMessage ?? null,
+        _payload: payload ?? null,
+        _server_response: serverResponse ?? null,
+        _lat: coords?.lat ?? null,
+        _lng: coords?.lng ?? null,
+        _fuente_ubicacion: fuente,
+        _user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      });
+    } catch (e) {
+      // No bloquear la UI si la bitácora falla
+      console.warn("bitacora log failed", e);
+    }
+  };
+
   const submitEstado = async (nuevo: string, coords: { lat: number; lng: number } | null, fuente: "gps" | "cache" | "ninguna") => {
     setBusy(true);
-    const { data, error } = await supabase.rpc("operador_actualizar_estado_viaje", {
+    const payload = {
       _qr_code: qr,
       _viaje_id: viaje.id,
       _nuevo_estado: nuevo,
@@ -474,12 +505,21 @@ function TripCard({
       _ubicacion_texto: coords
         ? `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}${fuente === "cache" ? " (última conocida)" : ""}`
         : null,
-    });
+    };
+    const startedAt = Date.now();
+    const { data, error } = await supabase.rpc("operador_actualizar_estado_viaje", payload);
+    const durationMs = Date.now() - startedAt;
     setBusy(false);
-    if (error || (data as any)?.error) {
-      toast({ title: "Error", description: (data as any)?.error || error?.message, variant: "destructive" });
+
+    const serverResp = { data, error: error ? { message: error.message, code: (error as any).code } : null, duration_ms: durationMs };
+    const rpcErr = (data as any)?.error as string | undefined;
+
+    if (error || rpcErr) {
+      await logIntento(nuevo, "error", payload, serverResp, coords, fuente, rpcErr ?? error?.code ?? null, rpcErr ?? error?.message ?? null);
+      toast({ title: "Error", description: rpcErr || error?.message, variant: "destructive" });
       return;
     }
+    await logIntento(nuevo, "exito", payload, serverResp, coords, fuente);
     toast({
       title: "Estado actualizado",
       description: coords
@@ -488,6 +528,7 @@ function TripCard({
     });
     onChanged();
   };
+
 
   const setEstado = async (nuevo: string) => {
     setBusy(true);

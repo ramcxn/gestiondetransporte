@@ -1,0 +1,2 @@
+ALTER TABLE public.viajes DROP CONSTRAINT IF EXISTS viajes_estado_check;
+ALTER TABLE public.viajes ADD CONSTRAINT viajes_estado_check CHECK (estado IN ('programado','en_zona_carga','en_transito','completado','cancelado'));

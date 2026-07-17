@@ -692,6 +692,44 @@ export default function Trips() {
                     required
                   />
                 </div>
+                <div className="md:col-span-2">
+                  {mapboxToken ? (
+                    <AddressPicker
+                      label="Dirección de carga (pin ajustable)"
+                      mapboxToken={mapboxToken}
+                      address={formData.direccion_carga}
+                      lat={formData.lat_carga}
+                      lng={formData.lng_carga}
+                      markerColor="#16a34a"
+                      onChange={(v) => setFormData({
+                        ...formData,
+                        direccion_carga: v.address,
+                        lat_carga: v.lat,
+                        lng_carga: v.lng,
+                      })}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Cargando mapa…</p>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  {mapboxToken && (
+                    <AddressPicker
+                      label="Dirección de descarga (pin ajustable)"
+                      mapboxToken={mapboxToken}
+                      address={formData.direccion_descarga}
+                      lat={formData.lat_descarga}
+                      lng={formData.lng_descarga}
+                      markerColor="#dc2626"
+                      onChange={(v) => setFormData({
+                        ...formData,
+                        direccion_descarga: v.address,
+                        lat_descarga: v.lat,
+                        lng_descarga: v.lng,
+                      })}
+                    />
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="fecha-salida">Fecha de Salida</Label>
                   <Input

@@ -333,6 +333,42 @@ export type Database = {
         }
         Relationships: []
       }
+      contactos_emergencia_operador: {
+        Row: {
+          categoria: string
+          client_id: string | null
+          created_at: string
+          descripcion: string | null
+          id: string
+          nombre: string
+          orden: number
+          telefono: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: string
+          client_id?: string | null
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          orden?: number
+          telefono: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          client_id?: string | null
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          orden?: number
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       departamentos: {
         Row: {
           activo: boolean
@@ -1215,6 +1251,54 @@ export type Database = {
             columns: ["ubicacion_origen"]
             isOneToOne: false
             referencedRelation: "ubicaciones_almacen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operador_documentos_viaje: {
+        Row: {
+          archivo_url: string
+          client_id: string | null
+          created_at: string
+          id: string
+          notas: string | null
+          operador_id: string
+          tipo: string
+          viaje_id: string | null
+        }
+        Insert: {
+          archivo_url: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          notas?: string | null
+          operador_id: string
+          tipo: string
+          viaje_id?: string | null
+        }
+        Update: {
+          archivo_url?: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          notas?: string | null
+          operador_id?: string
+          tipo?: string
+          viaje_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operador_documentos_viaje_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operador_documentos_viaje_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
             referencedColumns: ["id"]
           },
         ]
@@ -2469,6 +2553,7 @@ export type Database = {
       generate_rondin_folio: { Args: never; Returns: string }
       generate_solicitud_folio: { Args: never; Returns: string }
       get_client_id_by_email_domain: { Args: never; Returns: string }
+      get_operador_portal_data: { Args: { _qr_code: string }; Returns: Json }
       get_user_client_id: { Args: never; Returns: string }
       has_any_module_permission: {
         Args: { _module_names: string[]; _permission: string; _user_id: string }
@@ -2500,6 +2585,16 @@ export type Database = {
       module_names_for_table: {
         Args: { _table_name: string }
         Returns: string[]
+      }
+      operador_registrar_documento: {
+        Args: {
+          _archivo_url: string
+          _notas: string
+          _qr_code: string
+          _tipo: string
+          _viaje_id: string
+        }
+        Returns: Json
       }
     }
     Enums: {

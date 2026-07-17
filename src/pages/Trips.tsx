@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import TripsMap from "@/components/TripsMap";
 import TripLocationHistoryMap from "@/components/TripLocationHistoryMap";
+import TripAuditLog from "@/components/TripAuditLog";
 import { z } from "zod";
 
 const tripSchema = z.object({

@@ -28,6 +28,8 @@ export default function AddressPicker({
   const [query, setQuery] = useState(address || "");
   const [searching, setSearching] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   useEffect(() => { setQuery(address || ""); }, [address]);
 
@@ -60,9 +62,9 @@ export default function AddressPicker({
         const j = await res.json();
         const place = j?.features?.[0]?.place_name || `${mlat.toFixed(5)}, ${mlng.toFixed(5)}`;
         setQuery(place);
-        onChange({ address: place, lat: mlat, lng: mlng });
+        onChangeRef.current({ address: place, lat: mlat, lng: mlng });
       } catch {
-        onChange({ address, lat: mlat, lng: mlng });
+        onChangeRef.current({ address: `${mlat.toFixed(5)}, ${mlng.toFixed(5)}`, lat: mlat, lng: mlng });
       }
     };
 

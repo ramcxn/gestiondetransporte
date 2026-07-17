@@ -53,6 +53,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/portal-operador" element={<OperatorPortal />} />
             <Route
               path="/"
               element={

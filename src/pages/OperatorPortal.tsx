@@ -414,3 +414,108 @@ function NotifRow({ label, fecha, warn }: { label: string; fecha?: string; warn:
     </div>
   );
 }
+
+function TripCard({
+  viaje, qr, operadorId, onChanged,
+}: { viaje: any; qr: string; operadorId: string; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const setEstado = async (nuevo: string) => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc("operador_actualizar_estado_viaje", {
+      _qr_code: qr, _viaje_id: viaje.id, _nuevo_estado: nuevo,
+    });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast({ title: "Error", description: (data as any)?.error || error?.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Estado actualizado" });
+    onChanged();
+  };
+
+  const handleEvidence = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const path = `${operadorId}/${viaje.id}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage
+        .from("documentos-viaje-operador").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("documentos-viaje-operador").getPublicUrl(path);
+      const { error: regErr } = await supabase.rpc("operador_registrar_documento", {
+        _qr_code: qr, _viaje_id: viaje.id, _tipo: "evidencia_viaje",
+        _archivo_url: pub.publicUrl, _notas: null,
+      });
+      if (regErr) throw regErr;
+      toast({ title: "Evidencia adjuntada" });
+      onChanged();
+    } catch (err: any) {
+      toast({ title: "Error al subir", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const finalizado = viaje.estado === "completado";
+  const estadoLabel: Record<string, string> = {
+    programado: "Programado", activo: "Asignado", en_zona_carga: "En zona de carga",
+    en_transito: "En recorrido", completado: "Finalizado",
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex justify-between items-start">
+          <div className="font-medium flex items-center gap-1">
+            <MapPin className="h-4 w-4" /> {viaje.origen} → {viaje.destino}
+          </div>
+          <Badge variant={finalizado ? "secondary" : "default"}>
+            {estadoLabel[viaje.estado] || viaje.estado}
+          </Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">Unidad: {viaje.unidad} · Cliente: {viaje.cliente || "-"}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Calendar className="h-3 w-3" /> Salida: {viaje.fecha_salida ? new Date(viaje.fecha_salida).toLocaleDateString() : "-"}
+        </p>
+
+        {!finalizado && (
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <Button size="sm" variant={viaje.estado === "en_zona_carga" ? "default" : "outline"}
+              disabled={busy} onClick={() => setEstado("en_zona_carga")}>
+              En zona de carga
+            </Button>
+            <Button size="sm" variant={viaje.estado === "en_transito" ? "default" : "outline"}
+              disabled={busy} onClick={() => setEstado("en_transito")}>
+              Iniciar recorrido
+            </Button>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => setEstado("completado")}>
+              Finalizar viaje
+            </Button>
+          </div>
+        )}
+
+        <div>
+          <Label htmlFor={`ev-${viaje.id}`} className="cursor-pointer">
+            <div className="border border-dashed rounded-md p-3 text-center text-sm hover:bg-muted transition-colors flex items-center justify-center gap-2">
+              <FileUp className="h-4 w-4" />
+              {uploading ? "Subiendo..." : "Adjuntar evidencia del viaje"}
+            </div>
+          </Label>
+          <Input
+            id={`ev-${viaje.id}`}
+            type="file"
+            accept="image/*,application/pdf"
+            capture="environment"
+            className="sr-only"
+            onChange={handleEvidence}
+            disabled={uploading}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
